@@ -1,7 +1,7 @@
-import TCODashboard from "@/components/TCODashboard";
+import TCOForm from "@/components/tco/TCOForm";
 
 const Index = () => {
-  return <TCODashboard />;
+  return <TCOForm />;
 };
 
 export default Index;
