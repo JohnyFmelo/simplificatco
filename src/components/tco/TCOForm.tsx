@@ -46,6 +46,7 @@ const TCOForm: React.FC = () => {
   const [penaDescricao] = useState("");
   const [cr, setCr] = useState("");
   const [unidade, setUnidade] = useState("");
+  const [localRegistro, setLocalRegistro] = useState("");
   const naturezaOptions = useMemo(() => [
     "Ameaça",
     "Vias de Fato",
@@ -305,6 +306,7 @@ const TCOForm: React.FC = () => {
     // Novos campos obrigatórios
     if (!cr.trim()) errors.push("CR");
     if (!unidade.trim()) errors.push("Unidade");
+    if (!localRegistro.trim()) errors.push("Local do Registro");
     // Pessoas: CPF do Autor Principal
     if (autores.length === 0) {
       errors.push("Ao menos um Autor");
@@ -371,6 +373,8 @@ const TCOForm: React.FC = () => {
             setCr={setCr}
             unidade={unidade}
             setUnidade={setUnidade}
+            localRegistro={localRegistro}
+            setLocalRegistro={setLocalRegistro}
           />
         </TabsContent>
 
@@ -493,7 +497,19 @@ const TCOForm: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="arquivos">
-          <ArquivosTab fotos={fotosArquivos} onAddFotos={onAddFotos} onRemoveFoto={onRemoveFoto} cr={cr} unidade={unidade} />
+          <ArquivosTab 
+            fotos={fotosArquivos} 
+            onAddFotos={onAddFotos} 
+            onRemoveFoto={onRemoveFoto} 
+            cr={cr} 
+            unidade={unidade}
+            tcoNumber={tcoNumber}
+            natureza={natureza}
+            autoresNomes={autores.map(a => a.nome).filter(Boolean)}
+            condutor={componentesGuarnicao[0] ? { nome: componentesGuarnicao[0].nome, posto: componentesGuarnicao[0].posto, rg: componentesGuarnicao[0].rg } : undefined}
+            localRegistro={localRegistro}
+            municipio={municipio}
+          />
         </TabsContent>
       </Tabs>
 

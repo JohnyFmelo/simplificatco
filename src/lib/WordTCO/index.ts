@@ -157,8 +157,73 @@ async function getUnitAddressLinesFromDb(unidade?: string | null): Promise<strin
   }
 }
 
-export async function downloadTcoDocx(unidade?: string | null, cr?: string | null) {
+// Utilitários para texto por extenso em PT-BR
+function numeroAte99PorExtenso(n: number): string {
+  const UNIDADES = [
+    "ZERO","UM","DOIS","TRÊS","QUATRO","CINCO","SEIS","SETE","OITO","NOVE",
+    "DEZ","ONZE","DOZE","TREZE","QUATORZE","QUINZE","DEZESSEIS","DEZESSETE","DEZOITO","DEZENOVE"
+  ];
+  const DEZENAS = ["","","VINTE","TRINTA","QUARENTA","CINQUENTA","SESSENTA","SETENTA","OITENTA","NOVENTA"];
+  if (n < 20) return UNIDADES[n];
+  const dezenas = Math.floor(n / 10);
+  const unidades = n % 10;
+  if (unidades === 0) return DEZENAS[dezenas];
+  return `${DEZENAS[dezenas]} E ${UNIDADES[unidades]}`;
+}
+
+function numeroAte999PorExtenso(n: number): string {
+  if (n === 0) return "";
+  if (n < 100) return numeroAte99PorExtenso(n);
+  const CENTENAS = [
+    "", "CENTO", "DUZENTOS", "TREZENTOS", "QUATROCENTOS", "QUINHENTOS", "SEISCENTOS", "SETECENTOS", "OITOCENTOS", "NOVECENTOS"
+  ];
+  if (n === 100) return "CEM";
+  const centenas = Math.floor(n / 100);
+  const resto = n % 100;
+  if (resto === 0) return CENTENAS[centenas];
+  return `${CENTENAS[centenas]} E ${numeroAte99PorExtenso(resto)}`;
+}
+
+function anoPorExtenso(ano: number): string {
+  if (ano < 1000 || ano > 9999) return `${ano}`;
+  const milhares = Math.floor(ano / 1000);
+  const resto = ano % 1000;
+  const prefixoMil = milhares === 1 ? "MIL" : `${numeroAte99PorExtenso(milhares)} MIL`;
+  if (resto === 0) return prefixoMil;
+  // uso de "E" entre milhar e resto
+  return `${prefixoMil} E ${numeroAte999PorExtenso(resto)}`;
+}
+
+function obterDataCuiaba(): { dia: number; mes: number; ano: number } {
+  // Constrói uma Date no fuso de Cuiabá via toLocaleString
+  const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Cuiaba' });
+  const now = new Date(nowStr);
+  return { dia: now.getDate(), mes: now.getMonth() + 1, ano: now.getFullYear() };
+}
+
+function mesPorExtenso(mes: number): string {
+  const MESES = ["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"];
+  return MESES[(mes - 1) % 12];
+}
+
+function extrairCidadeDoMunicipio(municipio?: string | null): string {
+  if (!municipio) return "";
+  return municipio.split('-')[0].trim().toUpperCase();
+}
+
+export async function downloadTcoDocx(opts: {
+  unidade?: string | null;
+  cr?: string | null;
+  tcoNumber?: string;
+  natureza?: string;
+  autoresNomes?: string[];
+  condutor?: { nome: string; posto: string; rg: string } | undefined;
+  localRegistro?: string;
+  municipio?: string;
+}) {
   const { Document, Packer, Paragraph, TextRun, AlignmentType, Header, Footer, ImageRun } = await import('docx');
+
+  const { unidade, cr, tcoNumber, natureza, autoresNomes, condutor, localRegistro, municipio } = opts;
 
   // Buscar dados da unidade no banco de dados
   let unidadeAbr = '***';
@@ -264,29 +329,76 @@ export async function downloadTcoDocx(unidade?: string | null, cr?: string | nul
   const dbLines = await getUnitAddressLinesFromDb(unidade);
   const [addr1, addr2, addr3] = dbLines || getUnitAddressLines(unidade);
 
-  // Travessões mais curtos e sem espaçamento extra; endereços sem espaço antes/depois
   const footerChildren: any[] = [
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 0, after: 0 },
-      children: [new TextRun({ text: '—'.repeat(52), font: 'Times New Roman', size: 20 })],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 0, after: 0 },
-      children: [new TextRun({ text: addr1, font: 'Times New Roman', size: 20 })],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 0, after: 0 },
-      children: [new TextRun({ text: addr2, font: 'Times New Roman', size: 20 })],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 0, after: 0 },
-      children: [new TextRun({ text: addr3, font: 'Times New Roman', size: 20 })],
-    }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0 }, children: [new TextRun({ text: '—'.repeat(52), font: 'Times New Roman', size: 20 })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0 }, children: [new TextRun({ text: addr1, font: 'Times New Roman', size: 20 })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0 }, children: [new TextRun({ text: addr2, font: 'Times New Roman', size: 20 })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0 }, children: [new TextRun({ text: addr3, font: 'Times New Roman', size: 20 })] }),
   ];
+
+  // ===== Corpo da página: AUTUAÇÃO =====
+  const { dia, mes, ano } = obterDataCuiaba();
+  const diaExtenso = numeroAte99PorExtenso(dia);
+  const mesExtenso = mesPorExtenso(mes);
+  const anoExtenso = anoPorExtenso(ano);
+  const cidade = extrairCidadeDoMunicipio(municipio);
+
+  const crSemEspaco = (crAbr || '').replace(/\s+/g, '');
+  const numeroDisplay = `${(tcoNumber || '').trim()}.${crSemEspaco}.${ano}`;
+
+  const autoresDisplay = (autoresNomes && autoresNomes.length > 0) ? autoresNomes.filter(Boolean).map(n => n.toUpperCase()).join(' + ') : "NÃO INFORMADO";
+  const naturezaDisplay = (natureza || '').toUpperCase();
+  const localRegistroDisplay = (localRegistro || '').toUpperCase();
+
+  const corpoChildren: any[] = [
+    // Título centralizado
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `TERMO CIRCUNSTANCIADO DE OCORRÊNCIA Nº ${numeroDisplay}`, bold: true }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+
+    // Natureza
+    new Paragraph({ children: [ new TextRun({ text: 'NATUREZA: ', bold: true }), new TextRun({ text: naturezaDisplay }) ] }),
+    // Autor do fato
+    new Paragraph({ children: [ new TextRun({ text: 'AUTOR DO FATO: ', bold: true }), new TextRun({ text: autoresDisplay }) ] }),
+
+    // Espaços
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+
+    // Título AUTUAÇÃO
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'AUTUAÇÃO', bold: true }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+
+    // Parágrafo principal
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: `AOS ${diaExtenso} DIAS DO MÊS DE ${mesExtenso} DO ANO DE ${anoExtenso}, NESTA CIDADE DE ${cidade}, ESTADO DE MATO GROSSO, NO ${localRegistroDisplay}, AUTUO AS PEÇAS QUE ADIANTE SE SEGUEM, DO QUE PARA CONSTAR, LAVREI E ASSINO ESTE TERMO.`,
+        })
+      ]
+    }),
+
+    // Espaços antes da assinatura
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+  ];
+
+  // Bloco de assinatura do condutor
+  if (condutor) {
+    corpoChildren.push(
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '—'.repeat(36) }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${condutor.nome.toUpperCase()} - ${condutor.posto.toUpperCase()}` }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `RG PMMT: ${condutor.rg}` }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] }),
+    );
+  } else {
+    corpoChildren.push(
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR NÃO CADASTRADO. VÁ EM GUARNIÇÃO E CADASTRE O CONDUTOR.', bold: true }) ] })
+    );
+  }
 
   const doc = new Document({
     styles: {
@@ -294,12 +406,10 @@ export async function downloadTcoDocx(unidade?: string | null, cr?: string | nul
     },
     sections: [
       {
-        properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720, header: 240, footer: 360 } } },
+        properties: { page: { margin: { top: 720, right: 1134, bottom: 720, left: 1134, header: 240, footer: 360 } } },
         headers: { default: new Header({ children: headerChildren }) },
         footers: { default: new Footer({ children: footerChildren }) },
-        children: [
-          new Paragraph({ children: [new TextRun({ text: ' ', size: 24 })] })
-        ]
+        children: corpoChildren,
       }
     ]
   });
@@ -308,7 +418,7 @@ export async function downloadTcoDocx(unidade?: string | null, cr?: string | nul
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'TCO-em-branco.docx';
+  a.download = `TCO_${(tcoNumber || '').trim() || 'DOCUMENTO'}.docx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

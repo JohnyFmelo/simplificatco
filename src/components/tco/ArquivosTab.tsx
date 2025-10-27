@@ -16,23 +16,36 @@ interface ArquivosTabProps {
   onRemoveFoto: (id: string) => void;
   cr: string;
   unidade: string;
+  // Novas props para geração do DOCX
+  tcoNumber: string;
+  natureza: string;
+  autoresNomes: string[];
+  condutor?: { nome: string; posto: string; rg: string };
+  localRegistro: string;
+  municipio: string;
 }
 
-const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFoto, cr, unidade }) => {
+const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFoto, cr, unidade, tcoNumber, natureza, autoresNomes, condutor, localRegistro, municipio }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (!files.length) return;
     onAddFotos(files);
-    // Clear input value to allow re-selecting the same file later
     if (inputRef.current) inputRef.current.value = "";
   };
 
   const handleRemove = (id: string) => onRemoveFoto(id);
   const handleDownloadWord = () => {
-    // ...existing code ...
-    downloadTcoDocx(unidade, cr);
+    downloadTcoDocx({
+      unidade,
+      cr,
+      tcoNumber,
+      natureza,
+      autoresNomes,
+      condutor,
+      localRegistro,
+      municipio,
+    });
   };
 
   return (
@@ -69,18 +82,13 @@ const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFo
                         className="h-32 w-full object-cover"
                       />
                       {/* Actions */}
-                      <div className="absolute inset-x-0 bottom-0 flex justify-between p-2 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <a href={foto.url} target="_blank" rel="noreferrer" className="text-xs text-white underline">Abrir</a>
-                        <Button variant="destructive" size="sm" onClick={() => handleRemove(foto.id)}>Excluir</Button>
+                      <div className="absolute inset-0 hidden group-hover:flex items-end justify-end p-2">
+                        <Button variant="destructive" size="sm" onClick={() => handleRemove(foto.id)}>Remover</Button>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
-
-            {fotos.length === 0 && (
-              <p className="text-sm text-muted-foreground">Nenhuma foto anexada ainda.</p>
             )}
           </div>
         </CardContent>

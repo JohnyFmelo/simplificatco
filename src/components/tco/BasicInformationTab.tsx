@@ -33,6 +33,9 @@ interface BasicInformationTabProps {
   setCr: (value: string) => void;
   unidade: string;
   setUnidade: (value: string) => void;
+  // Novo campo: Local do Registro
+  localRegistro: string;
+  setLocalRegistro: (value: string) => void;
 }
 
 
@@ -149,6 +152,8 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
   setCr,
   unidade,
   setUnidade,
+  localRegistro,
+  setLocalRegistro,
 }) => {
   const { toast } = useToast();
   const [isChecking, setIsChecking] = useState(false);
@@ -317,6 +322,11 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="localRegistro">Local do Registro *</Label>
+            <Input id="localRegistro" placeholder="Ex.: CISC DO PARQUE DO LAGO" value={localRegistro} onChange={(e) => setLocalRegistro(e.target.value)} />
           </div>
 
           <div>
