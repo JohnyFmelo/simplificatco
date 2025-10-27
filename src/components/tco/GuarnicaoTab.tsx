@@ -157,7 +157,7 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
     try {
       const { data, error } = await supabase
         .from("police_officers")
-        .select("nome, graduacao, pai, mae, naturalidade, cpf, telefone")
+        .select("nome_completo, graduacao, nome_pai, nome_mae, naturalidade, cpf, telefone")
         .eq("rgpm", rgpmToSearch)
         .single();
       console.log("[GuarnicaoTab] Resposta Supabase:", { data, error });
@@ -172,13 +172,13 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
       } else if (error) {
         throw error;
       } else if (data) {
-        const officerData = data as PoliceOfficerSearchResult;
+        const officerData = data as any;
         const newComponente: ComponenteGuarnicao = {
           rg: rgpmToSearch,
-          nome: officerData.nome?.toUpperCase() || "NOME NÃO INFORMADO",
+          nome: officerData.nome_completo?.toUpperCase() || "NOME NÃO INFORMADO",
           posto: officerData.graduacao || "POSTO NÃO INFORMADO",
-          pai: officerData.pai?.toUpperCase() || "NÃO INFORMADO",
-          mae: officerData.mae?.toUpperCase() || "NÃO INFORMADO",
+          pai: officerData.nome_pai?.toUpperCase() || "NÃO INFORMADO",
+          mae: officerData.nome_mae?.toUpperCase() || "NÃO INFORMADO",
           naturalidade: officerData.naturalidade?.toUpperCase() || "NÃO INFORMADO",
           cpf: officerData.cpf ? formatarCPF(officerData.cpf) : "NÃO INFORMADO",
           telefone: officerData.telefone ? formatarCelular(officerData.telefone) : "NÃO INFORMADO",
@@ -251,7 +251,7 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
     try {
       const { data, error } = await supabase
         .from("police_officers")
-        .select("nome, graduacao, pai, mae, naturalidade, cpf, telefone")
+        .select("nome_completo, graduacao, nome_pai, nome_mae, naturalidade, cpf, telefone")
         .eq("rgpm", rgpmToSearch)
         .single();
 
@@ -269,13 +269,13 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
       } else if (error) {
         throw error;
       } else if (data) {
-        const officerData = data as PoliceOfficerSearchResult;
+        const officerData = data as any;
         setNewOfficerFormData({
           rgpm: rgpmToSearch,
-          nome: officerData.nome?.toUpperCase() || "",
+          nome: officerData.nome_completo?.toUpperCase() || "",
           graduacao: officerData.graduacao || "",
-          pai: officerData.pai?.toUpperCase() || "",
-          mae: officerData.mae?.toUpperCase() || "",
+          pai: officerData.nome_pai?.toUpperCase() || "",
+          mae: officerData.nome_mae?.toUpperCase() || "",
           naturalidade: officerData.naturalidade?.toUpperCase() || "",
           cpf: officerData.cpf ? formatarCPF(officerData.cpf) : "",
           telefone: officerData.telefone ? formatarCelular(officerData.telefone) : "",
@@ -349,7 +349,7 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
       try {
         const dataToSave = {
           rgpm: rgpmNumeros,
-          nome: nome.toUpperCase(),
+          nome_completo: nome.toUpperCase(),
           graduacao: graduacao,
         };
         const { error } = await supabase
@@ -393,10 +393,10 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
     try {
       const dataToSave = {
         rgpm: rgpmNumeros,
-        nome: nome.toUpperCase(),
+        nome_completo: nome.toUpperCase(),
         graduacao: graduacao,
-        pai: pai.toUpperCase(),
-        mae: mae.toUpperCase(),
+        nome_pai: pai.toUpperCase(),
+        nome_mae: mae.toUpperCase(),
         naturalidade: naturalidade.toUpperCase(),
         cpf: cpfNumeros,
         telefone: telefoneNumeros
