@@ -42,6 +42,7 @@ const TCOForm: React.FC = () => {
   // Aba "Informações Básicas"
   const [tcoNumber, setTcoNumber] = useState("");
   const [natureza, setNatureza] = useState("");
+  const [autor, setAutor] = useState("");
   const [penaDescricao] = useState("");
   const [cr, setCr] = useState("");
   const [unidade, setUnidade] = useState("");
@@ -358,6 +359,8 @@ const TCOForm: React.FC = () => {
             setTcoNumber={setTcoNumber}
             natureza={natureza}
             setNatureza={setNatureza}
+            autor={autor}
+            setAutor={setAutor}
             penaDescricao={penaDescricao}
             naturezaOptions={naturezaOptions}
             customNatureza={customNatureza}

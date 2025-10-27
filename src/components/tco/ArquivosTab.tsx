@@ -71,7 +71,7 @@ const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFo
                       {/* Actions */}
                       <div className="absolute inset-x-0 bottom-0 flex justify-between p-2 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
                         <a href={foto.url} target="_blank" rel="noreferrer" className="text-xs text-white underline">Abrir</a>
-                        <Button variant="destructive" size="xs" onClick={() => handleRemove(foto.id)}>Excluir</Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleRemove(foto.id)}>Excluir</Button>
                       </div>
                     </div>
                   ))}

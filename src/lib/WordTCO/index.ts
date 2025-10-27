@@ -1,7 +1,12 @@
 // WordTCO - ponto de entrada para geração de documentos DOCX do TCO
 // Aqui adicionaremos utilitários e funções de montagem do arquivo .docx
 
-import { supabase } from "@/integrations/supabase/client";
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  "https://duayymaipijodwuzsmbg.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1YXl5bWFpcGlqb2R3dXpzbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1ODUyNjUsImV4cCI6MjA3NzE2MTI2NX0.MkCye1nIrRlXFM-deePfEuOqPXUHTkgHBv8O1UJzhTI"
+);
 
 export type TcoDocData = {
   tcoNumber: string;
@@ -80,58 +85,70 @@ export function getUnitAddressLines(unidade?: string | null): string[] {
 
 // Busca endereço/contato da unidade no Supabase e retorna linhas do rodapé
 async function getUnitAddressLinesFromDb(unidade?: string | null): Promise<string[] | null> {
+  if (!unidade) return null;
+  
   const fullName = formatUnitFooterName(unidade);
-  const abbr = abbreviateUnidade(unidade || undefined);
-  const selectCols = "nome, abreviacao, endereco, bairro, cidade, uf, cep, telefone, email";
+  const abbr = abbreviateUnidade(unidade);
+  
   const buildLines = (u: any): string[] => {
-    const nomeLinha = (u?.nome as string) || fullName || "***";
-    const enderecoLinha = u?.endereco ? `${u.endereco}${u.bairro ? ", " + u.bairro : ""}` : "Endereço não cadastrado";
-    const cidadeUf = (u?.cidade && u?.uf) ? `${u.cidade} - ${u.uf}` : "Cidade - UF";
-    const cepParte = u?.cep ? `CEP ${u.cep}` : null;
-    const contatoPartes: string[] = [];
-    if (u?.telefone) contatoPartes.push(`Tel: ${u.telefone}`);
-    if (u?.email) contatoPartes.push(`Email: ${u.email}`);
-    const contatoStr = contatoPartes.length ? contatoPartes.join(" | ") : null;
-    const terceiraLinha = [cepParte, cidadeUf, contatoStr].filter(Boolean).join(", ");
-    return [nomeLinha, enderecoLinha, terceiraLinha];
+    const nomeLinha = u?.nome_oficial || fullName || "***";
+    
+    // Monta endereço completo: logradouro, numero_endereco, complemento, bairro
+    const partes: string[] = [];
+    if (u?.logradouro) partes.push(u.logradouro);
+    if (u?.numero_endereco) partes.push(u.numero_endereco);
+    if (u?.complemento) partes.push(u.complemento);
+    if (u?.bairro) partes.push(`Bairro ${u.bairro}`);
+    
+    const enderecoLinha = partes.length > 0 ? partes.join(", ") : "Endereço não cadastrado";
+    
+    // Terceira linha: CEP + Cidade - UF
+    const cepParte = u?.cep ? `CEP ${u.cep}` : "";
+    const cidadeUf = (u?.cidade && u?.uf) ? `${u.cidade} - ${u.uf}` : "";
+    const terceiraLinha = [cepParte, cidadeUf].filter(Boolean).join(", ");
+    
+    return [nomeLinha, enderecoLinha, terceiraLinha || "Cidade - UF"];
   };
 
   try {
-    // 1) Exact abreviação
-    let { data, error } = await supabase
-      .from("unidades")
-      .select(selectCols)
+    // 1) Busca por abreviação exata
+    const { data, error } = await supabase
+      .from("unidades" as any)
+      .select("nome_oficial, abreviacao, logradouro, numero_endereco, complemento, bairro, cidade, uf, cep")
       .eq("abreviacao", abbr)
       .limit(1);
-    if (error) throw error;
-    if (data && data.length > 0) return buildLines(data[0]);
+    
+    if (error) {
+      console.error("Erro buscando por abreviação:", error);
+    } else if (data && data.length > 0) {
+      return buildLines(data[0]);
+    }
 
-    // 2) Prefix abreviação (ex.: "7º BPM%", "15ª CIPM FT%")
-    const { data: dataAbbrPrefix, error: errPrefix } = await supabase
-      .from("unidades")
-      .select(selectCols)
+    // 2) Busca por abreviação com LIKE
+    const { data: dataLike, error: errLike } = await supabase
+      .from("unidades" as any)
+      .select("nome_oficial, abreviacao, logradouro, numero_endereco, complemento, bairro, cidade, uf, cep")
       .ilike("abreviacao", `${abbr}%`)
       .limit(1);
-    if (errPrefix) throw errPrefix;
-    if (dataAbbrPrefix && dataAbbrPrefix.length > 0) return buildLines(dataAbbrPrefix[0]);
+    
+    if (errLike) {
+      console.error("Erro buscando por abreviação LIKE:", errLike);
+    } else if (dataLike && dataLike.length > 0) {
+      return buildLines(dataLike[0]);
+    }
 
-    // 3) Exact nome base (sem sufixos adicionais)
+    // 3) Busca por nome oficial
     const { data: dataName, error: errName } = await supabase
-      .from("unidades")
-      .select(selectCols)
-      .eq("nome", fullName)
+      .from("unidades" as any)
+      .select("nome_oficial, abreviacao, logradouro, numero_endereco, complemento, bairro, cidade, uf, cep")
+      .ilike("nome_oficial", `%${fullName}%`)
       .limit(1);
-    if (errName) throw errName;
-    if (dataName && dataName.length > 0) return buildLines(dataName[0]);
-
-    // 4) Prefix nome (ex.: "7º Batalhão de Polícia Militar%")
-    const { data: dataNamePrefix, error: errNamePrefix } = await supabase
-      .from("unidades")
-      .select(selectCols)
-      .ilike("nome", `${fullName}%`)
-      .limit(1);
-    if (errNamePrefix) throw errNamePrefix;
-    if (dataNamePrefix && dataNamePrefix.length > 0) return buildLines(dataNamePrefix[0]);
+    
+    if (errName) {
+      console.error("Erro buscando por nome:", errName);
+    } else if (dataName && dataName.length > 0) {
+      return buildLines(dataName[0]);
+    }
 
     return null;
   } catch (e) {
@@ -149,7 +166,7 @@ export async function downloadTcoDocx(unidade?: string | null, cr?: string | nul
   const crParte = crAbr ? ` / ${crAbr}` : '';
 
   // carregar brasão do diretório public, opcional
-  let imageParagraph: Paragraph | null = null;
+  let imageParagraph: any = null;
   try {
     const imgResp = await fetch(encodeURI('/brasão.jpg'));
     if (imgResp.ok) {
@@ -157,7 +174,11 @@ export async function downloadTcoDocx(unidade?: string | null, cr?: string | nul
       imageParagraph = new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 0, after: 0 },
-        children: [new ImageRun({ data: imgArray, transformation: { width: 80, height: 80 } })],
+        children: [new ImageRun({ 
+          data: imgArray, 
+          transformation: { width: 80, height: 80 },
+          type: 'jpg'
+        })],
       });
     }
   } catch (_) {
