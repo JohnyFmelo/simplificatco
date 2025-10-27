@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X } from "lucide-react";
 
 interface DrugItem {
@@ -42,6 +43,10 @@ interface HistoricoTabProps {
   setDocumentosAnexos: (value: string) => void;
   lacreNumero?: string;
   internalDrugs?: DrugItem[];
+  nomearFielDepositario?: string;
+  setNomearFielDepositario?: (value: string) => void;
+  fielDepositarioSelecionado?: string;
+  setFielDepositarioSelecionado?: (value: string) => void;
   vitimas?: {
     nome: string;
     sexo: string;
@@ -129,6 +134,10 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
   setDocumentosAnexos,
   lacreNumero = "",
   internalDrugs = [],
+  nomearFielDepositario = "Não",
+  setNomearFielDepositario,
+  fielDepositarioSelecionado = "",
+  setFielDepositarioSelecionado,
   vitimas = [],
   setVitimaRelato,
   setVitimaRepresentacao,
@@ -406,6 +415,97 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
             {!isDrugCase ? "Se houver apreensões, o Termo de Apreensão será gerado automaticamente no PDF." : "Para casos de drogas, o texto será adaptado automaticamente baseado nos tipos de drogas adicionados. Use um lacre único para todas as drogas."}
           </p>
         </div>
+
+        {/* Seção do Fiel Depositário */}
+        {apreensoes && apreensoes.trim() !== "" && (
+          <div className="mt-4 p-4 border rounded-md bg-gray-50">
+            <Label className="font-bold mb-3 block">FIEL DEPOSITÁRIO</Label>
+            <div className="space-y-4">
+              <div>
+                <Label className="mb-2 block">Nomear Fiel Depositário?</Label>
+                <RadioGroup 
+                  value={nomearFielDepositario || "Não"} 
+                  onValueChange={(value) => {
+                    if (setNomearFielDepositario) {
+                      setNomearFielDepositario(value);
+                      if (value === "Não" && setFielDepositarioSelecionado) {
+                        setFielDepositarioSelecionado("");
+                      }
+                    }
+                  }}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Não" id="fiel-nao" />
+                    <Label htmlFor="fiel-nao">Não</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Sim" id="fiel-sim" />
+                    <Label htmlFor="fiel-sim">Sim</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {nomearFielDepositario === "Sim" && (
+                <div>
+                  <Label htmlFor="fielDepositarioSelect" className="mb-2 block">
+                    Selecionar Pessoa Envolvida como Fiel Depositário:
+                  </Label>
+                  <Select 
+                    value={fielDepositarioSelecionado || ""} 
+                    onValueChange={(value) => {
+                      if (setFielDepositarioSelecionado) {
+                        setFielDepositarioSelecionado(value);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma pessoa envolvida" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Autores */}
+                      {autores && autores.length > 0 && autores.map((autor, index) => (
+                        autor.nome && autor.nome.trim() !== "" && (
+                          <SelectItem key={`autor-${index}`} value={`autor-${index}-${autor.nome}`}>
+                            {autor.nome} (Autor)
+                          </SelectItem>
+                        )
+                      ))}
+                      
+                      {/* Vítimas */}
+                      {vitimas && vitimas.length > 0 && vitimas.map((vitima, index) => (
+                        vitima.nome && vitima.nome.trim() !== "" && (
+                          <SelectItem key={`vitima-${index}`} value={`vitima-${index}-${vitima.nome}`}>
+                            {vitima.nome} (Vítima)
+                          </SelectItem>
+                        )
+                      ))}
+                      
+                      {/* Testemunhas */}
+                      {testemunhas && testemunhas.length > 0 && testemunhas.map((testemunha, index) => (
+                        testemunha.nome && testemunha.nome.trim() !== "" && (
+                          <SelectItem key={`testemunha-${index}`} value={`testemunha-${index}-${testemunha.nome}`}>
+                            {testemunha.nome} (Testemunha)
+                          </SelectItem>
+                        )
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {fielDepositarioSelecionado && (
+                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                      <p className="text-sm text-green-700">
+                        <strong>Fiel Depositário Selecionado:</strong> {fielDepositarioSelecionado.split('-').slice(2).join('-')}
+                      </p>
+                      <p className="text-xs text-green-600 mt-1">
+                        Esta pessoa será responsável pela guarda dos objetos/documentos apreendidos.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         
         <div>
           <Label htmlFor="providencias">PROVIDÊNCIAS</Label>

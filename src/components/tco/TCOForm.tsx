@@ -12,6 +12,7 @@ import DrugVerificationTab from "./DrugVerificationTab";
 import TermoCompromissoTab from "./TermoCompromissoTab";
 import PessoasEnvolvidasTab from "./PessoasEnvolvidasTab";
 import ArquivosTab from "./ArquivosTab";
+import { uploadPhoto, listPhotos, deletePhoto, getUserIdOrAnon } from "@/lib/supabasePhotos";
 
 // Tipos mínimos para composição
 interface ComponenteGuarnicao {
@@ -75,6 +76,12 @@ const TCOForm: React.FC = () => {
   const [isTimerRunning] = useState(true);
   const [juizadoEspecialData, setJuizadoEspecialData] = useState("");
   const [juizadoEspecialHora, setJuizadoEspecialHora] = useState("");
+
+  // Identificador único do TCO para persistência de fotos
+  const [tcoId] = useState<string>(() => {
+    const rnd = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+    return rnd;
+  });
 
   // Aba "Dados da Ocorrência"
   const isCustomNatureza = natureza === "Outros";
@@ -179,6 +186,20 @@ const TCOForm: React.FC = () => {
   const handleAddTestemunha = () => setTestemunhas(prev => [...prev, { ...initialPersonalInfo }]);
   const handleRemoveTestemunha = (index: number) => setTestemunhas(prev => prev.filter((_, i) => i !== index));
 
+  // Handlers para relatos/representação usados pelo HistoricoTab
+  const setVitimaRelato = (index: number, relato: string) => {
+    setVitimas(prev => prev.map((v, i) => (i === index ? { ...v, relato } : v)));
+  };
+  const setVitimaRepresentacao = (index: number, representacao: string) => {
+    setVitimas(prev => prev.map((v, i) => (i === index ? { ...v, representacao } : v)));
+  };
+  const setTestemunhaRelato = (index: number, relato: string) => {
+    setTestemunhas(prev => prev.map((t, i) => (i === index ? { ...t, relato } : t)));
+  };
+  const setAutorRelato = (index: number, relato: string) => {
+    setAutores(prev => prev.map((a, i) => (i === index ? { ...a, relato } : a)));
+  };
+
   // Aba "Guarnição"
   const [componentesGuarnicao, setComponentesGuarnicao] = useState<ComponenteGuarnicao[]>([]);
   const handleAddPolicial = (p: ComponenteGuarnicao) => setComponentesGuarnicao(prev => [...prev, p]);
@@ -197,6 +218,10 @@ const TCOForm: React.FC = () => {
   const [videoLinks, setVideoLinks] = useState<string[]>([]);
   const [solicitarCorpoDelito] = useState("Não");
   const [autorSexo] = useState("masculino");
+  
+  // Estados do Fiel Depositário
+  const [nomearFielDepositario, setNomearFielDepositario] = useState("Não");
+  const [fielDepositarioSelecionado, setFielDepositarioSelecionado] = useState("");
 
   // Aba "Drogas"
   const [novaDroga, setNovaDroga] = useState<Omit<Droga, "id">>({
@@ -221,6 +246,38 @@ const TCOForm: React.FC = () => {
     setNovaDroga({ quantidade: "", substancia: "", cor: "", odor: "", indicios: "", isUnknownMaterial: false, customMaterialDesc: "" });
   };
   const onRemoverDroga = (id: string) => setDrogasAdicionadas(prev => prev.filter(d => d.id !== id));
+
+  // Estado de fotos persistente via Supabase Storage
+  type FotoItem = { id: string; url: string; storagePath: string; name: string };
+  const [fotosArquivos, setFotosArquivos] = useState<FotoItem[]>([]);
+  useEffect(() => {
+    (async () => {
+      const userId = await getUserIdOrAnon();
+      const listed = await listPhotos({ tcoId, userId });
+      setFotosArquivos(listed.map(p => ({ id: p.path, url: p.publicUrl, storagePath: p.path, name: p.name })));
+    })();
+  }, [tcoId]);
+
+  const onAddFotos = async (files: File[]) => {
+    const imagens = files.filter(f => f.type.startsWith("image/"));
+    if (imagens.length === 0) return;
+    const capacidade = 5 - fotosArquivos.length;
+    if (capacidade <= 0) return;
+    const imagensLimitadas = imagens.slice(0, capacidade);
+    const userId = await getUserIdOrAnon();
+    const uploads = await Promise.all(imagensLimitadas.map(async (file) => uploadPhoto({ file, tcoId, userId })));
+    const validos = uploads.filter((u): u is NonNullable<typeof u> => !!u);
+    const novas = validos.map(u => ({ id: u.path, url: u.publicUrl, storagePath: u.path, name: u.name }));
+    setFotosArquivos(prev => [...prev, ...novas]);
+  };
+
+  const onRemoveFoto = async (id: string) => {
+    const alvo = fotosArquivos.find(p => p.id === id);
+    if (!alvo) return;
+    const ok = await deletePhoto(alvo.storagePath);
+    if (!ok) return;
+    setFotosArquivos(prev => prev.filter(p => p.id !== id));
+  };
 
   const isDrugCase = natureza === "Porte de drogas para consumo";
 
@@ -418,11 +475,22 @@ const TCOForm: React.FC = () => {
             setDocumentosAnexos={setDocumentosAnexos}
             lacreNumero={lacreNumero}
             internalDrugs={drogasAdicionadas}
+            nomearFielDepositario={nomearFielDepositario}
+            setNomearFielDepositario={setNomearFielDepositario}
+            fielDepositarioSelecionado={fielDepositarioSelecionado}
+            setFielDepositarioSelecionado={setFielDepositarioSelecionado}
+            vitimas={vitimas}
+            testemunhas={testemunhas}
+            autores={autores}
+            setVitimaRelato={setVitimaRelato}
+            setVitimaRepresentacao={setVitimaRepresentacao}
+            setTestemunhaRelato={setTestemunhaRelato}
+            setAutorRelato={setAutorRelato}
           />
         </TabsContent>
 
         <TabsContent value="arquivos">
-          <ArquivosTab />
+          <ArquivosTab fotos={fotosArquivos} onAddFotos={onAddFotos} onRemoveFoto={onRemoveFoto} cr={cr} unidade={unidade} />
         </TabsContent>
       </Tabs>
 

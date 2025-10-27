@@ -1,0 +1,250 @@
+
+
+
+          
+Vou explorar como o projeto gera documentos Word e monta cabeçalho/rodapé. Em seguida explico o fluxo completo com trechos de código.
+        
+            
+toolName: search_codebase
+            
+status: success
+          
+query: Where in the codebase are Word document generation, header/footer creation, and any usage of docx libraries implemented? Look for Word, docx, header/footer, Documento, Cabeçalho, Rodapé.
+          
+Vou te explicar passo a passo como o projeto monta o cabeçalho e o rodapé do documento Word, incluindo as decisões de layout e os pontos que costumam gerar erro quando se tenta replicar.
+
+**Visão Geral**
+- O Word é gerado via biblioteca `docx` (ESM) e salvo com `file-saver`.
+- O cabeçalho é construído com uma tabela de 1 célula (para garantir borda e padding uniformes), contendo a imagem do brasão e linhas de texto centralizadas.
+- O rodapé é composto por dois parágrafos: um com linha superior (borda) e outro com numeração de página.
+- O `Header` e `Footer` são anexados dentro de `sections` do `Document` — se você não criar `new Header(...)`/`new Footer(...)` e referenciá-los em `sections`, o Word não insere os elementos.
+
+**Onde está no projeto**
+- Arquivo principal: `src/pages/WordDoc/generateWordDoc.ts`
+- Chamado a partir da página: `src/pages/Index.tsx` (captura o `tbody` que vira o conteúdo do documento e repassa a `referenceDate`, além de dados do Fórum e Afastamentos).
+
+**Cabeçalho**
+- Fluxo:
+  - Carrega o brasão (`/brasao.png`) em `ArrayBuffer` para `ImageRun`.
+  - Cria uma lista de parágrafos centralizados com textos institucionais.
+  - Envolve esses parágrafos em uma `Table` com borda em todos os lados e `margins` (para espaçamento interno).
+  - Adiciona uma linha adicional com o texto “ESCALA DE SERVIÇO…” (data e dia da semana), centralizada e em negrito.
+
+- Pontos-chave:
+  - O uso da `Table` no cabeçalho resolve dois problemas do Word: bordas completas e controle fino de padding.
+  - A imagem é inserida via `new ImageRun({ data, transformation: { width, height }, type: 'png' })`.
+  - A lista final de elementos do cabeçalho vai em `headerChildren`, que é passada para `new Header({ children: headerChildren })`.
+
+- Trecho relevante do código:
+```typescript:src/pages/WordDoc/generateWordDoc.ts
+// ... existing code ...
+const {
+  Document, Packer, Paragraph, TextRun, AlignmentType,
+  Header, Footer, ImageRun, PageNumber, Table, TableRow, TableCell,
+  WidthType, BorderStyle
+} = await import('docx');
+
+let crestBuffer: ArrayBuffer | undefined;
+try {
+  const res = await fetch('/brasao.png');
+  if (res.ok) crestBuffer = await res.arrayBuffer();
+} catch (_) {}
+
+const headerChildren: any[] = [];
+const headerContentParagraphs: any[] = [];
+
+if (crestBuffer) {
+  headerContentParagraphs.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+      children: [
+        new ImageRun({
+          data: crestBuffer,
+          transformation: { width: 92, height: 88 },
+          type: 'png'
+        })
+      ]
+    })
+  );
+}
+
+headerContentParagraphs.push(
+  new Paragraph({ alignment: AlignmentType.CENTER, style: 'NoSpacing', children: [ new TextRun({ text: 'ESTADO DE MATO GROSSO', bold: true }) ] }),
+);
+// ... linhas “2º COMANDO REGIONAL”, “25º BATALHÃO …”
+const headerTable = new Table({
+  width: { size: 100, type: WidthType.PERCENTAGE },
+  rows: [
+    new TableRow({
+      children: [
+        new TableCell({
+          margins: { top: 40, bottom: 0, left: 120, right: 120 },
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+            left: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+            bottom: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+            right: { style: BorderStyle.SINGLE, size: 4, color: '000000' }
+          },
+          children: headerContentParagraphs
+        })
+      ]
+    })
+  ]
+});
+headerChildren.push(headerTable);
+
+const infoLineText = `ESCALA DE SERVIÇO DO 25º BPM PARA O DIA ${format(referenceDate, "dd 'DE' MMMM 'DE' yyyy", { locale: ptBR }).toUpperCase()} (${format(referenceDate, 'EEEE', { locale: ptBR }).toUpperCase()})`;
+
+headerChildren.push(
+  new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 0, after: 0 },
+    children: [ new TextRun({ text: infoLineText, size: 20, font: 'Times New Roman', bold: true }) ]
+  })
+);
+// ... existing code ...
+```
+
+**Rodapé**
+- Fluxo:
+  - Primeiro parágrafo centralizado com borda superior (`border.top`) e o texto do endereço.
+  - Segundo parágrafo com “Página X de Y” usando `PageNumber.CURRENT` e `PageNumber.TOTAL_PAGES`.
+
+- Trecho relevante:
+```typescript:src/pages/WordDoc/generateWordDoc.ts
+// ... existing code ...
+const footerChildren: any[] = [
+  new Paragraph({
+    alignment: AlignmentType.CENTER,
+    border: { top: { style: BorderStyle.SINGLE, size: 4, color: '000000', space: 1 } },
+    spacing: { before: 120 },
+    children: [
+      new TextRun({
+        text: 'Rua Senador Vicente Vuolo (ant Gov. J Fragelli), s/nº - Praça Aurea Braz - Cristo Rei – Várzea Grande - MT',
+        size: 20, font: 'Times New Roman'
+      })
+    ]
+  }),
+  new Paragraph({
+    alignment: AlignmentType.CENTER,
+    children: [
+      new TextRun({ text: 'CEP: 78118-007 – Fone/Fax: (65) 3901-8291 / 3901-9156. E-mail: 25bpm@pm.mt.gov.br Página ', size: 20, font: 'Times New Roman' }),
+      new TextRun({ children: [PageNumber.CURRENT], size: 20, font: 'Times New Roman' }),
+      new TextRun({ text: ' de ', size: 20, font: 'Times New Roman' }),
+      new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 20, font: 'Times New Roman' })
+    ]
+  })
+];
+// ... existing code ...
+```
+
+**Criação do Documento**
+- O cabeçalho e o rodapé só aparecem se você os anexar ao `sections` do `Document`.
+- O projeto define estilos padrão e ajusta margens da página (incluindo altura do cabeçalho/rodapé).
+
+- Trecho de criação do `Document`:
+```typescript:src/pages/WordDoc/generateWordDoc.ts
+// ... existing code ...
+const doc = new Document({
+  styles: {
+    default: {
+      document: {
+        run: { font: 'Times New Roman', size: 24 },
+        paragraph: { spacing: { before: 0, after: 0 } }
+      }
+    },
+    paragraphStyles: [
+      { id: 'NoSpacing', name: 'Sem Espaçamento', basedOn: 'Normal', next: 'NoSpacing', quickFormat: true,
+        run: { font: 'Times New Roman', size: 24 }, paragraph: { spacing: { before: 0, after: 0 } } }
+    ]
+  },
+  sections: [
+    {
+      properties: {
+        page: {
+          size: { width: 11906, height: 16838, orientation: 'portrait' },
+          margin: { top: 720, right: 720, bottom: 720, left: 720, header: 240, footer: 360, gutter: 0 }
+        }
+      },
+      headers: { default: new Header({ children: headerChildren }) },
+      footers: { default: new Footer({ children: footerChildren }) },
+      children: allTables // corpo principal (tabelas)
+    }
+  ]
+});
+// ... existing code ...
+```
+
+**Armadilhas Comuns**
+- Não criar `new Header({ children })` e `new Footer({ children })` → nada aparece.
+- Inserir elementos direto em `sections.children` achando que vão para o cabeçalho/rodapé → vão para o corpo, não para header/footer.
+- Esquecer `margin.header` e `margin.footer` nas propriedades da página → o conteúdo pode colidir com o corpo.
+- Usar imagem sem converter para `ArrayBuffer` → `ImageRun` não renderiza.
+- Bordas no cabeçalho: colocar borda em `Paragraph` não dá o “quadro” completo; por isso é usada `Table` com `TableCell` e bordas nos quatro lados.
+
+**Exemplo Mínimo Replicável**
+Este snippet cria um documento simples com cabeçalho e rodapé. Se você colar isso em outro projeto com `docx` e `file-saver`, deve funcionar como base:
+
+```typescript:src/word/minimalHeaderFooter.ts
+import { Document, Packer, Paragraph, TextRun, AlignmentType, Header, Footer, BorderStyle, PageNumber } from 'docx';
+import { saveAs } from 'file-saver';
+
+export async function generateMinimalDoc() {
+  const headerChildren = [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [ new TextRun({ text: 'MINISTÉRIO/ÓRGÃO', bold: true, size: 24 }) ]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [ new TextRun({ text: 'UNIDADE/SEÇÃO', bold: true, size: 24 }) ]
+    })
+  ];
+
+  const footerChildren = [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      border: { top: { style: BorderStyle.SINGLE, size: 4, color: '000000', space: 1 } },
+      spacing: { before: 120 },
+      children: [ new TextRun({ text: 'Endereço completo – Contatos', size: 20 }) ]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({ text: 'Página ', size: 20 }),
+        new TextRun({ children: [PageNumber.CURRENT], size: 20 }),
+        new TextRun({ text: ' de ', size: 20 }),
+        new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 20 })
+      ]
+    })
+  ];
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: { margin: { top: 720, right: 720, bottom: 720, left: 720, header: 240, footer: 360 } }
+        },
+        headers: { default: new Header({ children: headerChildren }) },
+        footers: { default: new Footer({ children: footerChildren }) },
+        children: [
+          new Paragraph({
+            children: [ new TextRun({ text: 'Corpo do documento', size: 24 }) ]
+          })
+        ]
+      }
+    ]
+  });
+
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, 'exemplo-cabecalho-rodape.docx');
+}
+```
+
+Se você estiver usando Vite/React como no projeto:
+- Prefira `await import('docx')` em vez de `import { ... } from 'docx'` no topo, para evitar problemas com SSR/ESM.
+- Para imagem, use `fetch('/brasao.png')` e `await res.arrayBuffer()` antes de `ImageRun`.
+
+Se quiser, posso te ajudar a adaptar isso passo a passo ao seu outro projeto — principalmente garantindo que o `Header`/`Footer` está sendo anexado corretamente dentro de `sections` e que a imagem do brasão está sendo carregada no formato certo.
+        
