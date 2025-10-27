@@ -160,8 +160,59 @@ async function getUnitAddressLinesFromDb(unidade?: string | null): Promise<strin
 export async function downloadTcoDocx(unidade?: string | null, cr?: string | null) {
   const { Document, Packer, Paragraph, TextRun, AlignmentType, Header, Footer, ImageRun } = await import('docx');
 
-  const unidadeAbr = abbreviateUnidade(unidade);
-  const crAbr = abbreviateCr(cr);
+  // Buscar dados da unidade no banco de dados
+  let unidadeAbr = '***';
+  let crAbr = '2º CR';
+  
+  if (unidade) {
+    try {
+      const fullName = formatUnitFooterName(unidade);
+      const abbr = abbreviateUnidade(unidade);
+      
+      // Tenta buscar por abreviação exata
+      let { data, error } = await supabase
+        .from("unidades" as any)
+        .select("abreviacao, cr")
+        .eq("abreviacao", abbr)
+        .limit(1);
+      
+      if (error || !data || data.length === 0) {
+        // Tenta buscar por abreviação com LIKE
+        const result = await supabase
+          .from("unidades" as any)
+          .select("abreviacao, cr")
+          .ilike("abreviacao", `${abbr}%`)
+          .limit(1);
+        data = result.data;
+        error = result.error;
+      }
+      
+      if (error || !data || data.length === 0) {
+        // Tenta buscar por nome oficial
+        const result = await supabase
+          .from("unidades" as any)
+          .select("abreviacao, cr")
+          .ilike("nome_oficial", `%${fullName}%`)
+          .limit(1);
+        data = result.data;
+        error = result.error;
+      }
+      
+      if (!error && data && data.length > 0) {
+        unidadeAbr = data[0].abreviacao || abbr;
+        crAbr = data[0].cr || crAbr;
+      } else {
+        // Fallback para valores calculados
+        unidadeAbr = abbr;
+        if (cr) crAbr = abbreviateCr(cr);
+      }
+    } catch (e) {
+      console.error("Erro ao buscar unidade:", e);
+      unidadeAbr = abbreviateUnidade(unidade);
+      if (cr) crAbr = abbreviateCr(cr);
+    }
+  }
+  
   const unidadeLinha = unidadeAbr || '***';
   const crParte = crAbr ? ` / ${crAbr}` : '';
 
