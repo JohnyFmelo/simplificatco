@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { downloadTcoDocx } from "@/lib/WordTCO";
+// A geração e o download do DOCX foi movido para o rodapé do TCOForm.
 
 interface FotoItem {
   id: string;
@@ -20,6 +20,11 @@ interface ArquivosTabProps {
   tcoNumber: string;
   natureza: string;
   autoresNomes: string[];
+  autoresDetalhados?: Array<{ nome: string; relato?: string }>;
+  relatoPolicial?: string;
+  conclusaoPolicial?: string;
+  providencias?: string;
+  documentosAnexos?: string;
   condutor?: { nome: string; posto: string; rg: string };
   localRegistro: string;
   municipio: string;
@@ -37,7 +42,7 @@ interface ArquivosTabProps {
   vitimas?: Array<{ nome: string; sexo: string; estadoCivil: string; profissao: string; endereco: string; dataNascimento: string; naturalidade: string; filiacaoMae: string; filiacaoPai: string; rg: string; cpf: string; celular: string; email: string; semCpf?: string; }>;
 }
 
-const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFoto, cr, unidade, tcoNumber, natureza, autoresNomes, condutor, localRegistro, municipio, tipificacao, dataFato, horaFato, dataInicioRegistro, horaInicioRegistro, dataTerminoRegistro, horaTerminoRegistro, localFato, endereco, comunicante, testemunhas, vitimas }) => {
+const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFoto, cr, unidade, tcoNumber, natureza, autoresNomes, autoresDetalhados, relatoPolicial, conclusaoPolicial, providencias, documentosAnexos, condutor, localRegistro, municipio, tipificacao, dataFato, horaFato, dataInicioRegistro, horaInicioRegistro, dataTerminoRegistro, horaTerminoRegistro, localFato, endereco, comunicante, testemunhas, vitimas }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,36 +52,12 @@ const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFo
   };
 
   const handleRemove = (id: string) => onRemoveFoto(id);
-  const handleDownloadWord = () => {
-    downloadTcoDocx({
-      unidade,
-      cr,
-      tcoNumber,
-      natureza,
-      autoresNomes,
-      condutor,
-      localRegistro,
-      municipio,
-      tipificacao,
-      dataFato,
-      horaFato,
-      dataInicioRegistro,
-      horaInicioRegistro,
-      dataTerminoRegistro,
-      horaTerminoRegistro,
-      localFato,
-      endereco,
-      comunicante,
-      testemunhas,
-      vitimas,
-    });
-  };
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Arquivos e Fotos</CardTitle>
+          <CardTitle>Fotos</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -90,7 +71,6 @@ const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFo
                 className="block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-white"
               />
               <span className="text-sm text-muted-foreground">Máx. 5 fotos</span>
-              <Button variant="outline" onClick={handleDownloadWord}>Baixar TCO</Button>
             </div>
 
             {fotos.length > 0 && (
@@ -103,7 +83,7 @@ const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFo
                       <img
                         src={foto.url}
                         alt={foto.name}
-                        className="h-32 w-full object-cover"
+                        className="h-32 w-full object-contain"
                       />
                       {/* Actions */}
                       <div className="absolute inset-0 hidden group-hover:flex items-end justify-end p-2">
@@ -117,6 +97,8 @@ const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFo
           </div>
         </CardContent>
       </Card>
+
+      {/* Botão de “Baixar TCO” removido daqui. Ele aparecerá no rodapé do TCOForm somente na aba Arquivos. */}
     </div>
   );
 };

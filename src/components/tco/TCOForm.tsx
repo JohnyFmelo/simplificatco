@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { downloadTcoDocx } from "@/lib/WordTCO";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,6 +13,7 @@ import DrugVerificationTab from "./DrugVerificationTab";
 import TermoCompromissoTab from "./TermoCompromissoTab";
 import PessoasEnvolvidasTab from "./PessoasEnvolvidasTab";
 import ArquivosTab from "./ArquivosTab";
+import AudienciaTab from "./AudienciaTab";
 import { uploadPhoto, listPhotos, deletePhoto, getUserIdOrAnon } from "@/lib/supabasePhotos";
 
 // Tipos mínimos para composição
@@ -317,28 +319,41 @@ const TCOForm: React.FC = () => {
     const imagensLimitadas = imagens.slice(0, capacidade);
     const userId = await getUserIdOrAnon();
     const uploads = await Promise.all(imagensLimitadas.map(async (file) => uploadPhoto({ file, tcoId, userId })));
-    const validos = uploads.filter((u): u is NonNullable<typeof u> => !!u);
-    const novas = validos.map(u => ({ id: u.path, url: u.publicUrl, storagePath: u.path, name: u.name }));
-    setFotosArquivos(prev => [...prev, ...novas]);
+    const novasRemotas = uploads
+      .map(u => (u ? { id: u.path, url: u.publicUrl, storagePath: u.path, name: u.name } : null))
+      .filter((x): x is { id: string; url: string; storagePath: string; name: string } => !!x);
+    // Fallback local para qualquer imagem cujo upload falhou
+    const novasLocais = imagensLimitadas
+      .map((file, idx) => ({ file, idx }))
+      .filter(({ idx }) => !uploads[idx])
+      .map(({ file }) => ({ id: `local-${Date.now()}-${file.name}`, url: URL.createObjectURL(file), storagePath: "", name: file.name }));
+    setFotosArquivos(prev => [...prev, ...novasRemotas, ...novasLocais]);
   };
 
   const onRemoveFoto = async (id: string) => {
     const alvo = fotosArquivos.find(p => p.id === id);
     if (!alvo) return;
+    // Se for item local (sem storagePath), apenas remover do estado
+    if (!alvo.storagePath) {
+      setFotosArquivos(prev => prev.filter(p => p.id !== id));
+      return;
+    }
     const ok = await deletePhoto(alvo.storagePath);
     if (!ok) return;
     setFotosArquivos(prev => prev.filter(p => p.id !== id));
   };
 
   const isDrugCase = natureza === "Porte de drogas para consumo";
+  const [audienciaData, setAudienciaData] = useState("");
+  const [audienciaHora, setAudienciaHora] = useState("");
 
   // Navegação controlada por etapas
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("basico");
   const tabOrder = useMemo(() => (
     isDrugCase
-      ? ["basico", "geral", "drogas", "pessoas", "historico", "arquivos", "guarnicao"]
-      : ["basico", "geral", "pessoas", "historico", "arquivos", "guarnicao"]
+      ? ["basico", "geral", "drogas", "pessoas", "guarnicao", "historico", "arquivos", "audiencia"]
+      : ["basico", "geral", "pessoas", "guarnicao", "historico", "arquivos", "audiencia"]
   ), [isDrugCase]);
   const goToNextTab = () => {
     const idx = tabOrder.indexOf(activeTab as (typeof tabOrder)[number]);
@@ -382,6 +397,46 @@ const TCOForm: React.FC = () => {
     toast({ title: "Formulário finalizado", description: "Você pode prosseguir com o envio/geração." });
   };
 
+  // Download do TCO em DOCX na aba "Audiência" (parte final)
+  const handleDownloadWord = () => {
+    downloadTcoDocx({
+      unidade,
+      cr,
+      tcoNumber,
+      natureza,
+      autoresNomes: autores.map(a => a.nome).filter(Boolean),
+      autoresDetalhados: autores.map(a => ({ nome: a.nome, relato: a.relato })),
+      relatoPolicial,
+      conclusaoPolicial,
+      providencias,
+      documentosAnexos,
+      condutor: componentesGuarnicao[0] ? { nome: componentesGuarnicao[0].nome, posto: componentesGuarnicao[0].posto, rg: componentesGuarnicao[0].rg } : undefined,
+      localRegistro,
+      municipio,
+      tipificacao,
+      dataFato,
+      horaFato,
+      dataInicioRegistro,
+      horaInicioRegistro,
+      dataTerminoRegistro,
+      horaTerminoRegistro,
+      localFato,
+      endereco,
+      comunicante,
+      testemunhas,
+      vitimas,
+      imageUrls: fotosArquivos.map(f => f.url),
+      guarnicaoLista: componentesGuarnicao.map(g => ({ nome: g.nome, posto: g.posto, rg: g.rg })),
+      audienciaData,
+      audienciaHora,
+      // Novos campos para o Termo de Apreensão
+      apreensoes,
+      drogas: drogasAdicionadas,
+      lacreNumero,
+      numeroRequisicao,
+    });
+  };
+
   return (
     <div className="container mx-auto max-w-screen-lg px-2 sm:px-3 py-3 sm:py-4">
       <Card className="mb-3 sm:mb-4">
@@ -399,9 +454,10 @@ const TCOForm: React.FC = () => {
           <TabsTrigger className="shrink-0" value="geral">Dados da Ocorrência</TabsTrigger>
           {isDrugCase && (<TabsTrigger className="shrink-0" value="drogas">Drogas</TabsTrigger>)}
           <TabsTrigger className="shrink-0" value="pessoas">Pessoas envolvidas</TabsTrigger>
-          <TabsTrigger className="shrink-0" value="historico">Histórico</TabsTrigger>
-          <TabsTrigger className="shrink-0" value="arquivos">Anexos</TabsTrigger>
           <TabsTrigger className="shrink-0" value="guarnicao">Guarnição</TabsTrigger>
+          <TabsTrigger className="shrink-0" value="historico">Histórico</TabsTrigger>
+          <TabsTrigger className="shrink-0" value="arquivos">Fotos</TabsTrigger>
+          <TabsTrigger className="shrink-0" value="audiencia">Audiência</TabsTrigger>
         </TabsList>
 
         <TabsContent value="basico">
@@ -547,6 +603,11 @@ const TCOForm: React.FC = () => {
             setNomearFielDepositario={setNomearFielDepositario}
             fielDepositarioSelecionado={fielDepositarioSelecionado}
             setFielDepositarioSelecionado={setFielDepositarioSelecionado}
+            dataFato={dataFato}
+            horaFato={horaFato}
+            localFato={localFato}
+            endereco={endereco}
+            municipio={municipio}
             vitimas={vitimas}
             testemunhas={testemunhas}
             autores={autores}
@@ -567,6 +628,11 @@ const TCOForm: React.FC = () => {
             tcoNumber={tcoNumber}
             natureza={natureza}
             autoresNomes={autores.map(a => a.nome).filter(Boolean)}
+            autoresDetalhados={autores.map(a => ({ nome: a.nome, relato: a.relato }))}
+            relatoPolicial={relatoPolicial}
+            conclusaoPolicial={conclusaoPolicial}
+            providencias={providencias}
+            documentosAnexos={documentosAnexos}
             condutor={componentesGuarnicao[0] ? { nome: componentesGuarnicao[0].nome, posto: componentesGuarnicao[0].posto, rg: componentesGuarnicao[0].rg } : undefined}
             localRegistro={localRegistro}
             municipio={municipio}
@@ -585,12 +651,25 @@ const TCOForm: React.FC = () => {
             vitimas={vitimas}
           />
         </TabsContent>
+
+        <TabsContent value="audiencia">
+          <AudienciaTab 
+            audienciaData={audienciaData}
+            setAudienciaData={setAudienciaData}
+            audienciaHora={audienciaHora}
+            setAudienciaHora={setAudienciaHora}
+          />
+        </TabsContent>
       </Tabs>
 
       <div className="mt-6 flex gap-2">
-        <Button onClick={goToNextTab} disabled={isLastTab} className="ml-auto">Próximo</Button>
-        {isLastTab && (
-          <Button variant="default" onClick={handleFinish}>Finalizar</Button>
+        {activeTab !== "audiencia" ? (
+          <Button onClick={goToNextTab} className="ml-auto">Próximo</Button>
+        ) : (
+          <>
+            <Button variant="default" onClick={handleFinish}>Finalizar</Button>
+            <Button onClick={handleDownloadWord} className="ml-auto bg-green-600 hover:bg-green-700 text-white px-6">Baixar TCO</Button>
+          </>
         )}
       </div>
     </div>

@@ -230,12 +230,31 @@ function extrairCidadeDoMunicipio(municipio?: string | null): string {
   return municipioUpper;
 }
 
+// Converte 'YYYY-MM-DD' para 'DD/MM/YYYY' se aplicável
+function formatDateBR(s?: string | null): string {
+  const str = (s || '').trim();
+  if (!str) return '';
+  const mIso = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (mIso) return `${mIso[3]}/${mIso[2]}/${mIso[1]}`;
+  // Se já vier em DD/MM/YYYY, mantém
+  const mBr = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (mBr) return str;
+  return str; // fallback: retorna como informado
+}
+
 export async function downloadTcoDocx(opts: {
   unidade?: string | null;
   cr?: string | null;
   tcoNumber?: string;
   natureza?: string;
   autoresNomes?: string[];
+  // Campos de HISTÓRICO
+  relatoPolicial?: string;
+  conclusaoPolicial?: string;
+  providencias?: string;
+  documentosAnexos?: string;
+  guarnicaoLista?: Array<{ nome: string; posto: string; rg: string }>;
+  autoresDetalhados?: Array<{ nome: string; relato?: string }>;
   condutor?: { nome: string; posto: string; rg: string } | undefined;
   localRegistro?: string;
   municipio?: string;
@@ -250,11 +269,21 @@ export async function downloadTcoDocx(opts: {
   endereco?: string;
   comunicante?: string;
   testemunhas?: Array<{ nome: string; sexo: string; estadoCivil: string; profissao: string; endereco: string; dataNascimento: string; naturalidade: string; filiacaoMae: string; filiacaoPai: string; rg: string; cpf: string; celular: string; email: string; semCpf?: string; }>;
-  vitimas?: Array<{ nome: string; sexo: string; estadoCivil: string; profissao: string; endereco: string; dataNascimento: string; naturalidade: string; filiacaoMae: string; filiacaoPai: string; rg: string; cpf: string; celular: string; email: string; semCpf?: string; }>;
+  vitimas?: Array<{ nome: string; sexo: string; estadoCivil: string; profissao: string; endereco: string; dataNascimento: string; naturalidade: string; filiacaoMae: string; filiacaoPai: string; rg: string; cpf: string; celular: string; email: string; semCpf?: string; relato?: string; representacao?: string; }>;
+  // URLs públicas de imagens anexadas (opcional)
+  imageUrls?: string[];
+  // Audiência (nova página Termo de Compromisso)
+  audienciaData?: string;
+  audienciaHora?: string;
+  // Apreensões (texto livre) e dados específicos de drogas
+  apreensoes?: string;
+  drogas?: Array<{ id: string; quantidade: string; substancia: string; cor: string; odor: string; indicios: string; isUnknownMaterial?: boolean; customMaterialDesc?: string; }>;
+  lacreNumero?: string;
+  numeroRequisicao?: string;
 }) {
-  const { Document, Packer, Paragraph, TextRun, AlignmentType, Header, Footer, ImageRun, PageBreak } = await import('docx');
+  const { Document, Packer, Paragraph, TextRun, AlignmentType, Header, Footer, ImageRun, PageBreak, BorderStyle, convertMillimetersToTwip, Table, TableRow, TableCell, WidthType } = await import('docx');
 
-  const { unidade, cr, tcoNumber, natureza, autoresNomes, condutor, localRegistro, municipio, tipificacao, dataFato, horaFato, dataInicioRegistro, horaInicioRegistro, dataTerminoRegistro, horaTerminoRegistro, localFato, endereco, comunicante, testemunhas, vitimas } = opts;
+  const { unidade, cr, tcoNumber, natureza, autoresNomes, relatoPolicial, conclusaoPolicial, autoresDetalhados, condutor, localRegistro, municipio, tipificacao, dataFato, horaFato, dataInicioRegistro, horaInicioRegistro, dataTerminoRegistro, horaTerminoRegistro, localFato, endereco, comunicante, testemunhas, vitimas, audienciaData, audienciaHora, apreensoes, drogas, lacreNumero, numeroRequisicao } = opts;
 
   // Buscar dados da unidade no banco de dados
   let unidadeAbr = '***';
@@ -332,8 +361,19 @@ export async function downloadTcoDocx(opts: {
     // falha silenciosa: sem brasão se não carregar
   }
 
-  // Cabeçalho da primeira página
-  const headerFirstPageChildren: any[] = [
+  // ===== Corpo da página: AUTUAÇÃO =====
+  const { dia, mes, ano } = obterDataCuiaba();
+  const diaExtenso = numeroAte99PorExtenso(dia);
+  const mesExtenso = mesPorExtenso(mes);
+  const anoExtenso = anoPorExtenso(ano);
+  const cidade = extrairCidadeDoMunicipio(municipio);
+
+  const crSemEspaco = (crAbr || '').replace(/\s+/g, '');
+  const numeroDisplay = `${(tcoNumber || '').trim()}.${crSemEspaco}.${ano}`;
+  const numeroRefDisplay = `${(tcoNumber || '').trim()}/${(crAbr || '').trim()}/${ano}`;
+
+  // Cabeçalho para primeira página (sem linha REF)
+  const firstPageHeaderChildren: any[] = [
     ...(imageParagraph ? [imageParagraph] : []),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -356,18 +396,34 @@ export async function downloadTcoDocx(opts: {
       children: [new TextRun({ text: '—'.repeat(48), font: 'Times New Roman', size: 20 })],
     }),
   ];
-  
-  // Cabeçalho para as demais páginas com a referência do TCO
-  const headerOtherPagesChildren: any[] = [
+
+  // Cabeçalho para páginas subsequentes (com linha REF)
+  const headerChildren: any[] = [
+    ...(imageParagraph ? [imageParagraph] : []),
     new Paragraph({
-      alignment: AlignmentType.LEFT,
+      alignment: AlignmentType.CENTER,
       spacing: { before: 0, after: 0 },
-      children: [new TextRun({ text: `REF.:TERMO CIRCUNSTANCIADO DE OCORRÊNCIA Nº ${numeroDisplay}`, bold: true, font: 'Times New Roman', size: 20 })],
+      children: [new TextRun({ text: 'ESTADO DE MATO GROSSO', bold: true, font: 'Times New Roman', size: 24 })]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 0 },
+      children: [new TextRun({ text: 'POLÍCIA MILITAR', bold: true, font: 'Times New Roman', size: 24 })]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 0 },
+      children: [new TextRun({ text: `${unidadeLinha}${crParte}`, bold: true, font: 'Times New Roman', size: 24 })]
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 0, after: 0 },
       children: [new TextRun({ text: '—'.repeat(48), font: 'Times New Roman', size: 20 })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 0, after: 120 },
+      children: [new TextRun({ text: `REF.: TERMO CIRCUNSTANCIADO DE OCORRÊNCIA Nº ${numeroRefDisplay}`, font: 'Times New Roman', size: 20 })]
     }),
   ];
 
@@ -382,15 +438,7 @@ export async function downloadTcoDocx(opts: {
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0 }, children: [new TextRun({ text: addr3, font: 'Times New Roman', size: 20 })] }),
   ];
 
-  // ===== Corpo da página: AUTUAÇÃO =====
-  const { dia, mes, ano } = obterDataCuiaba();
-  const diaExtenso = numeroAte99PorExtenso(dia);
-  const mesExtenso = mesPorExtenso(mes);
-  const anoExtenso = anoPorExtenso(ano);
-  const cidade = extrairCidadeDoMunicipio(municipio);
 
-  const crSemEspaco = (crAbr || '').replace(/\s+/g, '');
-  const numeroDisplay = `${(tcoNumber || '').trim()}.${crSemEspaco}.${ano}`;
 
   const autoresDisplay = (autoresNomes && autoresNomes.length > 0) ? autoresNomes.filter(Boolean).map(n => n.toUpperCase()).join(' + ') : "NÃO INFORMADO";
   const naturezaDisplay = (natureza || '').toUpperCase();
@@ -484,7 +532,7 @@ export async function downloadTcoDocx(opts: {
     new Paragraph({ children: [ new TextRun({ text: `MUNICÍPIO: ${municipioDisplay}` }) ] }),
     new Paragraph({ children: [ new TextRun({ text: `COMUNICANTE: ${comunicanteDisplay}` }) ] }),
     new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-    new Paragraph({ children: [ new TextRun({ text: '2. PESSOAS ENVOLVIDAS', bold: true }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: '2. PESSOAS ENVOLVIDAS', bold: true, size: 24 }) ] }),
 +    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
   ];
 
@@ -586,27 +634,392 @@ export async function downloadTcoDocx(opts: {
     proximoNumero += testemunhas.length;
   }
 
+  // ===== 3. HISTÓRICO =====
+  segundaPaginaChildren.push(
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: '3. HISTÓRICO', bold: true, size: 24 }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+  );
+
+  // 3.1 RELATO DO POLICIAL MILITAR
+  const relatoPmTexto = (relatoPolicial && relatoPolicial.trim().length > 0) ? relatoPolicial.toUpperCase() : 'NÃO INFORMADO';
+  segundaPaginaChildren.push(
+    new Paragraph({ children: [ new TextRun({ text: '3.1 RELATO DO POLICIAL MILITAR', bold: true }) ] }),
+    new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: relatoPmTexto }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+  );
+
+  // 3.2 RELATO DO AUTOR DO FATO <NOME>
+  if (autoresDetalhados && autoresDetalhados.length > 0) {
+    autoresDetalhados.forEach((autor) => {
+      const nomeA = (autor?.nome || '').trim();
+      if (!nomeA) return;
+      const textoA = (autor?.relato && autor.relato.trim().length > 0) ? autor.relato.toUpperCase() : 'NÃO INFORMADO';
+      segundaPaginaChildren.push(
+        new Paragraph({ children: [ new TextRun({ text: `3.2 RELATO DO AUTOR DO FATO ${nomeA.toUpperCase()}`, bold: true }) ] }),
+        new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: textoA }) ] }),
+        // Linhas de assinatura
+        new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '—'.repeat(36) }) ] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${nomeA.toUpperCase()}`, bold: true }) ] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'AUTOR DO FATO' }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      );
+    });
+  }
+
+  // 3.2 RELATO DA VÍTIMA <NOME>
+  if (vitimas && vitimas.length > 0) {
+    vitimas.forEach((vit) => {
+      const nomeV = (vit?.nome || '').trim();
+      if (!nomeV) return;
+      const textoV = (vit?.relato && vit.relato.trim().length > 0) ? vit.relato.toUpperCase() : 'NÃO INFORMADO';
+      segundaPaginaChildren.push(
+        new Paragraph({ children: [ new TextRun({ text: `3.2 RELATO DA VÍTIMA ${nomeV.toUpperCase()}`, bold: true }) ] }),
+        new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: textoV }) ] }),
+        // Linhas de assinatura
+        new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '—'.repeat(36) }) ] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${nomeV.toUpperCase()}`, bold: true }) ] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'VÍTIMA' }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      );
+    });
+  }
+
+  // 3.3 CONCLUSÃO DO POLICIAL (extraída do campo histórico)
+  const conclusaoTexto = (conclusaoPolicial && conclusaoPolicial.trim().length > 0) ? conclusaoPolicial.toUpperCase() : 'NÃO INFORMADO';
+  segundaPaginaChildren.push(
+    new Paragraph({ children: [ new TextRun({ text: '3.3 CONCLUSÃO DO POLICIAL', bold: true }) ] }),
+    new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: conclusaoTexto }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+  );
+
+  // ===== 4. PROVIDÊNCIAS =====
+  const providenciasTexto = (opts.providencias && opts.providencias.trim().length > 0) ? opts.providencias.toUpperCase() : 'NÃO INFORMADO';
+  segundaPaginaChildren.push(
+    new Paragraph({ children: [ new TextRun({ text: '4. PROVIDÊNCIAS', bold: true, size: 24 }) ] }),
+    new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: providenciasTexto }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+  );
+
+  // ===== 5. ANEXOS =====
+  const anexosTexto = (opts.documentosAnexos && opts.documentosAnexos.trim().length > 0) ? opts.documentosAnexos.toUpperCase() : 'NENHUM.';
+  // Título principal com uma linha em branco após
+  segundaPaginaChildren.push(
+    new Paragraph({ children: [ new TextRun({ text: '5. ANEXOS', bold: true, size: 24 }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: '5.1 DOCUMENTOS JUNTADOS', bold: true }) ] }),
+  );
+
+  // Quebra os documentos juntados em linhas separadas (suporta \n e ponto-e-vírgula)
+  const anexosLinhas = anexosTexto
+    .split(/\r?\n|;/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (anexosLinhas.length === 0) {
+    segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.LEFT, children: [ new TextRun({ text: 'NENHUM.' }) ] }));
+  } else {
+    anexosLinhas.forEach((linha) => {
+      segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.LEFT, children: [ new TextRun({ text: linha }) ] }));
+    });
+  }
+  // Espaço após 5.1 para não grudar com a próxima seção
+  segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }));
+
+  // Inserção de imagens juntadas, se disponíveis
+  if (opts.imageUrls && opts.imageUrls.length > 0) {
+    segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }));
+    segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: '5.2 IMAGENS', bold: true }) ] }));
+    // Helper para obter dimensões naturais e manter proporção dentro de um box
+    const getScaledDims = async (url: string): Promise<{ width: number; height: number } | null> => {
+      const MAX_W = 420;
+      const MAX_H = 280;
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            const nw = img.naturalWidth || img.width;
+            const nh = img.naturalHeight || img.height;
+            const scale = Math.min(MAX_W / nw, MAX_H / nh);
+            const w = Math.max(1, Math.round(nw * scale));
+            const h = Math.max(1, Math.round(nh * scale));
+            (img as any).__dims = { width: w, height: h };
+            resolve();
+          };
+          img.onerror = () => reject(new Error('Falha ao carregar imagem para medir dimensões'));
+          img.src = url;
+        });
+        const dims = (globalThis as any).document?.images?.length ? undefined : undefined; // noop para bundlers
+      } catch { /* ignore */ }
+      // Carrega novamente para garantir obtencao; fallback para tamanho padrão
+      try {
+        const tmp = new Image();
+        tmp.src = url;
+        const nw = tmp.naturalWidth || tmp.width || 420;
+        const nh = tmp.naturalHeight || tmp.height || 280;
+        const scale = Math.min(420 / nw, 280 / nh);
+        return { width: Math.max(1, Math.round(nw * scale)), height: Math.max(1, Math.round(nh * scale)) };
+      } catch {
+        return { width: 420, height: 280 };
+      }
+    };
+    for (const url of opts.imageUrls) {
+      try {
+        const resp = await fetch(url);
+        if (resp.ok) {
+          const bytes = new Uint8Array(await resp.arrayBuffer());
+          const dims = await getScaledDims(url);
+          segundaPaginaChildren.push(
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [ new ImageRun({ data: bytes, transformation: { width: (dims?.width || 420), height: (dims?.height || 280) } }) ]
+            }),
+            new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
+          );
+        }
+      } catch (e) {
+        // falha silenciosa por imagem específica
+        console.warn('Falha ao anexar imagem ao DOCX:', e);
+      }
+    }
+  }
+
+  // ===== 6. IDENTIFICAÇÃO DA GUARNIÇÃO =====
+  // Garantir separação visual da seção anterior
+  segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }));
+  segundaPaginaChildren.push(
+    new Paragraph({ children: [ new TextRun({ text: '6. IDENTIFICAÇÃO DA GUARNIÇÃO', bold: true, size: 24 }) ] }),
+  );
+  if (opts.guarnicaoLista && opts.guarnicaoLista.length > 0) {
+    opts.guarnicaoLista.forEach((g) => {
+      const nome = (g?.nome || '').trim().toUpperCase() || 'NÃO INFORMADO';
+      const posto = (g?.posto || '').trim().toUpperCase() || 'NÃO INFORMADO';
+      const rg = (g?.rg || '').trim() || 'NÃO INFORMADO';
+      segundaPaginaChildren.push(
+        new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `NOME COMPLETO: ${nome}` }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `POSTO/GRADUAÇÃO: ${posto}` }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `RG PMMT: ${rg}` }) ] }),
+        // Assinatura com sublinhado contínuo (underscores), sem autoformatação do Word
+        new Paragraph({ children: [ new TextRun({ text: 'ASSINATURA: ' }), new TextRun({ text: '_'.repeat(40) }) ] }),
+      );
+    });
+  } else {
+    segundaPaginaChildren.push(
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      new Paragraph({ alignment: AlignmentType.LEFT, children: [ new TextRun({ text: 'GUARNIÇÃO NÃO INFORMADA' }) ] })
+    );
+  }
+
+  // ===== Quebra de página e TERMO DE COMPROMISSO DE COMPARECIMENTO =====
+  const audienciaDataDisplay = formatDateBR(audienciaData) || '___/___/______';
+  const audienciaHoraDisplay = (audienciaHora && audienciaHora.trim()) ? audienciaHora : '__:__';
+  const cidadeAudiencia = extrairCidadeDoMunicipio(municipio) || 'VÁRZEA GRANDE';
+  const autorNome = (autoresNomes && autoresNomes.length > 0) ? (autoresNomes[0] || '').toUpperCase() : '';
+  const condutorNome = (condutor?.nome || '').toUpperCase();
+  const condutorPosto = (condutor?.posto || '').toUpperCase();
+
+  const termoCompromissoChildren: any[] = [
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'TERMO DE COMPROMISSO DE COMPARECIMENTO', bold: true, size: 28 }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({
+      alignment: AlignmentType.JUSTIFIED,
+      indent: { firstLine: convertMillimetersToTwip(25) },
+      children: [
+        new TextRun({
+          text: `POR ESTE INSTRUMENTO, EU, AUTOR DOS FATOS ABAIXO ASSINADO, JÁ QUALIFICADO NOS AUTOS, ASSUMO, NOS TERMOS DO PARÁGRAFO ÚNICO DO ART. 69 DA LEI Nº 9.099/95, O COMPROMISSO DE COMPARECER AO JUIZADO ESPECIAL CRIMINAL DE ${cidadeAudiencia} - MT, NO DIA ${audienciaDataDisplay} ÀS ${audienciaHoraDisplay}, EM VIRTUDE DOS FATOS REGISTRADOS NO TERMO CIRCUNSTANCIADO DE OCORRÊNCIA ACIMA REFERENCIADO, CONFORME NOTIFICADO ABAIXO. FICO CIENTE DE QUE A CONCORDÂNCIA EM COMPARECER AO JUIZADO ESPECIAL CRIMINAL NÃO IMPLICA CONFISSÃO DE QUALQUER NATUREZA, ADMISSÃO DE CULPA OU ANUÊNCIA ÀS DECLARAÇÕES DA PARTE CONTRÁRIA E QUE O NÃO COMPARECIMENTO NO DIA E HORA AJUSTADOS NESTE TERMO SUJEITARÁ ÀS MEDIDAS PREVISTAS NA LEI Nº 9.099/95. FICO CIENTE, TAMBÉM, QUE DEVEREI COMPARECER ACOMPANHADO DE ADVOGADO E QUE NA AUSÊNCIA DESTE SERÁ NOMEADO UM DEFENSOR PÚBLICO.`
+        })
+      ]
+    }),
+    // Espaçamento adicional antes da assinatura do Autor (+3)
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    // Assinatura do Autor do Fato (centralizada)
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '_'.repeat(42) }) ] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: (autorNome || '__________________________'), bold: true }) ] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'AUTOR DO FATO' }) ] }),
+    // Espaçamento adicional antes da assinatura do Condutor (+2)
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    // Assinatura do Condutor da Ocorrência (centralizada)
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '_'.repeat(42) }) ] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] }),
+  ];
+
+  // adiciona quebra de página e conteúdo do termo
+  segundaPaginaChildren.push(new Paragraph({ children: [ new PageBreak() ] }));
+  termoCompromissoChildren.forEach((p) => segundaPaginaChildren.push(p));
+
+  // Após o Termo de Compromisso: inserir 5 linhas em branco e nova quebra de página
+  segundaPaginaChildren.push(
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new PageBreak() ] })
+  );
+
+  // ===== TERMO DE MANIFESTAÇÃO DA VÍTIMA (um por vítima) =====
+  const buildVictimManifesto = (vitimaNome: string, representacao?: string) => {
+    const nomeVitima = (vitimaNome || '').toUpperCase() || '__________________________';
+    const rep = (representacao || '').toLowerCase();
+    const marcarRepresentar = rep === 'representar';
+    const marcarPosterior = rep === 'decidir_posteriormente' || rep === 'decidir posteriormente' || rep === 'posterior';
+    const opcao1 = `( ${marcarRepresentar ? 'X' : ' '} ) EXERCER O DIREITO DE REPRESENTAÇÃO OU QUEIXA CONTRA O AUTOR DO FATO, JÁ QUALIFICADO NESTE TCO/PM (FICA CIENTIFICADA QUE EM CASO DE QUEIXA-CRIME, A VÍTIMA DEVERÁ CONSTITUIR ADVOGADO).`;
+    const opcao2 = `( ${marcarPosterior ? 'X' : ' '} ) DECIDIR POSTERIORMENTE, ESTANDO CIENTE, PARA OS FINS PREVISTOS NO ART. 103 DO CÓDIGO PENAL E ART. 38 DO CÓDIGO DE PROCESSO PENAL QUE DEVO EXERCER O DIREITO DE REPRESENTAÇÃO OU DE QUEIXA, NO PRAZO DE 06 (SEIS) MESES, A CONTAR DESTA DATA, SENDO CERTO QUE MEU SILÊNCIO, ACARRETARÁ A EXTINÇÃO DE PUNIBILIDADE, NA FORMA DO ART. 107, INC. IV, DO CÓDIGO PENAL.`;
+
+    const children: any[] = [
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `TERMO DE MANIFESTAÇÃO DA VÍTIMA ${nomeVitima}`, bold: true, size: 28 }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: 'EU, VÍTIMA ABAIXO ASSINADA, POR ESTE INSTRUMENTO MANIFESTO O MEU INTERESSE EM:' }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: opcao1 }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: opcao2 }) ] }),
+      // O parágrafo de ciência da audiência só aparece quando a vítima decide representar imediatamente
+      ...(marcarRepresentar ? [
+        new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+        new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: `ESTOU CIENTE DE QUE A AUDIÊNCIA OCORRERÁ NO DIA ${audienciaDataDisplay}, ÀS ${audienciaHoraDisplay} HORAS, NAS DEPENDÊNCIAS DO JUIZADO ESPECIAL CRIMINAL DE ${cidadeAudiencia} - MT, E QUE O NÃO COMPARECIMENTO IMPORTARÁ EM RENÚNCIA À REPRESENTAÇÃO.` }) ] }),
+      ] : []),
+      // Espaço adicional antes da assinatura da vítima
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      // Assinatura da Vítima (centralizada)
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '_'.repeat(46) }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: nomeVitima, bold: true }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'VÍTIMA' }) ] }),
+      // Espaço adicional antes da assinatura do Condutor
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      // Assinatura do Condutor da Ocorrência (centralizada)
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '_'.repeat(46) }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] }),
+    ];
+
+    return children;
+  };
+
+  if (vitimas && vitimas.length > 0) {
+    vitimas.forEach((v, idx) => {
+      const manifestoChildren = buildVictimManifesto(v?.nome || '', v?.representacao);
+      manifestoChildren.forEach((p) => segundaPaginaChildren.push(p));
+      // Nova página para próxima vítima, se houver
+      if (idx < vitimas.length - 1) {
+        segundaPaginaChildren.push(new Paragraph({ children: [ new PageBreak() ] }));
+      }
+    });
+  }
+
+  // ===== TERMO DE APREENSÃO (somente se houver apreensões ou drogas) =====
+  const hasSeizure = (apreensoes && apreensoes.trim() !== '') || (drogas && drogas.length > 0);
+  if (hasSeizure) {
+    // Quebra de página antes do termo
+    segundaPaginaChildren.push(new Paragraph({ children: [ new PageBreak() ] }));
+
+    const tableCellBorders = {
+      top: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
+      left: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
+      right: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
+    };
+
+    const labelValueParagraph = (label: string, value: string) => new Paragraph({
+      children: [
+        new TextRun({ text: `${label}: `, bold: true }),
+        new TextRun({ text: value })
+      ]
+    });
+
+    const tituloApreensao = (natureza || '').toLowerCase().includes('droga') && (lacreNumero && lacreNumero.trim())
+      ? `TERMO DE APREENSÃO LACRE Nº ${lacreNumero.trim().toUpperCase()}`
+      : 'TERMO DE APREENSÃO';
+
+    // Título
+    segundaPaginaChildren.push(
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: tituloApreensao, bold: true, size: 28 }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    );
+
+    // Tabela principal (linhas essenciais)
+    const tabela = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        // DATA / HORA / LOCAL
+        new TableRow({
+          children: [
+            new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('DATA', formatDateBR(dataFato) || '___/___/______') ] }),
+            new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('HORA', (horaFato || '__:__')) ] }),
+            new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('LOCAL', unidadeLinha) ] }),
+          ]
+        }),
+        // NOME DO POLICIAL
+        new TableRow({ children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, children: [ labelValueParagraph('NOME DO POLICIAL', `${condutorNome} ${condutorPosto}`.trim()) ] }) ] }),
+        // FICA APREENDIDO O DESCRITO ABAIXO
+        new TableRow({ children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, children: [ labelValueParagraph('FICA APREENDIDO O DESCRITO ABAIXO', '') ] }) ] }),
+        // Conteúdo da apreensão
+        new TableRow({ children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, children: [
+          ...(drogas && drogas.length > 0
+            ? drogas.map((drug, idx) => new Paragraph({ children: [
+                new TextRun({ text: `${idx + 1}. ${drug.quantidade} de substância ${drug.substancia.toLowerCase()} de cor ${drug.cor.toLowerCase()}, com odor ${drug.odor.toLowerCase()}${drug.indicios ? `, ${drug.indicios.toLowerCase()}` : ''}${(idx === drogas.length - 1 && lacreNumero) ? `, tudo acondicionado sob o lacre nº ${lacreNumero}.` : '.'}` })
+              ] }))
+            : [ new Paragraph({ children: [ new TextRun({ text: (apreensoes || '').trim() || '—' }) ] }) ]
+          )
+        ] }) ] }),
+        // Texto legal de base
+        new TableRow({ children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, children: [
+          new Paragraph({ children: [ new TextRun({ text: (drogas && drogas.length > 0)
+            ? 'O PRESENTE TERMO TEM POR OBJETIVO APENAS A CONSTATAÇÃO PRELIMINAR DA NATUREZA DA SUBSTÂNCIA PARA FINS DE LAVRATURA DO TERMO CIRCUNSTANCIADO, NÃO SUPRINDO O EXAME PERICIAL DEFINITIVO (ART. 50, §1º DA LEI 11.343/2006).' 
+            : 'O PRESENTE TERMO DE APREENSÃO FOI LAVRADO COM BASE NO ART. 6º, II, DO CÓDIGO DE PROCESSO PENAL.' }) ] })
+        ] }) ] })
+      ]
+    });
+
+    segundaPaginaChildren.push(tabela);
+
+    // Espaço e assinaturas
+    segundaPaginaChildren.push(
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '_'.repeat(46) }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: (autoresNomes && autoresNomes[0]) ? autoresNomes[0].toUpperCase() : '__________________________', bold: true }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'AUTOR DOS FATOS' }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '_'.repeat(46) }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] })
+    );
+  }
+
   const doc = new Document({
     styles: {
       default: { document: { run: { font: 'Times New Roman', size: 24 }, paragraph: { spacing: { before: 0, after: 0 } } } }
     },
     sections: [
-      // Primeira seção: AUTUAÇÃO
+      // Seção única com cabeçalhos diferentes para primeira página e páginas subsequentes
       {
-        properties: { page: { margin: { top: 720, right: 1134, bottom: 720, left: 1134, header: 240, footer: 360 } } },
-        headers: { default: new Header({ children: headerChildren }) },
+        properties: { 
+          page: { 
+            margin: { top: 720, right: 1134, bottom: 720, left: 1134, header: 240, footer: 360 },
+            pageNumbers: { start: 1 }
+          },
+          titlePage: true
+        },
+        headers: { 
+          first: new Header({ children: firstPageHeaderChildren }),
+          default: new Header({ children: headerChildren })
+        },
         footers: { default: new Footer({ children: footerChildren }) },
         children: [
           ...corpoChildren,
-          new Paragraph({ children: [ new PageBreak() ] }) // Quebra de página
+          new Paragraph({ children: [ new PageBreak() ] }), // Quebra de página
+          ...segundaPaginaChildren
         ],
-      },
-      // Segunda seção: DADOS GERAIS
-      {
-        properties: { page: { margin: { top: 720, right: 1134, bottom: 720, left: 1134, header: 240, footer: 360 } } },
-        headers: { default: new Header({ children: headerChildren }) },
-        footers: { default: new Footer({ children: footerChildren }) },
-        children: segundaPaginaChildren,
       }
     ]
   });

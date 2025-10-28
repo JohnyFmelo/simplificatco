@@ -47,6 +47,12 @@ interface HistoricoTabProps {
   setNomearFielDepositario?: (value: string) => void;
   fielDepositarioSelecionado?: string;
   setFielDepositarioSelecionado?: (value: string) => void;
+  // Novos campos para geração automática do pré-texto
+  dataFato?: string;
+  horaFato?: string;
+  localFato?: string;
+  endereco?: string;
+  municipio?: string;
   vitimas?: {
     nome: string;
     sexo: string;
@@ -138,6 +144,11 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
   setNomearFielDepositario,
   fielDepositarioSelecionado = "",
   setFielDepositarioSelecionado,
+  dataFato = "",
+  horaFato = "",
+  localFato = "",
+  endereco = "",
+  municipio = "",
   vitimas = [],
   setVitimaRelato,
   setVitimaRepresentacao,
@@ -276,6 +287,127 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
       });
     };
   }, [selectedFiles]);
+
+  // useEffect para gerar automaticamente o pré-texto do relatório policial
+  useEffect(() => {
+    // Só gera o pré-texto se o campo estiver vazio ou com texto padrão
+    if (!relatoPolicial || relatoPolicial.trim() === "" || relatoPolicial === "Não informado.") {
+      // Verifica se temos dados suficientes para gerar o pré-texto
+      if (natureza && dataFato && localFato && validAutores.length > 0) {
+        let preTexto = "";
+        
+        // Cabeçalho padrão
+        preTexto += "Que no dia ";
+        
+        // Data do fato
+        if (dataFato) {
+          preTexto += `${dataFato}`;
+        }
+        
+        // Hora do fato (se disponível)
+        if (horaFato && horaFato.trim() !== "") {
+          preTexto += `, por volta das ${horaFato}`;
+        }
+        
+        preTexto += ", ";
+        
+        // Local do fato
+        if (localFato) {
+          preTexto += `no local denominado ${localFato.toUpperCase()}`;
+        }
+        
+        // Endereço (se disponível)
+        if (endereco && endereco.trim() !== "") {
+          preTexto += `, situado na ${endereco}`;
+        }
+        
+        // Município (se disponível)
+        if (municipio && municipio.trim() !== "") {
+          preTexto += `, ${municipio}`;
+        }
+        
+        preTexto += ", ";
+        
+        // Natureza do fato
+        const naturezaLower = natureza.toLowerCase();
+        if (naturezaLower.includes("ameaça")) {
+          preTexto += "houve ameaça";
+        } else if (naturezaLower.includes("lesão corporal")) {
+          preTexto += "houve lesão corporal";
+        } else if (naturezaLower.includes("vias de fato")) {
+          preTexto += "houve vias de fato";
+        } else if (naturezaLower.includes("dano")) {
+          preTexto += "houve dano";
+        } else if (naturezaLower.includes("injúria")) {
+          preTexto += "houve injúria";
+        } else if (naturezaLower.includes("difamação")) {
+          preTexto += "houve difamação";
+        } else if (naturezaLower.includes("calúnia")) {
+          preTexto += "houve calúnia";
+        } else if (naturezaLower.includes("perturbação")) {
+          preTexto += "houve perturbação do sossego";
+        } else if (naturezaLower.includes("porte de drogas")) {
+          preTexto += "foi constatado porte de drogas para consumo";
+        } else if (naturezaLower.includes("conduzir veículo")) {
+          preTexto += "houve condução de veículo sem CNH gerando perigo de dano";
+        } else if (naturezaLower.includes("entregar veículo")) {
+          preTexto += "houve entrega de veículo automotor a pessoa não habilitada";
+        } else if (naturezaLower.includes("velocidade")) {
+          preTexto += "houve tráfego em velocidade incompatível com a segurança";
+        } else if (naturezaLower.includes("omissão")) {
+          preTexto += "houve omissão de socorro";
+        } else if (naturezaLower.includes("rixa")) {
+          preTexto += "houve rixa";
+        } else if (naturezaLower.includes("invasão")) {
+          preTexto += "houve invasão de domicílio";
+        } else if (naturezaLower.includes("fraude")) {
+          preTexto += "houve fraude em comércio";
+        } else if (naturezaLower.includes("ato obsceno")) {
+          preTexto += "houve ato obsceno";
+        } else if (naturezaLower.includes("falsa identidade")) {
+          preTexto += "houve uso de falsa identidade";
+        } else if (naturezaLower.includes("resistência")) {
+          preTexto += "houve resistência";
+        } else if (naturezaLower.includes("desobediência")) {
+          preTexto += "houve desobediência";
+        } else if (naturezaLower.includes("desacato")) {
+          preTexto += "houve desacato";
+        } else if (naturezaLower.includes("exercício arbitrário")) {
+          preTexto += "houve exercício arbitrário das próprias razões";
+        } else if (naturezaLower.includes("periclitação")) {
+          preTexto += "houve periclitação da vida";
+        } else {
+          preTexto += `houve ${natureza.toLowerCase()}`;
+        }
+        
+        // Informações sobre os envolvidos
+        if (validAutores.length > 0) {
+          const autorNomes = validAutores.map(autor => autor.nome.toUpperCase()).join(", ");
+          if (validAutores.length === 1) {
+            const genero = validAutores[0].sexo?.toLowerCase() === "feminino" ? "praticada" : "praticado";
+            preTexto += ` ${genero} por ${autorNomes}`;
+          } else {
+            preTexto += ` praticado por ${autorNomes}`;
+          }
+        }
+        
+        // Informações sobre as vítimas (se houver)
+        if (validVitimas.length > 0) {
+          const vitimaNomes = validVitimas.map(vitima => vitima.nome.toUpperCase()).join(", ");
+          if (validVitimas.length === 1) {
+            preTexto += ` contra ${vitimaNomes}`;
+          } else {
+            preTexto += ` contra ${vitimaNomes}`;
+          }
+        }
+        
+        preTexto += ".";
+        
+        // Define o pré-texto gerado
+        setRelatoPolicial(preTexto);
+      }
+    }
+  }, [natureza, dataFato, horaFato, localFato, endereco, municipio, validAutores, validVitimas, relatoPolicial, setRelatoPolicial]);
 
   const handleFileUploadClick = () => {
     if (fileInputRef.current) {

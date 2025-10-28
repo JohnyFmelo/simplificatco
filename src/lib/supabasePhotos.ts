@@ -1,6 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const BUCKET_NAME = "tco-photos"; // certifique-se de que este bucket existe no projeto Supabase
+// Nome do bucket configurável via .env
+// Altere `VITE_SUPABASE_BUCKET_PHOTOS` para apontar para um bucket existente no seu projeto.
+// Default mantém "tco-pdfs" para compatibilidade.
+const BUCKET_NAME = (import.meta as any)?.env?.VITE_SUPABASE_BUCKET_PHOTOS || "tco-pdfs";
 
 export type UploadResult = {
   path: string;
@@ -29,7 +32,8 @@ export async function uploadPhoto(options: { file: File; tcoId: string; userId?:
   const userId = options.userId || (await getUserIdOrAnon());
   const safeName = sanitizeName(file.name);
   const timestamp = Date.now();
-  const path = `tcos/${userId}/${tcoId}/${timestamp}_${safeName}`;
+  // Subpasta dedicada a fotos para não misturar com PDFs
+  const path = `photos/tcos/${userId}/${tcoId}/${timestamp}_${safeName}`;
 
   const { data, error } = await supabase.storage.from(BUCKET_NAME).upload(path, file, {
     upsert: false,
@@ -37,7 +41,7 @@ export async function uploadPhoto(options: { file: File; tcoId: string; userId?:
   });
 
   if (error) {
-    console.error("uploadPhoto error:", error.message);
+    console.error("uploadPhoto error:", `bucket=${BUCKET_NAME}`, error.message);
     return null;
   }
 
@@ -60,7 +64,7 @@ export type ListedPhoto = {
 
 export async function listPhotos(options: { tcoId: string; userId?: string }): Promise<ListedPhoto[]> {
   const userId = options.userId || (await getUserIdOrAnon());
-  const prefix = `tcos/${userId}/${options.tcoId}`;
+  const prefix = `photos/tcos/${userId}/${options.tcoId}`;
   const { data, error } = await supabase.storage.from(BUCKET_NAME).list(prefix, {
     limit: 100,
     sortBy: { column: "name", order: "asc" },
