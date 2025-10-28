@@ -398,7 +398,7 @@ const TCOForm: React.FC = () => {
   };
 
   // Download do TCO em DOCX na aba "Audiência" (parte final)
-  const handleDownloadWord = () => {
+  function TCOForm() {
     downloadTcoDocx({
       unidade,
       cr,
@@ -410,7 +410,23 @@ const TCOForm: React.FC = () => {
       conclusaoPolicial,
       providencias,
       documentosAnexos,
-      condutor: componentesGuarnicao[0] ? { nome: componentesGuarnicao[0].nome, posto: componentesGuarnicao[0].posto, rg: componentesGuarnicao[0].rg } : undefined,
+      condutor: componentesGuarnicao[0] ? {
+          // Frontend-style
+          nome: componentesGuarnicao[0].nome,
+          posto: componentesGuarnicao[0].posto,
+          rg: componentesGuarnicao[0].rg,
+          pai: componentesGuarnicao[0].pai,
+          mae: componentesGuarnicao[0].mae,
+          naturalidade: componentesGuarnicao[0].naturalidade,
+          cpf: componentesGuarnicao[0].cpf,
+          telefone: componentesGuarnicao[0].telefone,
+          // Supabase-style (se existirem)
+          nome_completo: componentesGuarnicao[0].nome,
+          graduacao: componentesGuarnicao[0].posto,
+          rgpm: componentesGuarnicao[0].rg,
+          nome_pai: componentesGuarnicao[0].pai,
+          nome_mae: componentesGuarnicao[0].mae,
+      } : undefined,
       localRegistro,
       municipio,
       tipificacao,

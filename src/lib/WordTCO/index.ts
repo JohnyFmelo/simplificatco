@@ -255,7 +255,7 @@ export async function downloadTcoDocx(opts: {
   documentosAnexos?: string;
   guarnicaoLista?: Array<{ nome: string; posto: string; rg: string }>;
   autoresDetalhados?: Array<{ nome: string; relato?: string }>;
-  condutor?: { nome: string; posto: string; rg: string } | undefined;
+  condutor?: { nome: string; posto: string; rg: string; pai?: string; mae?: string; naturalidade?: string; cpf?: string; telefone?: string } | undefined;
   localRegistro?: string;
   municipio?: string;
   tipificacao?: string;
@@ -950,6 +950,7 @@ export async function downloadTcoDocx(opts: {
     );
 
     // Tabela principal (linhas essenciais)
+    const horaApreensao = (horaTerminoRegistro || horaFato || '__:__');
     const tabela = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
@@ -957,12 +958,34 @@ export async function downloadTcoDocx(opts: {
         new TableRow({
           children: [
             new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('DATA', formatDateBR(dataFato) || '___/___/______') ] }),
-            new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('HORA', (horaFato || '__:__')) ] }),
+            new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('HORA', horaApreensao) ] }),
             new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('LOCAL', unidadeLinha) ] }),
           ]
         }),
         // NOME DO POLICIAL
         new TableRow({ children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, children: [ labelValueParagraph('NOME DO POLICIAL', `${condutorNome} ${condutorPosto}`.trim()) ] }) ] }),
+        // FILIAÇÃO PAI
+        new TableRow({ children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, children: [ labelValueParagraph('FILIAÇÃO PAI', (condutor?.pai || '').toUpperCase()) ] }) ] }),
+        // FILIAÇÃO MÃE
+        new TableRow({ children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, children: [ labelValueParagraph('FILIAÇÃO MÃE', (condutor?.mae || '').toUpperCase()) ] }) ] }),
+        // NATURALIDADE | RGPM | CPF
+        new TableRow({
+          children: [
+            new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('NATURALIDADE', (condutor?.naturalidade || '').toUpperCase()) ] }),
+            new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('RGPM', condutor?.rg || '') ] }),
+            new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('CPF', condutor?.cpf || '') ] }),
+          ]
+        }),
+        // END.
+        new TableRow({ children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, children: [ labelValueParagraph('END.', (endereco || '').toUpperCase()) ] }) ] }),
+        // MUNICÍPIO | UF | TEL
+        new TableRow({
+          children: [
+            new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('MUNICÍPIO', (municipio || '').toUpperCase()) ] }),
+            new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('UF', 'MT') ] }),
+            new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('TEL', condutor?.telefone || '') ] }),
+          ]
+        }),
         // FICA APREENDIDO O DESCRITO ABAIXO
         new TableRow({ children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, children: [ labelValueParagraph('FICA APREENDIDO O DESCRITO ABAIXO', '') ] }) ] }),
         // Conteúdo da apreensão
