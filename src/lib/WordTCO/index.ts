@@ -208,7 +208,26 @@ function mesPorExtenso(mes: number): string {
 
 function extrairCidadeDoMunicipio(municipio?: string | null): string {
   if (!municipio) return "";
-  return municipio.split('-')[0].trim().toUpperCase();
+  
+  const municipioUpper = municipio.toUpperCase().trim();
+  
+  // Se contém "DISTRITO DE", extrair o nome do distrito
+  if (municipioUpper.includes("DISTRITO DE")) {
+    const partes = municipioUpper.split("DISTRITO DE");
+    if (partes.length > 1) {
+      // Pega a parte após "DISTRITO DE" e remove possíveis separadores
+      const distrito = partes[1].trim().split('-')[0].trim();
+      return distrito || municipioUpper.split('-')[0].trim();
+    }
+  }
+  
+  // Se contém hífen, pega a primeira parte (cidade principal)
+  if (municipioUpper.includes('-')) {
+    return municipioUpper.split('-')[0].trim();
+  }
+  
+  // Caso padrão: retorna o município como está
+  return municipioUpper;
 }
 
 export async function downloadTcoDocx(opts: {
@@ -220,10 +239,22 @@ export async function downloadTcoDocx(opts: {
   condutor?: { nome: string; posto: string; rg: string } | undefined;
   localRegistro?: string;
   municipio?: string;
+  tipificacao?: string;
+  dataFato?: string;
+  horaFato?: string;
+  dataInicioRegistro?: string;
+  horaInicioRegistro?: string;
+  dataTerminoRegistro?: string;
+  horaTerminoRegistro?: string;
+  localFato?: string;
+  endereco?: string;
+  comunicante?: string;
+  testemunhas?: Array<{ nome: string; sexo: string; estadoCivil: string; profissao: string; endereco: string; dataNascimento: string; naturalidade: string; filiacaoMae: string; filiacaoPai: string; rg: string; cpf: string; celular: string; email: string; semCpf?: string; }>;
+  vitimas?: Array<{ nome: string; sexo: string; estadoCivil: string; profissao: string; endereco: string; dataNascimento: string; naturalidade: string; filiacaoMae: string; filiacaoPai: string; rg: string; cpf: string; celular: string; email: string; semCpf?: string; }>;
 }) {
-  const { Document, Packer, Paragraph, TextRun, AlignmentType, Header, Footer, ImageRun } = await import('docx');
+  const { Document, Packer, Paragraph, TextRun, AlignmentType, Header, Footer, ImageRun, PageBreak } = await import('docx');
 
-  const { unidade, cr, tcoNumber, natureza, autoresNomes, condutor, localRegistro, municipio } = opts;
+  const { unidade, cr, tcoNumber, natureza, autoresNomes, condutor, localRegistro, municipio, tipificacao, dataFato, horaFato, dataInicioRegistro, horaInicioRegistro, dataTerminoRegistro, horaTerminoRegistro, localFato, endereco, comunicante, testemunhas, vitimas } = opts;
 
   // Buscar dados da unidade no banco de dados
   let unidadeAbr = '***';
@@ -321,7 +352,7 @@ export async function downloadTcoDocx(opts: {
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 0, after: 0 },
-      children: [new TextRun({ text: '—'.repeat(52), font: 'Times New Roman', size: 20 })],
+      children: [new TextRun({ text: '—'.repeat(48), font: 'Times New Roman', size: 20 })],
     }),
   ];
 
@@ -330,7 +361,7 @@ export async function downloadTcoDocx(opts: {
   const [addr1, addr2, addr3] = dbLines || getUnitAddressLines(unidade);
 
   const footerChildren: any[] = [
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0 }, children: [new TextRun({ text: '—'.repeat(52), font: 'Times New Roman', size: 20 })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0 }, children: [new TextRun({ text: '—'.repeat(48), font: 'Times New Roman', size: 20 })] }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0 }, children: [new TextRun({ text: addr1, font: 'Times New Roman', size: 20 })] }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0 }, children: [new TextRun({ text: addr2, font: 'Times New Roman', size: 20 })] }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0 }, children: [new TextRun({ text: addr3, font: 'Times New Roman', size: 20 })] }),
@@ -366,11 +397,15 @@ export async function downloadTcoDocx(opts: {
     new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
 
     // Título AUTUAÇÃO
-    new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'AUTUAÇÃO', bold: true }) ] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'AUTUAÇÃO', bold: true, size: 28 }) ] }), // 28 = 14pt * 2 (docx usa half-points)
     new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
 
     // Parágrafo principal
     new Paragraph({
+      alignment: AlignmentType.JUSTIFIED,
+      indent: {
+        firstLine: 1417 // 2,5cm em twips (2.5 * 567 = 1417.5, arredondado para 1417)
+      },
       children: [
         new TextRun({
           text: `AOS ${diaExtenso} DIAS DO MÊS DE ${mesExtenso} DO ANO DE ${anoExtenso}, NESTA CIDADE DE ${cidade}, ESTADO DE MATO GROSSO, NO ${localRegistroDisplay}, AUTUO AS PEÇAS QUE ADIANTE SE SEGUEM, DO QUE PARA CONSTAR, LAVREI E ASSINO ESTE TERMO.`,
@@ -390,7 +425,7 @@ export async function downloadTcoDocx(opts: {
   if (condutor) {
     corpoChildren.push(
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '—'.repeat(36) }) ] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${condutor.nome.toUpperCase()} - ${condutor.posto.toUpperCase()}` }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${condutor.nome.toUpperCase()} - ${condutor.posto.toUpperCase()}`, bold: true }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `RG PMMT: ${condutor.rg}` }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] }),
     );
@@ -400,16 +435,163 @@ export async function downloadTcoDocx(opts: {
     );
   }
 
+  // ===== Segunda página: DADOS GERAIS E IDENTIFICADORES =====
+  const pad2 = (n: number) => n.toString().padStart(2, '0');
+  const now = new Date();
+  const nowDate = `${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()}`;
+  const nowTime = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+  const toDisplay = (v?: string) => (v && v.trim().length > 0 ? v.toUpperCase() : 'Não informado');
+
+  const inicioData = dataInicioRegistro && dataInicioRegistro.trim() ? dataInicioRegistro : nowDate;
+  const inicioHora = horaInicioRegistro && horaInicioRegistro.trim() ? horaInicioRegistro : nowTime;
+  // Término deve refletir o momento da geração do arquivo
+  const terminoData = nowDate;
+  const terminoHora = nowTime;
+
+  const naturezaGeral = toDisplay(natureza);
+  const tipificacaoGeral = toDisplay(tipificacao);
+  const dataHoraFato = `${toDisplay(dataFato)} - ${toDisplay(horaFato)}`;
+  const localFatoDisplay = toDisplay(localFato);
+  const enderecoDisplay = toDisplay(endereco);
+  const municipioDisplay = toDisplay(municipio);
+  const comunicanteDisplay = toDisplay(comunicante);
+
+  const segundaPaginaChildren: any[] = [
+    new Paragraph({ children: [ new TextRun({ text: '1. DADOS GERAIS E IDENTIFICADORES DA OCORRÊNCIA', bold: true, size: 24 }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: 'NATUREZA DA OCORRÊNCIA: ' }), new TextRun({ text: naturezaGeral }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: 'TIPIFICAÇÃO LEGAL: ' }), new TextRun({ text: tipificacaoGeral }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: `DATA E HORA DO FATO: ${dataHoraFato}` }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: `DATA E HORA DO INÍCIO DO REGISTRO: ${inicioData} - ${inicioHora}` }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: `DATA E HORA DO TÉRMINO DO REGISTRO: ${terminoData} - ${terminoHora}` }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: `LOCAL DO FATO: ${localFatoDisplay}` }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: `ENDEREÇO: ${enderecoDisplay}` }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: `MUNICÍPIO: ${municipioDisplay}` }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: `COMUNICANTE: ${comunicanteDisplay}` }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: '2. PESSOAS ENVOLVIDAS', bold: true }) ] }),
++    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+  ];
+
+  // ===== Seção de Autores =====
+  if (autoresNomes && autoresNomes.length > 0) {
+    autoresNomes.forEach((autor, index) => {
+      if (autor && autor.trim()) {
+        const numeroAutor = `2.${index + 1}`;
+        segundaPaginaChildren.push(
+          new Paragraph({ children: [ new TextRun({ text: `${numeroAutor} AUTOR ${autor.toUpperCase()}`, bold: true }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `NOME: ${toDisplay(autor)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `SEXO: ${toDisplay('')}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `ESTADO CIVIL: ${toDisplay('')}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `PROFISSÃO: ${toDisplay('')}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `ENDEREÇO: ${toDisplay('')}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `DATA DE NASCIMENTO: ${toDisplay('')}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `NATURALIDADE: ${toDisplay('')}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - MÃE: ${toDisplay('')}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - PAI: ${toDisplay('')}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `RG: ${toDisplay('')}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `CPF: ${toDisplay('')}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `CELULAR: ${toDisplay('')}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `E-MAIL: ${toDisplay('')}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+        );
+      }
+    });
+  }
+
+  // ===== Seção de Vítimas ===== (antes das testemunhas)
+  let proximoNumero = (autoresNomes && autoresNomes.length > 0) ? autoresNomes.length + 1 : 1;
+  
+  if (vitimas && vitimas.length > 0) {
+    vitimas.forEach((vitima, index) => {
+      const numeroVitima = `2.${proximoNumero + index}`;
+      const nome = vitima?.nome?.trim();
+      if (!nome) {
+        segundaPaginaChildren.push(
+          new Paragraph({ children: [ new TextRun({ text: `${numeroVitima} Vítima não informada`, bold: true }) ] }),
+           new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+        );
+      } else {
+        segundaPaginaChildren.push(
+          new Paragraph({ children: [ new TextRun({ text: `${numeroVitima} VÍTIMA ${nome.toUpperCase()}`, bold: true }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `NOME: ${toDisplay(vitima.nome)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `SEXO: ${toDisplay(vitima.sexo)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `ESTADO CIVIL: ${toDisplay(vitima.estadoCivil)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `PROFISSÃO: ${toDisplay(vitima.profissao)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `ENDEREÇO: ${toDisplay(vitima.endereco)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `DATA DE NASCIMENTO: ${toDisplay(vitima.dataNascimento)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `NATURALIDADE: ${toDisplay(vitima.naturalidade)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - MÃE: ${toDisplay(vitima.filiacaoMae)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - PAI: ${toDisplay(vitima.filiacaoPai)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `RG: ${toDisplay(vitima.rg)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `${vitima.semCpf === 'true' ? 'Não possui CPF ' : ''}CPF: ${toDisplay(vitima.cpf)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `CELULAR: ${toDisplay(vitima.celular)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `E-MAIL: ${toDisplay(vitima.email)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+        );
+      }
+    });
+    proximoNumero += vitimas.length;
+  }
+
+  // ===== Seção de Testemunhas =====
+  if (testemunhas && testemunhas.length > 0) {
+    testemunhas.forEach((testemunha, index) => {
+      const numeroTestemunha = `2.${proximoNumero + index}`;
+      const nomeT = testemunha?.nome?.trim();
+      if (!nomeT) {
+        segundaPaginaChildren.push(
+          new Paragraph({ children: [ new TextRun({ text: `${numeroTestemunha} Testemunha não informada`, bold: true }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+        );
+      } else {
+        segundaPaginaChildren.push(
+          new Paragraph({ children: [ new TextRun({ text: `${numeroTestemunha} TESTEMUNHA ${nomeT.toUpperCase()}`, bold: true }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+          
+          new Paragraph({ children: [ new TextRun({ text: `NOME: ${toDisplay(testemunha.nome)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `SEXO: ${toDisplay(testemunha.sexo)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `ESTADO CIVIL: ${toDisplay(testemunha.estadoCivil)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `PROFISSÃO: ${toDisplay(testemunha.profissao)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `ENDEREÇO: ${toDisplay(testemunha.endereco)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `DATA DE NASCIMENTO: ${toDisplay(testemunha.dataNascimento)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `NATURALIDADE: ${toDisplay(testemunha.naturalidade)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - MÃE: ${toDisplay(testemunha.filiacaoMae)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - PAI: ${toDisplay(testemunha.filiacaoPai)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `RG: ${toDisplay(testemunha.rg)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `${testemunha.semCpf === 'true' ? 'Não possui CPF ' : ''}CPF: ${toDisplay(testemunha.cpf)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `CELULAR: ${toDisplay(testemunha.celular)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `E-MAIL: ${toDisplay(testemunha.email)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+        );
+      }
+    });
+    proximoNumero += testemunhas.length;
+  }
+
   const doc = new Document({
     styles: {
       default: { document: { run: { font: 'Times New Roman', size: 24 }, paragraph: { spacing: { before: 0, after: 0 } } } }
     },
     sections: [
+      // Primeira seção: AUTUAÇÃO
       {
         properties: { page: { margin: { top: 720, right: 1134, bottom: 720, left: 1134, header: 240, footer: 360 } } },
         headers: { default: new Header({ children: headerChildren }) },
         footers: { default: new Footer({ children: footerChildren }) },
-        children: corpoChildren,
+        children: [
+          ...corpoChildren,
+          new Paragraph({ children: [ new PageBreak() ] }) // Quebra de página
+        ],
+      },
+      // Segunda seção: DADOS GERAIS
+      {
+        properties: { page: { margin: { top: 720, right: 1134, bottom: 720, left: 1134, header: 240, footer: 360 } } },
+        headers: { default: new Header({ children: headerChildren }) },
+        footers: { default: new Footer({ children: footerChildren }) },
+        children: segundaPaginaChildren,
       }
     ]
   });

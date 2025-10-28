@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -64,32 +64,6 @@ const naturezaTipificacoes: Record<string, string> = {
   "Desacato": "ART. 331 DO CÓDIGO PENAL",
   "Exercício arbitrário das próprias razões": "ART. 345 DO CÓDIGO PENAL"
 };
-const LOCAL_CATEGORIAS = [
-  "Via pública",
-  "Residência",
-  "Estabelecimento comercial",
-  "Escola",
-  "Praça/Parque",
-  "Rodovia/Estrada",
-  "Interior de veículo",
-  "Área rural",
-  "Condomínio",
-  "Evento/Festa",
-  "Outros",
-];
-const LOCAL_SUBTIPOS: Record<string, string[]> = {
-  "Via pública": ["Rua", "Avenida", "Travessa", "Alameda", "Praça", "Estrada", "Rodovia"],
-  "Residência": ["Casa", "Apartamento", "Kitnet", "Garagem", "Quintal"],
-  "Estabelecimento comercial": ["Loja", "Mercado/Supermercado", "Farmácia", "Posto de combustível", "Restaurante", "Bar"],
-  "Escola": ["Sala de aula", "Pátio", "Entrada", "Quadra"],
-  "Praça/Parque": ["Praça", "Parque"],
-  "Rodovia/Estrada": ["Rodovia", "Estrada vicinal"],
-  "Interior de veículo": ["Carro", "Moto", "Ônibus", "Caminhão"],
-  "Área rural": ["Sítio", "Fazenda", "Chácara"],
-  "Condomínio": ["Área comum", "Portaria", "Garagem"],
-  "Evento/Festa": ["Residencial", "Pública"],
-  "Outros": [],
-};
 const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
   natureza,
   tipificacao,
@@ -123,9 +97,6 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
   condutorPosto,
   condutorRg
 }) => {
-  // Campo livre: remover estados internos do seletor anterior
-  // (sem estados auxiliares; o valor é controlado diretamente por localFato)
-
   const getTipificacaoCompleta = () => {
     if (!natureza) return "";
     if (isCustomNatureza) {
@@ -145,33 +116,7 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
     }
     return "";
   };
-
-  // Atualizar tipificação automaticamente quando natureza mudar
-  useEffect(() => {
-    if (!isCustomNatureza && natureza) {
-      const naturezas = natureza.split(" + ");
-      const tipificacoes = naturezas.map(nat => {
-        return naturezaTipificacoes[nat.trim()] || "[TIPIFICAÇÃO NÃO MAPEADA]";
-      });
-      
-      let tipificacaoGerada = "";
-      if (tipificacoes.length === 1) {
-        tipificacaoGerada = tipificacoes[0];
-      } else if (tipificacoes.length === 2) {
-        tipificacaoGerada = tipificacoes.join(" E ");
-      } else if (tipificacoes.length > 2) {
-        const ultimoItem = tipificacoes.pop();
-        tipificacaoGerada = tipificacoes.join(", ") + " E " + ultimoItem;
-      }
-      
-      if (tipificacaoGerada && tipificacaoGerada !== tipificacao) {
-        setTipificacao(tipificacaoGerada);
-      }
-    }
-  }, [natureza, isCustomNatureza, tipificacao, setTipificacao]);
-
-  return (
-    <Card>
+  return <Card>
       <CardHeader>
         <CardTitle>Dados da Ocorrência</CardTitle>
         <CardDescription>
@@ -180,6 +125,7 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
       </CardHeader>
       <CardContent className="px-[5px]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
           <div className="md:col-span-2">
             <Label htmlFor="naturezaDisplay">Natureza da Ocorrência</Label>
             <Input id="naturezaDisplay" readOnly value={isCustomNatureza ? customNatureza : natureza} className="bg-gray-100" placeholder="Nenhuma natureza selecionada" />
@@ -187,35 +133,26 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
           <div className="md:col-span-2">
             <Label htmlFor="tipificacao">Tipificação Legal</Label>
-            {isCustomNatureza ? (
-              <Input id="tipificacao" placeholder="Digite a tipificação legal" value={tipificacao} onChange={e => setTipificacao(e.target.value)} />
-            ) : (
-              <Input id="tipificacao" readOnly value={getTipificacaoCompleta()} className="bg-gray-100" placeholder="Tipificação será gerada automaticamente" />
-            )}
+            {isCustomNatureza ? <Input id="tipificacao" placeholder="Digite a tipificação legal" value={tipificacao} onChange={e => setTipificacao(e.target.value)} /> : <Input id="tipificacao" readOnly value={getTipificacaoCompleta()} className="bg-gray-100" placeholder="Tipificação será gerada automaticamente" />}
           </div>
 
           <div>
             <Label htmlFor="dataFato">Data do Fato *</Label>
-            <Input id="dataFato" type="text" inputMode="numeric" placeholder="dd/mm/aaaa" value={dataFato} onChange={e => {
-              const v = e.target.value.replace(/\D/g, '').slice(0,8);
-              const dd = v.slice(0,2);
-              const mm = v.slice(2,4);
-              const yyyy = v.slice(4,8);
-              const formatted = [dd, mm, yyyy].filter(Boolean).join('/');
-              setDataFato(formatted);
-            }} />
+            <Input id="dataFato" type="date" value={dataFato} onChange={e => setDataFato(e.target.value)} />
           </div>
 
           <div>
             <Label htmlFor="horaFato">Hora do Fato *</Label>
-            <Input id="horaFato" type="time" lang="pt-BR" value={horaFato} onChange={e => setHoraFato(e.target.value)} />
+            <Input id="horaFato" type="time" value={horaFato} onChange={e => setHoraFato(e.target.value)} />
           </div>
 
-          {/* Campo livre Local do Fato com legenda explicativa */}
+          {/*
+           // Campos de Início e Término do Registro ocultos
+           */}
+
           <div className="md:col-span-2">
             <Label htmlFor="localFato">Local do Fato *</Label>
-            <p className="text-xs text-muted-foreground mb-1">Informe o tipo de local (ex.: rua, casa, loja). Não é endereço.</p>
-            <Input id="localFato" placeholder="Ex.: Rua, Casa, Loja, Escola..." value={localFato} onChange={e => setLocalFato(e.target.value)} />
+            <Input id="localFato" placeholder="Ex: Residência, Via pública, Estabelecimento comercial..." value={localFato} onChange={e => setLocalFato(e.target.value)} />
           </div>
 
           <div className="md:col-span-2">
@@ -235,33 +172,67 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
                 <SelectValue placeholder="Selecione o comunicante" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="COPOM">COPOM</SelectItem>
                 <SelectItem value="CIOSP">CIOSP</SelectItem>
                 <SelectItem value="Adjunto">Adjunto</SelectItem>
                 <SelectItem value="Oficial de Área">Oficial de Área</SelectItem>
                 <SelectItem value="Patrulhamento">Patrulhamento</SelectItem>
                 <SelectItem value="Populares">Populares</SelectItem>
-                <SelectItem value="Guarda">Guarda</SelectItem>
+                <SelectItem value="Guarda do 25º BPM">Guarda do 25º BPM</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="md:col-span-2">
             <Label htmlFor="guarnicao">Placa da VTR *</Label>
-            <p className="text-xs text-muted-foreground mb-1">Digite apenas a placa da viatura (ex.: ABC1D23).</p>
-            <Input id="guarnicao" placeholder="Ex.: ABC1D23" value={guarnicao} onChange={e => setGuarnicao(e.target.value)} />
+            <Input id="guarnicao" placeholder="Ex: ROTAM 01, FORÇA TÁTICA 02, RADIOPATRULHA 15..." value={guarnicao} onChange={e => setGuarnicao(e.target.value)} />
           </div>
 
           <div className="md:col-span-2">
             <Label htmlFor="operacao">Operação (Opcional)</Label>
             <Input id="operacao" placeholder="Ex: Operação Saturação, Operação Cidade Segura..." value={operacao} onChange={e => setOperacao(e.target.value)} />
           </div>
+          
+          {/* << CORREÇÃO: Os dados do condutor da viatura foram ocultados da interface. >> */}
+          {/*
+           {condutorNome && (
+            <>
+              <div className="md:col-span-2">
+                <Label className="text-md font-semibold">Condutor da Viatura</Label>
+              </div>
+              
+              <div>
+                <Label htmlFor="condutorNome">Nome do Condutor</Label>
+                <Input 
+                  id="condutorNome" 
+                  readOnly 
+                  value={condutorNome} 
+                  className="bg-gray-100" 
+                />
+              </div>
+               <div>
+                <Label htmlFor="condutorPosto">Posto/Graduação</Label>
+                <Input 
+                  id="condutorPosto" 
+                  readOnly 
+                  value={condutorPosto} 
+                  className="bg-gray-100" 
+                />
+              </div>
+               <div className="md:col-span-2">
+                <Label htmlFor="condutorRg">RG do Condutor</Label>
+                <Input 
+                  id="condutorRg" 
+                  readOnly 
+                  value={condutorRg} 
+                  className="bg-gray-100" 
+                />
+              </div>
+            </>
+           )}
+           */}
 
-          {/* Dados do condutor ocultos */}
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };
-
 export default GeneralInformationTab;

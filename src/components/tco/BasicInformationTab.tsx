@@ -346,9 +346,6 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
                 ))}
               </SelectContent>
             </Select>
-            <Button type="button" variant="secondary" className="mt-2 w-full sm:w-auto" onClick={() => { /* garantia de adição via botão manual */
-              if (false) {}
-            }}>Adicionar</Button>
           </div>
         </div>
 

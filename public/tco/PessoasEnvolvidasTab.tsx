@@ -71,7 +71,7 @@ const PessoasEnvolvidasTab: React.FC<PessoasEnvolvidasTabProps> = ({
       </CardHeader>
       <CardContent className="px-[4px]">
         <Tabs defaultValue="autor" className="w-full px-0">
-          {/* Ajusta dinamicamente: 2 abas nos casos de drogas, 3 nos demais */}
+          {/* Dynamically adjust the grid columns based on whether victims should be shown */}
           <TabsList className={`grid ${isDrugCase ? 'grid-cols-2' : 'grid-cols-3'} mb-6`}>
             <TabsTrigger value="autor">
               <User className="mr-2 h-4 w-4" />

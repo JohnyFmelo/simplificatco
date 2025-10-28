@@ -88,7 +88,13 @@ const TCOForm: React.FC = () => {
   // Aba "Dados da Ocorrência"
   const isCustomNatureza = natureza === "Outros";
   const [tipificacao, setTipificacao] = useState("");
-  const [dataFato, setDataFato] = useState("");
+  const [dataFato, setDataFato] = useState(() => {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy = String(now.getFullYear());
+  return `${dd}/${mm}/${yyyy}`;
+});
   const [horaFato, setHoraFato] = useState("");
   const [dataInicioRegistro, setDataInicioRegistro] = useState("");
   const [horaInicioRegistro, setHoraInicioRegistro] = useState("");
@@ -240,7 +246,50 @@ const TCOForm: React.FC = () => {
   const [numeroRequisicao, setNumeroRequisicao] = useState("");
 
   const onNovaDrogaChange = (field: keyof Omit<Droga, "id">, value: string | boolean) => {
-    setNovaDroga(prev => ({ ...prev, [field]: value as any }));
+    // Atualiza o campo solicitado
+    setNovaDroga(prev => {
+      const next = { ...prev, [field]: value as any };
+
+      // Lógica antiga dos "indícios" aplicada: tenta inferir o entorpecente
+      // com base em tipo de substância, cor e odor.
+      const tipo = (next.substancia || "").toLowerCase();
+      const cor = (next.cor || "").toLowerCase();
+      const odor = (next.odor || "").toLowerCase();
+
+      let calculado = "";
+
+      // Não calcular se for material não identificado (usa descrição customizada nos PDFs)
+      if (!next.isUnknownMaterial) {
+        if (tipo === "vegetal") {
+          // Combinações típicas para vegetal
+          if (cor === "verde") {
+            // Maconha é o caso mais comum para vegetal verde
+            calculado = "Maconha";
+            // Odor muito forte pode sugerir Skank
+            if (odor === "forte") {
+              calculado = "Skank";
+            }
+          } else if (odor === "forte") {
+            calculado = "Skank";
+          }
+        } else if (tipo === "artificial") {
+          // Combinações típicas para artificial
+          if (cor === "branca") {
+            // Normalmente cocaína, especialmente se inodoro
+            calculado = "Cocaína";
+            if (odor === "inodoro") {
+              calculado = "Cocaína";
+            }
+          } else if (cor === "amarelada") {
+            // Crack costuma ser amarelado
+            calculado = "Crack";
+          }
+        }
+      }
+
+      next.indicios = calculado;
+      return next;
+    });
   };
   const onAdicionarDroga = () => {
     const id = Math.random().toString(36).slice(2);
@@ -288,8 +337,8 @@ const TCOForm: React.FC = () => {
   const [activeTab, setActiveTab] = useState("basico");
   const tabOrder = useMemo(() => (
     isDrugCase
-      ? ["basico", "geral", "drogas", "pessoas", "guarnicao", "historico", "arquivos"]
-      : ["basico", "geral", "pessoas", "guarnicao", "historico", "arquivos"]
+      ? ["basico", "geral", "drogas", "pessoas", "historico", "guarnicao", "arquivos"]
+      : ["basico", "geral", "pessoas", "historico", "guarnicao", "arquivos"]
   ), [isDrugCase]);
   const goToNextTab = () => {
     const idx = tabOrder.indexOf(activeTab as (typeof tabOrder)[number]);
@@ -350,8 +399,8 @@ const TCOForm: React.FC = () => {
           <TabsTrigger className="shrink-0" value="geral">Dados da Ocorrência</TabsTrigger>
           {isDrugCase && (<TabsTrigger className="shrink-0" value="drogas">Drogas</TabsTrigger>)}
           <TabsTrigger className="shrink-0" value="pessoas">Pessoas envolvidas</TabsTrigger>
-          <TabsTrigger className="shrink-0" value="guarnicao">Guarnição</TabsTrigger>
           <TabsTrigger className="shrink-0" value="historico">Histórico</TabsTrigger>
+          <TabsTrigger className="shrink-0" value="guarnicao">Guarnição</TabsTrigger>
           <TabsTrigger className="shrink-0" value="arquivos">Arquivos</TabsTrigger>
         </TabsList>
 
@@ -372,7 +421,19 @@ const TCOForm: React.FC = () => {
             cr={cr}
             setCr={setCr}
             unidade={unidade}
-            setUnidade={setUnidade}
+            setUnidade={(value) => {
+              setUnidade(value);
+              const now = new Date();
+              const pad2 = (n: number) => n.toString().padStart(2, '0');
+              setDataInicioRegistro(`${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()}`);
+              setHoraInicioRegistro(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
+              const MAPA: Record<string, string> = {
+                "2º Comando Regional - Sede": "",
+                "4º Batalhão de Polícia Militar": "Várzea Grande",
+                "15ª Cia Independente de Polícia Militar - Força Tática": "Várzea Grande",
+              };
+              setMunicipio(MAPA[value] || municipio);
+            }}
             localRegistro={localRegistro}
             setLocalRegistro={setLocalRegistro}
           />
@@ -509,6 +570,19 @@ const TCOForm: React.FC = () => {
             condutor={componentesGuarnicao[0] ? { nome: componentesGuarnicao[0].nome, posto: componentesGuarnicao[0].posto, rg: componentesGuarnicao[0].rg } : undefined}
             localRegistro={localRegistro}
             municipio={municipio}
+            // Novos campos para DOCX
+            tipificacao={tipificacao}
+            dataFato={dataFato}
+            horaFato={horaFato}
+            dataInicioRegistro={dataInicioRegistro}
+            horaInicioRegistro={horaInicioRegistro}
+            dataTerminoRegistro={dataTerminoRegistro}
+            horaTerminoRegistro={horaTerminoRegistro}
+            localFato={localFato}
+            endereco={endereco}
+            comunicante={comunicante}
+            testemunhas={testemunhas}
+            vitimas={vitimas}
           />
         </TabsContent>
       </Tabs>

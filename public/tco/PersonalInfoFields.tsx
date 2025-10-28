@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface PersonalInfoFieldsProps {
   data: {
@@ -23,7 +22,6 @@ interface PersonalInfoFieldsProps {
     email: string;
     laudoPericial: string; // Novo campo: "Sim" ou "Não"
     relato?: string; // For victim and witness testimony
-    semCpf?: string; // Flag: "true" se não possui CPF
   };
   onChangeHandler: (index: number | null, field: string, value: string) => void;
   prefix?: string;
@@ -66,12 +64,6 @@ const PersonalInfoFields: React.FC<PersonalInfoFieldsProps> = ({
   // Validate CPF
   const validateCPF = (cpf: string) => {
     const stripped = cpf.replace(/\D/g, '');
-
-    // Se marcado que não possui CPF, não validar
-    if (data.semCpf === 'true') {
-      setCpfError(null);
-      return;
-    }
     
     // For authors, CPF is required
     if (isAuthor && stripped.length === 0) {
@@ -105,28 +97,23 @@ const PersonalInfoFields: React.FC<PersonalInfoFieldsProps> = ({
   // Calculate age from birthdate
   useEffect(() => {
     if (data.dataNascimento && isAuthor) {
-      const m = data.dataNascimento.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-      if (!m) { setAgeWarning(null); return; }
-      const dd = parseInt(m[1], 10);
-      const mm = parseInt(m[2], 10) - 1; // 0-based
-      const yyyy = parseInt(m[3], 10);
-      const birthDate = new Date(yyyy, mm, dd);
+      const birthDate = new Date(data.dataNascimento);
       const today = new Date();
       let years = today.getFullYear() - birthDate.getFullYear();
-      let months = today.getMonth() - birthDate.getMonth();
-      let days = today.getDate() - birthDate.getDate();
-      if (months < 0 || (months === 0 && days < 0)) {
+      const months = today.getMonth() - birthDate.getMonth();
+      const days = today.getDate() - birthDate.getDate();
+      if (months < 0 || months === 0 && days < 0) {
         years--;
-        months = months < 0 ? 12 + months : 11;
-      }
-      if (days < 0) {
-        const prevMonthDays = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
-        days = prevMonthDays + days;
-        months = months - 1;
-        if (months < 0) months = 11;
       }
       if (years < 18) {
-        setAgeWarning(`ATENÇÃO: O Autor é menor de idade (${years} anos, ${months} meses e ${days} dias). Avalie corretamente se cabe TCO contra esse suspeito.`);
+        // Calculate exact age in years, months and days
+        let ageMonths = months < 0 ? 12 + months : months;
+        let ageDays = days < 0 ? new Date(today.getFullYear(), today.getMonth(), 0).getDate() + days : days;
+        if (days < 0) {
+          ageMonths--;
+          if (ageMonths < 0) ageMonths = 11;
+        }
+        setAgeWarning(`ATENÇÃO: O Autor é menor de idade (${years} anos, ${ageMonths} meses e ${ageDays} dias). Avalie corretamente se cabe TCO contra esse suspeito.`);
       } else {
         setAgeWarning(null);
       }
@@ -215,14 +202,7 @@ const PersonalInfoFields: React.FC<PersonalInfoFieldsProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label htmlFor={`${prefix}dataNascimento_${index}`}>Data de Nascimento</Label>
-          <Input id={`${prefix}dataNascimento_${index}`} type="text" inputMode="numeric" placeholder="dd/mm/aaaa" value={data.dataNascimento} onChange={e => {
-            const v = e.target.value.replace(/\D/g, '').slice(0,8);
-            const dd = v.slice(0,2);
-            const mm = v.slice(2,4);
-            const yyyy = v.slice(4,8);
-            const formatted = [dd, mm, yyyy].filter(Boolean).join('/');
-            onChangeHandler(index !== undefined ? index : null, 'dataNascimento', formatted);
-          }} />
+          <Input id={`${prefix}dataNascimento_${index}`} type="date" value={data.dataNascimento} onChange={e => onChangeHandler(index !== undefined ? index : null, 'dataNascimento', e.target.value)} />
         </div>
         
         <div>
@@ -268,27 +248,9 @@ const PersonalInfoFields: React.FC<PersonalInfoFieldsProps> = ({
             }} 
             onBlur={() => validateCPF(data.cpf)}
             className={cpfError ? "border-red-500" : ""}
-            required={isAuthor && data.semCpf !== 'true'}
-            disabled={data.semCpf === 'true'}
+            required={isAuthor}
           />
           {cpfError && <p className="text-red-500 text-xs mt-1">{cpfError}</p>}
-          <div className="mt-2 flex items-center gap-2">
-            <Checkbox
-              id={`${prefix}semcpf_${index}`}
-              checked={data.semCpf === 'true'}
-              onCheckedChange={(checked) => {
-                const flag = checked ? 'true' : 'false';
-                onChangeHandler(index !== undefined ? index : null, 'semCpf', flag);
-                if (checked) {
-                  onChangeHandler(index !== undefined ? index : null, 'cpf', '');
-                  setCpfError(null);
-                } else {
-                  validateCPF(data.cpf);
-                }
-              }}
-            />
-            <Label htmlFor={`${prefix}semcpf_${index}`} className="text-xs">Não possui CPF</Label>
-          </div>
         </div>
       </div>
 

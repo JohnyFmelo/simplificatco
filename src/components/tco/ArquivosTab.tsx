@@ -23,9 +23,21 @@ interface ArquivosTabProps {
   condutor?: { nome: string; posto: string; rg: string };
   localRegistro: string;
   municipio: string;
+  tipificacao?: string;
+  dataFato?: string;
+  horaFato?: string;
+  dataInicioRegistro?: string;
+  horaInicioRegistro?: string;
+  dataTerminoRegistro?: string;
+  horaTerminoRegistro?: string;
+  localFato?: string;
+  endereco?: string;
+  comunicante?: string;
+  testemunhas?: Array<{ nome: string; sexo: string; estadoCivil: string; profissao: string; endereco: string; dataNascimento: string; naturalidade: string; filiacaoMae: string; filiacaoPai: string; rg: string; cpf: string; celular: string; email: string; semCpf?: string; }>;
+  vitimas?: Array<{ nome: string; sexo: string; estadoCivil: string; profissao: string; endereco: string; dataNascimento: string; naturalidade: string; filiacaoMae: string; filiacaoPai: string; rg: string; cpf: string; celular: string; email: string; semCpf?: string; }>;
 }
 
-const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFoto, cr, unidade, tcoNumber, natureza, autoresNomes, condutor, localRegistro, municipio }) => {
+const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFoto, cr, unidade, tcoNumber, natureza, autoresNomes, condutor, localRegistro, municipio, tipificacao, dataFato, horaFato, dataInicioRegistro, horaInicioRegistro, dataTerminoRegistro, horaTerminoRegistro, localFato, endereco, comunicante, testemunhas, vitimas }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,6 +57,18 @@ const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFo
       condutor,
       localRegistro,
       municipio,
+      tipificacao,
+      dataFato,
+      horaFato,
+      dataInicioRegistro,
+      horaInicioRegistro,
+      dataTerminoRegistro,
+      horaTerminoRegistro,
+      localFato,
+      endereco,
+      comunicante,
+      testemunhas,
+      vitimas,
     });
   };
 
