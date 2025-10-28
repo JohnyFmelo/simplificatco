@@ -180,120 +180,115 @@ export function addTermoApreensao(doc, data) {
     const isDroga = data.natureza && data.natureza.toLowerCase() === "porte de drogas para consumo";
     const lacreNumero = isDroga ? (data.lacreNumero || "00000000") : "";
 
-    const generoAutor = autor?.sexo?.toLowerCase() === 'feminino' ? 'AUTORA' : 'AUTOR';
-
-    const TABLE_CONTENT_FONT_SIZE = DEFAULT_FONT_SIZE;
-
-    const colWidth = MAX_LINE_WIDTH / 3;
-    const xCol1 = MARGIN_LEFT;
-    const xCol2 = MARGIN_LEFT + colWidth;
-    const xCol3 = MARGIN_LEFT + 2 * colWidth;
-    const lastColWidth = MAX_LINE_WIDTH - (2 * colWidth);
-
+    // Título
     const titulo = isDroga ? `TERMO DE APREENSÃO LACRE Nº ${lacreNumero}` : "TERMO DE APREENSÃO";
     doc.setFont(DEFAULT_FONT_NAME, "bold");
     doc.setFontSize(12);
     currentY = checkPageBreak(doc, currentY, 15, data);
-    doc.setFont(DEFAULT_FONT_NAME, "bold");
     doc.text(titulo.toUpperCase(), PAGE_WIDTH / 2, currentY, { align: "center" });
-    currentY += 6;
+    currentY += 8;
 
-    const cellOptionsBase = { fontSize: TABLE_CONTENT_FONT_SIZE, cellVerticalAlign: 'middle' };
+    // Configurações da tabela
+    const rowHeight = 7;
+    const bigRowHeight = 20;
+    const colWidth = MAX_LINE_WIDTH / 3;
+    const startX = MARGIN_LEFT;
+    
+    doc.setFont(DEFAULT_FONT_NAME, "bold");
+    doc.setFontSize(9);
 
+    // LINHA 1: DATA | HORA | LOCAL (3 colunas)
     let rowY = currentY;
+    currentY = checkPageBreak(doc, rowY, rowHeight, data);
+    if (currentY !== rowY) rowY = currentY;
+    
     const dataHoraObj = formatarDataHora(data.dataTerminoRegistro || data.dataFato, data.horaTerminoRegistro || data.horaFato, true);
-    const m11 = getCellContentMetrics(doc, "DATA", dataHoraObj.date, colWidth, TABLE_CONTENT_FONT_SIZE);
-    const m12 = getCellContentMetrics(doc, "HORA", dataHoraObj.time, colWidth, TABLE_CONTENT_FONT_SIZE);
-    const m13 = getCellContentMetrics(doc, "LOCAL", "25º BPM", lastColWidth, TABLE_CONTENT_FONT_SIZE);
-    const r1H = Math.max(MIN_ROW_HEIGHT, m11.height, m12.height, m13.height) + CELL_PADDING_Y * 2;
-    currentY = checkPageBreak(doc, rowY, r1H, data); if (currentY !== rowY) rowY = currentY;
-    doc.rect(xCol1, rowY, colWidth, r1H); renderCellText(doc, xCol1, rowY, colWidth, r1H, m11, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
-    doc.rect(xCol2, rowY, colWidth, r1H); renderCellText(doc, xCol2, rowY, colWidth, r1H, m12, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
-    doc.rect(xCol3, rowY, lastColWidth, r1H); renderCellText(doc, xCol3, rowY, lastColWidth, r1H, m13, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
-    currentY = rowY + r1H;
+    doc.rect(startX, rowY, colWidth, rowHeight);
+    doc.text(`DATA: ${dataHoraObj.date}`, startX + 2, rowY + 5);
+    doc.rect(startX + colWidth, rowY, colWidth, rowHeight);
+    doc.text(`HORA: ${dataHoraObj.time}`, startX + colWidth + 2, rowY + 5);
+    doc.rect(startX + 2 * colWidth, rowY, colWidth, rowHeight);
+    doc.text(`LOCAL: 25º BPM`, startX + 2 * colWidth + 2, rowY + 5);
+    currentY = rowY + rowHeight;
 
+    // LINHA 2: NOME DO POLICIAL (1 coluna)
     rowY = currentY;
     const nomePolicial = `${condutor?.nome || ""} ${condutor?.posto || ""}`.trim().toUpperCase();
-    const m21 = getCellContentMetrics(doc, "NOME DO POLICIAL", nomePolicial, MAX_LINE_WIDTH, TABLE_CONTENT_FONT_SIZE);
-    const r2H = Math.max(MIN_ROW_HEIGHT, m21.height) + CELL_PADDING_Y * 2;
-    currentY = checkPageBreak(doc, rowY, r2H, data); if (currentY !== rowY) rowY = currentY;
-    doc.rect(MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r2H); renderCellText(doc, MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r2H, m21, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
-    currentY = rowY + r2H;
+    doc.rect(startX, rowY, MAX_LINE_WIDTH, rowHeight);
+    doc.text(`NOME DO POLICIAL: ${nomePolicial}`, startX + 2, rowY + 5);
+    currentY = rowY + rowHeight;
 
+    // LINHA 3: FILIAÇÃO PAI (1 coluna)
     rowY = currentY;
-    const nomePai = (condutor?.pai || autor?.pai || "").toUpperCase();
-    const m31 = getCellContentMetrics(doc, "FILIAÇÃO PAI", nomePai, MAX_LINE_WIDTH, TABLE_CONTENT_FONT_SIZE);
-    const r3H = Math.max(MIN_ROW_HEIGHT, m31.height) + CELL_PADDING_Y * 2;
-    currentY = checkPageBreak(doc, rowY, r3H, data); if (currentY !== rowY) rowY = currentY;
-    doc.rect(MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r3H); renderCellText(doc, MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r3H, m31, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
-    currentY = rowY + r3H;
-    
-    rowY = currentY;
-    const nomeMae = (condutor?.mae || autor?.mae || "").toUpperCase();
-    const m41 = getCellContentMetrics(doc, "FILIAÇÃO MÃE", nomeMae, MAX_LINE_WIDTH, TABLE_CONTENT_FONT_SIZE);
-    const r4H = Math.max(MIN_ROW_HEIGHT, m41.height) + CELL_PADDING_Y * 2;
-    currentY = checkPageBreak(doc, rowY, r4H, data); if (currentY !== rowY) rowY = currentY;
-    doc.rect(MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r4H); renderCellText(doc, MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r4H, m41, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
-    currentY = rowY + r4H;
+    const nomePai = (condutor?.pai || autor?.filiacaoPai || "").toUpperCase();
+    doc.rect(startX, rowY, MAX_LINE_WIDTH, rowHeight);
+    doc.text(`FILIAÇÃO PAI: ${nomePai}`, startX + 2, rowY + 5);
+    currentY = rowY + rowHeight;
 
+    // LINHA 4: FILIAÇÃO MÃE (1 coluna)
     rowY = currentY;
-    const m51 = getCellContentMetrics(doc, "NATURALIDADE", (condutor?.naturalidade || "").toUpperCase(), colWidth, TABLE_CONTENT_FONT_SIZE);
-    const m52 = getCellContentMetrics(doc, "RGPM", condutor?.rg || "", colWidth, TABLE_CONTENT_FONT_SIZE);
-    const m53 = getCellContentMetrics(doc, "CPF", condutor?.cpf || "", lastColWidth, TABLE_CONTENT_FONT_SIZE);
-    const r5H = Math.max(MIN_ROW_HEIGHT, m51.height, m52.height, m53.height) + CELL_PADDING_Y * 2;
-    currentY = checkPageBreak(doc, rowY, r5H, data); if (currentY !== rowY) rowY = currentY;
-    doc.rect(xCol1, rowY, colWidth, r5H); renderCellText(doc, xCol1, rowY, colWidth, r5H, m51, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
-    doc.rect(xCol2, rowY, colWidth, r5H); renderCellText(doc, xCol2, rowY, colWidth, r5H, m52, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
-    doc.rect(xCol3, rowY, lastColWidth, r5H); renderCellText(doc, xCol3, rowY, lastColWidth, r5H, m53, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
-    currentY = rowY + r5H;
-    
-    rowY = currentY;
-    const enderecoValue = "AV. DR. PARANÁ, S/N° COMPLEXO DA UNIVAG, AO LADO DO NÚCLEO DE PRÁTICA JURÍDICA. BAIRRO CRISTO REI CEP 78.110-100, VG - MT".toUpperCase();
-    const m61 = getCellContentMetrics(doc, "END.", enderecoValue, MAX_LINE_WIDTH, TABLE_CONTENT_FONT_SIZE);
-    const r6H = Math.max(MIN_ROW_HEIGHT, m61.height) + CELL_PADDING_Y * 2;
-    currentY = checkPageBreak(doc, rowY, r6H, data); if (currentY !== rowY) rowY = currentY;
-    doc.rect(MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r6H); renderCellText(doc, MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r6H, m61, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
-    currentY = rowY + r6H;
+    const nomeMae = (condutor?.mae || autor?.filiacaoMae || "").toUpperCase();
+    doc.rect(startX, rowY, MAX_LINE_WIDTH, rowHeight);
+    doc.text(`FILIAÇÃO MÃE: ${nomeMae}`, startX + 2, rowY + 5);
+    currentY = rowY + rowHeight;
 
+    // LINHA 5: NATURALIDADE | RGPM | CPF (3 colunas)
     rowY = currentY;
-    const m71 = getCellContentMetrics(doc, "MUNICÍPIO", "VÁRZEA GRANDE", colWidth, TABLE_CONTENT_FONT_SIZE);
-    const m72 = getCellContentMetrics(doc, "UF", "MT", colWidth, TABLE_CONTENT_FONT_SIZE);
-    const m73 = getCellContentMetrics(doc, "TEL", condutor?.telefone || "", lastColWidth, TABLE_CONTENT_FONT_SIZE);
-    const r7H = Math.max(MIN_ROW_HEIGHT, m71.height, m72.height, m73.height) + CELL_PADDING_Y * 2;
-    currentY = checkPageBreak(doc, rowY, r7H, data); if (currentY !== rowY) rowY = currentY;
-    doc.rect(xCol1, rowY, colWidth, r7H); renderCellText(doc, xCol1, rowY, colWidth, r7H, m71, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
-    doc.rect(xCol2, rowY, colWidth, r7H); renderCellText(doc, xCol2, rowY, colWidth, r7H, m72, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
-    doc.rect(xCol3, rowY, lastColWidth, r7H); renderCellText(doc, xCol3, rowY, lastColWidth, r7H, m73, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
-    currentY = rowY + r7H;
+    doc.rect(startX, rowY, colWidth, rowHeight);
+    doc.text(`NATURALIDADE: ${(condutor?.naturalidade || autor?.naturalidade || "").toUpperCase()}`, startX + 2, rowY + 5);
+    doc.rect(startX + colWidth, rowY, colWidth, rowHeight);
+    doc.text(`RGPM: ${condutor?.rg || ""}`, startX + colWidth + 2, rowY + 5);
+    doc.rect(startX + 2 * colWidth, rowY, colWidth, rowHeight);
+    doc.text(`CPF: ${condutor?.cpf || autor?.cpf || ""}`, startX + 2 * colWidth + 2, rowY + 5);
+    currentY = rowY + rowHeight;
 
+    // LINHA 6: END. (1 coluna)
     rowY = currentY;
-    let textoApreensaoOriginal = (data.apreensoes || "Nenhum objeto/documento descrito para apreensão.").toUpperCase();
-    
-    const apreensaoTextX = MARGIN_LEFT + CELL_PADDING_X;
-    const apreensaoMaxWidth = MAX_LINE_WIDTH - CELL_PADDING_X * 2;
-    let totalCalculatedTextHeightForDesc = 0;
-
-    const combinedText = `FICA APREENDIDO O DESCRITO ABAIXO:\n${textoApreensaoOriginal}`;
+    const endereco = "AV. DR. PARANÁ, S/N° COMPLEXO DA UNIVAG, AO LADO DO NÚCLEO DE PRÁTICA JURÍDICA. BAIRRO CRISTO REI CEP 78.110-100, VG - MT";
+    doc.rect(startX, rowY, MAX_LINE_WIDTH, rowHeight);
+    doc.setFont(DEFAULT_FONT_NAME, "bold");
+    doc.text("END.:", startX + 2, rowY + 5);
     doc.setFont(DEFAULT_FONT_NAME, "normal");
-    doc.setFontSize(DEFAULT_FONT_SIZE);
-    const combinedLines = doc.splitTextToSize(combinedText, apreensaoMaxWidth);
-    totalCalculatedTextHeightForDesc = doc.getTextDimensions(combinedLines, { fontSize: DEFAULT_FONT_SIZE, lineHeightFactor: LINE_HEIGHT_FACTOR }).h;
+    const endLines = doc.splitTextToSize(endereco, MAX_LINE_WIDTH - 15);
+    doc.text(endLines[0], startX + 15, rowY + 5);
+    currentY = rowY + rowHeight;
 
-    const r9H = Math.max(MIN_ROW_HEIGHT * 2, totalCalculatedTextHeightForDesc) + CELL_PADDING_Y * 2;
-    currentY = checkPageBreak(doc, rowY, r9H, data); 
-    if (currentY !== rowY) rowY = currentY;
-    doc.rect(MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r9H);
-    const textBlockStartYForDesc = rowY + CELL_PADDING_Y + (r9H - 2 * CELL_PADDING_Y - totalCalculatedTextHeightForDesc) / 2 - 0.5;
-    doc.text(combinedLines, apreensaoTextX, textBlockStartYForDesc, { align: 'left', lineHeightFactor: LINE_HEIGHT_FACTOR });
-    currentY = rowY + r9H;
-
+    // LINHA 7: MUNICÍPIO | UF | TEL (3 colunas)
     rowY = currentY;
-    const textoLegal = "O PRESENTE TERMO DE APREENSÃO FOI LAVRADO COM BASE NO ART. 6º, II, DO CÓDIGO DE PROCESSO PENAL, E ART. 92 DA LEI 9.999/1995.".toUpperCase();
-    const m10_1 = getCellContentMetrics(doc, null, textoLegal, MAX_LINE_WIDTH, DEFAULT_FONT_SIZE);
-    const r10H = Math.max(MIN_ROW_HEIGHT, m10_1.height) + CELL_PADDING_Y * 2;
-    currentY = checkPageBreak(doc, rowY, r10H, data); if (currentY !== rowY) rowY = currentY;
-    doc.rect(MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r10H); renderCellText(doc, MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r10H, m10_1, DEFAULT_FONT_SIZE, "normal", false, "left", cellOptionsBase.cellVerticalAlign);
-    currentY = rowY + r10H;
+    doc.setFont(DEFAULT_FONT_NAME, "bold");
+    doc.rect(startX, rowY, colWidth, rowHeight);
+    doc.text(`MUNICÍPIO: VÁRZEA GRANDE`, startX + 2, rowY + 5);
+    doc.rect(startX + colWidth, rowY, colWidth, rowHeight);
+    doc.text(`UF: MT`, startX + colWidth + 2, rowY + 5);
+    doc.rect(startX + 2 * colWidth, rowY, colWidth, rowHeight);
+    doc.text(`TEL: ${condutor?.telefone || autor?.celular || ""}`, startX + 2 * colWidth + 2, rowY + 5);
+    currentY = rowY + rowHeight;
+
+    // LINHA 8: FICA APREENDIDO O DESCRITO ABAIXO (1 coluna)
+    rowY = currentY;
+    doc.rect(startX, rowY, MAX_LINE_WIDTH, rowHeight);
+    doc.text("FICA APREENDIDO O DESCRITO ABAIXO:", startX + 2, rowY + 5);
+    currentY = rowY + rowHeight;
+
+    // LINHA 9: Descrição do item apreendido (1 coluna com altura maior)
+    rowY = currentY;
+    const textoApreensao = (data.apreensoes || "").toUpperCase();
+    doc.setFont(DEFAULT_FONT_NAME, "normal");
+    const apreensaoLines = doc.splitTextToSize(textoApreensao, MAX_LINE_WIDTH - 4);
+    const descHeight = Math.max(bigRowHeight, apreensaoLines.length * 4 + 4);
+    doc.rect(startX, rowY, MAX_LINE_WIDTH, descHeight);
+    doc.text(apreensaoLines, startX + 2, rowY + 4);
+    currentY = rowY + descHeight;
+
+    // LINHA 10: Texto legal (1 coluna)
+    rowY = currentY;
+    doc.setFont(DEFAULT_FONT_NAME, "normal");
+    const textoLegal = "O PRESENTE TERMO DE APREENSÃO FOI LAVRADO COM BASE NO ART. 6º, II, DO CÓDIGO DE PROCESSO PENAL, E ART. 92 DA LEI 9.999/1995.";
+    const legalLines = doc.splitTextToSize(textoLegal, MAX_LINE_WIDTH - 4);
+    const legalHeight = Math.max(rowHeight * 2, legalLines.length * 3.5 + 4);
+    doc.rect(startX, rowY, MAX_LINE_WIDTH, legalHeight);
+    doc.text(legalLines, startX + 2, rowY + 4);
+    currentY = rowY + legalHeight;
 
     currentY += 5;
     doc.setFont(DEFAULT_FONT_NAME, "normal");
