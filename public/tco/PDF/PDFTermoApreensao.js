@@ -219,14 +219,16 @@ export function addTermoApreensao(doc, data) {
     currentY = rowY + r2H;
 
     rowY = currentY;
-    const m31 = getCellContentMetrics(doc, "FILIAÇÃO PAI", (condutor?.pai || "").toUpperCase(), MAX_LINE_WIDTH, TABLE_CONTENT_FONT_SIZE);
+    const nomePai = (condutor?.pai || autor?.pai || "").toUpperCase();
+    const m31 = getCellContentMetrics(doc, "FILIAÇÃO PAI", nomePai, MAX_LINE_WIDTH, TABLE_CONTENT_FONT_SIZE);
     const r3H = Math.max(MIN_ROW_HEIGHT, m31.height) + CELL_PADDING_Y * 2;
     currentY = checkPageBreak(doc, rowY, r3H, data); if (currentY !== rowY) rowY = currentY;
     doc.rect(MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r3H); renderCellText(doc, MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r3H, m31, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);
     currentY = rowY + r3H;
     
     rowY = currentY;
-    const m41 = getCellContentMetrics(doc, "FILIAÇÃO MÃE", (condutor?.mae || "").toUpperCase(), MAX_LINE_WIDTH, TABLE_CONTENT_FONT_SIZE);
+    const nomeMae = (condutor?.mae || autor?.mae || "").toUpperCase();
+    const m41 = getCellContentMetrics(doc, "FILIAÇÃO MÃE", nomeMae, MAX_LINE_WIDTH, TABLE_CONTENT_FONT_SIZE);
     const r4H = Math.max(MIN_ROW_HEIGHT, m41.height) + CELL_PADDING_Y * 2;
     currentY = checkPageBreak(doc, rowY, r4H, data); if (currentY !== rowY) rowY = currentY;
     doc.rect(MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r4H); renderCellText(doc, MARGIN_LEFT, rowY, MAX_LINE_WIDTH, r4H, m41, TABLE_CONTENT_FONT_SIZE, "normal", true, "left", cellOptionsBase.cellVerticalAlign);

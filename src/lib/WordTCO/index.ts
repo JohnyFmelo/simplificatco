@@ -773,7 +773,11 @@ export async function downloadTcoDocx(opts: {
           segundaPaginaChildren.push(
             new Paragraph({
               alignment: AlignmentType.CENTER,
-              children: [ new ImageRun({ data: bytes, transformation: { width: (dims?.width || 420), height: (dims?.height || 280) } }) ]
+              children: [ new ImageRun({ 
+                data: bytes, 
+                transformation: { width: (dims?.width || 420), height: (dims?.height || 280) },
+                type: "png"
+              }) ]
             }),
             new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
           );
