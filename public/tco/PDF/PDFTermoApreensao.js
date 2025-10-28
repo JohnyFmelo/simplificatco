@@ -170,6 +170,8 @@ function renderCellText(doc, x, y, cellWidth, cellRowHeight, metrics, fontSize, 
 
 export function addTermoApreensao(doc, data) {
     console.log("[PDFTermoApreensao] Iniciando renderização do Termo de Apreensão");
+    console.log("[PDFTermoApreensao] Dados do condutor:", data.componentesGuarnicao?.[0]);
+    console.log("[PDFTermoApreensao] Dados do autor:", data.autores?.[0]);
 
     let currentY = addNewPage(doc, data);
     const { PAGE_WIDTH, MAX_LINE_WIDTH } = getPageConstants(doc);
