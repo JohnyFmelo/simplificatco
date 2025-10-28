@@ -337,8 +337,8 @@ const TCOForm: React.FC = () => {
   const [activeTab, setActiveTab] = useState("basico");
   const tabOrder = useMemo(() => (
     isDrugCase
-      ? ["basico", "geral", "drogas", "pessoas", "historico", "guarnicao", "arquivos"]
-      : ["basico", "geral", "pessoas", "historico", "guarnicao", "arquivos"]
+      ? ["basico", "geral", "drogas", "pessoas", "historico", "arquivos", "guarnicao"]
+      : ["basico", "geral", "pessoas", "historico", "arquivos", "guarnicao"]
   ), [isDrugCase]);
   const goToNextTab = () => {
     const idx = tabOrder.indexOf(activeTab as (typeof tabOrder)[number]);
@@ -400,8 +400,8 @@ const TCOForm: React.FC = () => {
           {isDrugCase && (<TabsTrigger className="shrink-0" value="drogas">Drogas</TabsTrigger>)}
           <TabsTrigger className="shrink-0" value="pessoas">Pessoas envolvidas</TabsTrigger>
           <TabsTrigger className="shrink-0" value="historico">Histórico</TabsTrigger>
+          <TabsTrigger className="shrink-0" value="arquivos">Anexos</TabsTrigger>
           <TabsTrigger className="shrink-0" value="guarnicao">Guarnição</TabsTrigger>
-          <TabsTrigger className="shrink-0" value="arquivos">Arquivos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="basico">
