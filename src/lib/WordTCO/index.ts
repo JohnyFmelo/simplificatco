@@ -332,7 +332,8 @@ export async function downloadTcoDocx(opts: {
     // falha silenciosa: sem brasão se não carregar
   }
 
-  const headerChildren: any[] = [
+  // Cabeçalho da primeira página
+  const headerFirstPageChildren: any[] = [
     ...(imageParagraph ? [imageParagraph] : []),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -348,6 +349,20 @@ export async function downloadTcoDocx(opts: {
       alignment: AlignmentType.CENTER,
       spacing: { before: 0, after: 0 },
       children: [new TextRun({ text: `${unidadeLinha}${crParte}`, bold: true, font: 'Times New Roman', size: 24 })]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 0 },
+      children: [new TextRun({ text: '—'.repeat(48), font: 'Times New Roman', size: 20 })],
+    }),
+  ];
+  
+  // Cabeçalho para as demais páginas com a referência do TCO
+  const headerOtherPagesChildren: any[] = [
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 0, after: 0 },
+      children: [new TextRun({ text: `REF.:TERMO CIRCUNSTANCIADO DE OCORRÊNCIA Nº ${numeroDisplay}`, bold: true, font: 'Times New Roman', size: 20 })],
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
