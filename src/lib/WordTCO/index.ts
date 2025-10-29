@@ -255,7 +255,7 @@ export async function downloadTcoDocx(opts: {
   documentosAnexos?: string;
   guarnicaoLista?: Array<{ nome: string; posto: string; rg: string }>;
   autoresDetalhados?: Array<{ nome: string; relato?: string }>;
-  condutor?: { nome: string; posto: string; rg: string; pai?: string; mae?: string; naturalidade?: string; cpf?: string; telefone?: string } | undefined;
+  condutor?: { nome: string; posto: string; rg: string; pai?: string; mae?: string; naturalidade?: string; cpf?: string; telefone?: string; nome_completo?: string; graduacao?: string; rgpm?: string; nome_pai?: string; nome_mae?: string; } | undefined;
   localRegistro?: string;
   municipio?: string;
   tipificacao?: string;

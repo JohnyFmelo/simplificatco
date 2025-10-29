@@ -398,7 +398,7 @@ const TCOForm: React.FC = () => {
   };
 
   // Download do TCO em DOCX na aba "Audiência" (parte final)
-  function TCOForm() {
+  const handleDownloadWord = () => {
     downloadTcoDocx({
       unidade,
       cr,
