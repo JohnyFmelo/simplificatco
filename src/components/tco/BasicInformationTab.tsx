@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { X, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 // Timer removido conforme solicitado
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
@@ -36,6 +37,7 @@ interface BasicInformationTabProps {
   // Novo campo: Local do Registro
   localRegistro: string;
   setLocalRegistro: (value: string) => void;
+  onTipificacaoChange?: (value: string) => void;
 }
 
 
@@ -162,6 +164,26 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
   const [totalPenaAnos, setTotalPenaAnos] = useState<number>(0);
   const [showPenaAlert, setShowPenaAlert] = useState<boolean>(false);
   const [tipificacaoCompleta, setTipificacaoCompleta] = useState<string>("");
+  const [isAddNaturezaOpen, setIsAddNaturezaOpen] = useState<boolean>(false);
+  const [formNome, setFormNome] = useState<string>("");
+  const [formTipificacao, setFormTipificacao] = useState<string>("");
+  const [formPenaAnos, setFormPenaAnos] = useState<string>("");
+  const [customNaturezas, setCustomNaturezas] = useState<{ nome: string; tipificacao: string; penaAnos: number }[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('tco_custom_naturezas');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setCustomNaturezas(parsed);
+      }
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem('tco_custom_naturezas', JSON.stringify(customNaturezas));
+    } catch {}
+  }, [customNaturezas]);
 
   // Opções de CR e Unidade
   const [crOptions, setCrOptions] = useState<string[]>([FIXED_CR]);
@@ -200,13 +222,12 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
     let totalCalculado = 0;
     const tipificacoes: string[] = [];
     selectedNaturezas.forEach(nat => {
-      if (nat === "Outros") {
-        totalCalculado += 2.0;
-        tipificacoes.push(customNatureza ? `[${customNatureza.toUpperCase()}] - TIPIFICAÇÃO A SER INSERIDA MANUALMENTE` : "[TIPIFICAÇÃO LEGAL A SER INSERIDA]");
+      const custom = customNaturezas.find(c => c.nome === nat);
+      if (custom) {
+        totalCalculado += custom.penaAnos;
+        tipificacoes.push(custom.tipificacao || `[${nat.toUpperCase()}] - TIPIFICAÇÃO NÃO INFORMADA`);
       } else {
-        // CORREÇÃO APLICADA AQUI:
         const penaDaNatureza = naturezaPenas[nat];
-        // Usar ?? para tratar `undefined` (natureza não mapeada), mas permitir pena 0.
         totalCalculado += typeof penaDaNatureza === 'number' ? penaDaNatureza : 2.0;
         tipificacoes.push(naturezaTipificacoes[nat] || `[${nat.toUpperCase()}] - TIPIFICAÇÃO NÃO MAPEADA`);
       }
@@ -224,6 +245,9 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
       tipificacaoFormatada = tipificacoes.join(", ") + " E " + ultimoItem;
     }
     setTipificacaoCompleta(tipificacaoFormatada);
+    if (typeof onTipificacaoChange === 'function') {
+      onTipificacaoChange(tipificacaoFormatada);
+    }
     if (penaExcedeLimite && selectedNaturezas.length > 0) {
       // Adicionado selectedNaturezas.length > 0 para evitar toast inicial
       toast({
@@ -234,7 +258,7 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
     }
     // A dependência de 'toast' geralmente não é necessária se vindo de um hook que o estabiliza.
     // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, [selectedNaturezas, customNatureza]); // Removido toast da lista de dependências
+  }, [selectedNaturezas, customNatureza, customNaturezas]); // Removido toast da lista de dependências
 
   const checkDuplicateTco = useCallback(async (tcoNum: string) => {
     // Verificação de duplicidade desativada nesta integração (sem Firebase)
@@ -287,8 +311,46 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
       setSelectedCustomNatureza("");
       setCustomNatureza("");
     }
+    if (customNaturezas.some(c => c.nome === naturezaToRemove)) {
+      setCustomNaturezas(prev => prev.filter(c => c.nome !== naturezaToRemove));
+    }
     setNatureza(newNaturezas.join(" + "));
   };
+
+  const handleConfirmAddCustomNatureza = () => {
+    const nome = formNome.trim();
+    const pena = parseFloat(formPenaAnos.replace(',', '.'));
+    const tip = formTipificacao.trim();
+    if (!nome) {
+      toast({ variant: "destructive", title: "Informe a Natureza", description: "Preencha o nome da natureza." });
+      return;
+    }
+    if (!isFinite(pena) || pena < 0) {
+      toast({ variant: "destructive", title: "Pena inválida", description: "Informe a pena máxima em anos (ex.: 0.5 para 6 meses)." });
+      return;
+    }
+    const novo = { nome, tipificacao: tip, penaAnos: pena };
+    setCustomNaturezas(prev => {
+      const semDup = prev.filter(c => c.nome !== nome);
+      return [...semDup, novo];
+    });
+    if (!selectedNaturezas.includes(nome)) {
+      const newNaturezas = [...selectedNaturezas, nome];
+      setSelectedNaturezas(newNaturezas);
+      setNatureza(newNaturezas.join(" + "));
+    }
+    setIsAddNaturezaOpen(false);
+    setFormNome("");
+    setFormTipificacao("");
+    setFormPenaAnos("");
+  };
+
+  const naturezasComPena = selectedNaturezas.map(nat => {
+    const custom = customNaturezas.find(c => c.nome === nat);
+    const pena = custom ? custom.penaAnos : naturezaPenas[nat];
+    const anos = typeof pena === 'number' ? pena : 2.0;
+    return { nat, penaAnos: anos };
+  });
 
   return (
     <Card>
@@ -336,16 +398,23 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
 
           <div>
             <Label htmlFor="natureza">Natureza *</Label>
-            <Select onValueChange={handleNaturezaSelectChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma natureza para adicionar" />
-              </SelectTrigger>
-              <SelectContent>
-                {naturezaOptions.filter(option => !selectedNaturezas.includes(option)).map(option => (
-                  <SelectItem key={option} value={option}>{option}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Select onValueChange={handleNaturezaSelectChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma natureza para adicionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {naturezaOptions
+                      .filter(option => !selectedNaturezas.includes(option))
+                      .map(option => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="outline" onClick={() => setIsAddNaturezaOpen(true)}>Adicionar natureza personalizada</Button>
+            </div>
           </div>
         </div>
 
@@ -366,25 +435,28 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
             <div className="flex flex-wrap gap-2 mt-2">
               {selectedNaturezas.map((nat, index) => (
                 <Badge key={`${nat}-${index}`} variant="secondary" className="flex items-center gap-1">
-                  {nat === "Outros" ? selectedCustomNatureza || "Outros (não especificado)" : nat}
+                  {(nat || '').toUpperCase()}
                   <Button variant="ghost" size="sm" className="h-4 w-4 p-0 hover:bg-transparent text-muted-foreground hover:text-destructive" onClick={() => handleRemoveNatureza(nat)} aria-label={`Remover ${nat}`}>
                     <X className="h-3 w-3" />
                   </Button>
                 </Badge>
               ))}
             </div>
-            {selectedNaturezas.length > 1 && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Soma das Penas: {formatarPena(totalPenaAnos)}</p>
-            )}
+            <div className="mt-3">
+              <Label>Naturezas e Penas</Label>
+              <div className="mt-2 space-y-1">
+                {naturezasComPena.map(({ nat, penaAnos }) => (
+                  <p key={`pena-${nat}`} className="text-xs text-gray-700 dark:text-gray-300">
+                    {(nat || '').toUpperCase()}: {formatarPena(penaAnos)}
+                  </p>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Soma das Penas: {formatarPena(totalPenaAnos)}</p>
+            </div>
           </div>
         )}
 
-        {selectedNaturezas.includes("Outros") && (
-          <div>
-            <Label htmlFor="customNatureza">Especifique a Natureza Personalizada *</Label>
-            <Input id="customNatureza" placeholder="Digite a natureza específica" value={selectedCustomNatureza} onChange={e => handleCustomNaturezaChange(e.target.value)} />
-          </div>
-        )}
+        {/* Removido fluxo antigo "Outros"; uso de modal para natureza personalizada */}
 
         {tipificacaoCompleta && (
           <div>
@@ -393,16 +465,39 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
           </div>
         )}
 
-        {penaDescricao && selectedNaturezas.length === 1 && !selectedNaturezas.includes("Outros") && (
-          <div>
-            <Label>Pena da Natureza Selecionada</Label>
-            <Input readOnly value={penaDescricao} className="bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600" />
-          </div>
-        )}
+        {/* Removido campo "Pena da Natureza Selecionada" conforme solicitado */}
 
 
       </CardContent>
       <CardFooter className="flex justify-between"></CardFooter>
+
+      <Dialog open={isAddNaturezaOpen} onOpenChange={setIsAddNaturezaOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar Natureza Personalizada</DialogTitle>
+            <DialogDescription>Informe natureza, tipificação e pena máxima em anos.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="nomeNatureza">Natureza</Label>
+              <Input id="nomeNatureza" value={formNome} onChange={e => setFormNome(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="tipificacaoNatureza">Tipificação</Label>
+              <Input id="tipificacaoNatureza" value={formTipificacao} onChange={e => setFormTipificacao(e.target.value)} placeholder="ART. ..." />
+            </div>
+            <div>
+              <Label htmlFor="penaNatureza">Pena Máxima (anos)</Label>
+              <Input id="penaNatureza" inputMode="decimal" value={formPenaAnos} onChange={e => setFormPenaAnos(e.target.value)} placeholder="Ex.: 0.5" />
+              <p className="text-xs text-muted-foreground mt-1">Equivale a {formatarPena(Number((formPenaAnos || '0').replace(',', '.')))}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddNaturezaOpen(false)}>Cancelar</Button>
+            <Button onClick={handleConfirmAddCustomNatureza}>Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

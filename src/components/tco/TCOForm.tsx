@@ -46,7 +46,31 @@ const TCOForm: React.FC = () => {
   const [cr, setCr] = useState("");
   const [unidade, setUnidade] = useState("");
   const [localRegistro, setLocalRegistro] = useState("");
-  const naturezaOptions = useMemo(() => ["Ameaça", "Vias de Fato", "Lesão Corporal", "Dano", "Injúria", "Difamação", "Calúnia", "Perturbação do Sossego", "Porte de drogas para consumo", "Conduzir veículo sem CNH gerando perigo de dano", "Entregar veículo automotor a pessoa não habilitada", "Trafegar em velocidade incompatível com segurança", "Omissão de socorro", "Rixa", "Invasão de domicílio", "Fraude em comércio", "Ato obsceno", "Falsa identidade", "Resistência", "Desobediência", "Desacato", "Exercício arbitrário das próprias razões", "Periclitação da vida", "Outros"], []);
+  const naturezaOptions = useMemo(() => [
+    "Ameaça",
+    "Vias de Fato",
+    "Lesão Corporal",
+    "Dano",
+    "Injúria",
+    "Difamação",
+    "Calúnia",
+    "Perturbação do Sossego",
+    "Porte de drogas para consumo",
+    "Conduzir veículo sem CNH gerando perigo de dano",
+    "Entregar veículo automotor a pessoa não habilitada",
+    "Trafegar em velocidade incompatível com segurança",
+    "Omissão de socorro",
+    "Rixa",
+    "Invasão de domicílio",
+    "Fraude em comércio",
+    "Ato obsceno",
+    "Falsa identidade",
+    "Resistência",
+    "Desobediência",
+    "Desacato",
+    "Exercício arbitrário das próprias razões",
+    "Periclitação da vida",
+  ].sort((a, b) => a.localeCompare(b)), []);
   const [customNatureza, setCustomNatureza] = useState("");
   const [startTime] = useState<Date | null>(new Date());
   const [isTimerRunning] = useState(true);
@@ -445,22 +469,10 @@ const TCOForm: React.FC = () => {
     const yyyy = String(now.getFullYear());
     const rand = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
     const numero = String(100000 + Math.floor(Math.random() * 900000));
-    const naturezaPool = [
-      "Ameaça",
-      "Vias de Fato",
-      "Lesão Corporal",
-      "Perturbação do Sossego",
-      "Dano",
-      "Injúria"
-    ];
-    const count = Math.random() < 0.5 ? 1 : 2;
-    const escolhidas: string[] = [];
-    while (escolhidas.length < count) {
-      const n = rand(naturezaPool);
-      if (!escolhidas.includes(n)) escolhidas.push(n);
-    }
+    // Natureza de teste focada em drogas
     setTcoNumber(numero);
-    setNatureza(escolhidas.join(" + "));
+    setNatureza("Porte de drogas para consumo");
+    setTipificacao("ART. 28 DA LEI Nº 11.343/2006");
     setCr("2º Comando Regional");
     const unidades = Object.keys(UNIDADE_TO_CIDADE);
     const uni = rand(unidades);
@@ -552,7 +564,7 @@ const TCOForm: React.FC = () => {
     setRelatoAutor("Confessa parcialmente os fatos em ambiente de teste.");
     setRelatoVitima("Relato coerente compatível com a dinâmica simulada.");
     setRelatoTestemunha("Afirma ter presenciado os fatos de forma parcial.");
-    setApreensoes("- 01 SMARTPHONE SAMSUNG, cor preta, IMEI 357894561234567, apreendido para perícia.");
+    setApreensoes("");
     setConclusaoPolicial("Encaminhamento ao Juizado Especial, sem outras medidas cautelares.");
     setProvidencias("Autor e vítima conduzidos ao CISC para confecção do TCO.");
     setDocumentosAnexos("");
@@ -569,6 +581,22 @@ const TCOForm: React.FC = () => {
         url: "https://via.placeholder.com/400x300.png?text=FOTO+TESTE",
         storagePath: "",
         name: "foto2.png"
+      }
+    ]);
+
+    // Dados fakes de drogas
+    setLacreNumero("A230451881");
+    setNumeroRequisicao("250");
+    setDrogasAdicionadas([
+      {
+        id: Math.random().toString(36).slice(2),
+        quantidade: "UMA PORÇÃO",
+        substancia: "artificial",
+        cor: "branca",
+        odor: "inodoro",
+        indicios: "Cocaína",
+        isUnknownMaterial: false,
+        customMaterialDesc: ""
       }
     ]);
 
@@ -591,6 +619,7 @@ const TCOForm: React.FC = () => {
     if (!isDrugCaseLocal && vitimas && vitimas.length > 0) anexosList.push("TERMO DE MANIFESTAÇÃO DA VÍTIMA");
     if (isDrugCaseLocal || (apreensoes && apreensoes.trim() !== '')) anexosList.push("TERMO DE APREENSÃO");
     if (isDrugCaseLocal) anexosList.push("TERMO DE CONSTATAÇÃO PRELIMINAR DE DROGA");
+    if (nomearFielDepositario.trim().toLowerCase() === 'sim' && fielDepositarioSelecionado.trim() !== '') anexosList.push("TERMO DE DEPÓSITO");
     const pessoasComLaudo = [
       ...(autores || []).filter(a => flagSim(a.laudoPericial)).map(a => ({ nome: a.nome })),
       ...(vitimas || []).filter(v => flagSim(v.laudoPericial)).map(v => ({ nome: v.nome }))
@@ -608,6 +637,7 @@ const TCOForm: React.FC = () => {
         nome: a.nome,
         relato: a.relato
       })),
+      autores,
       relatoPolicial,
       conclusaoPolicial,
       providencias,
@@ -656,7 +686,9 @@ const TCOForm: React.FC = () => {
       apreensoes,
       drogas: drogasAdicionadas,
       lacreNumero,
-      numeroRequisicao
+      numeroRequisicao,
+      nomearFielDepositario,
+      fielDepositarioSelecionado
     });
   };
   return <div className="container mx-auto max-w-screen-lg px-2 sm:px-3 py-3 sm:py-4">
@@ -698,7 +730,7 @@ const TCOForm: React.FC = () => {
           if (cr === "2º Comando Regional" && /25º\s*Batalhão de Polícia Militar/i.test(value)) {
             setLocalRegistro("CISC DO PARQUE DO LAGO");
           }
-        }} localRegistro={localRegistro} setLocalRegistro={setLocalRegistro} />
+        }} localRegistro={localRegistro} setLocalRegistro={setLocalRegistro} onTipificacaoChange={setTipificacao} />
         </TabsContent>
 
         <TabsContent value="geral">

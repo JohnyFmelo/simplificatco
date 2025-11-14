@@ -190,7 +190,7 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
             {isCustomNatureza ? (
               <Input id="tipificacao" placeholder="Digite a tipificação legal" value={tipificacao} onChange={e => setTipificacao(e.target.value)} />
             ) : (
-              <Input id="tipificacao" readOnly value={getTipificacaoCompleta()} className="bg-gray-100" placeholder="Tipificação será gerada automaticamente" />
+              <Input id="tipificacao" readOnly value={tipificacao || getTipificacaoCompleta()} className="bg-gray-100" placeholder="Tipificação será gerada automaticamente" />
             )}
           </div>
 
@@ -214,7 +214,11 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
           {/* Campo livre Local do Fato com legenda explicativa */}
           <div className="md:col-span-2">
             <Label htmlFor="localFato">Local do Fato *</Label>
-            <p className="text-xs text-muted-foreground mb-1">Informe o tipo de local (ex.: rua, casa, loja). Não é endereço.</p>
+            <p className="text-xs text-muted-foreground mb-1">
+              Informe o tipo de local (ex.: rua, casa, loja).
+              {' '}
+              <span className="text-destructive">Não é endereço.</span>
+            </p>
             <Input id="localFato" placeholder="Ex.: Rua, Casa, Loja, Escola..." value={localFato} onChange={e => setLocalFato(e.target.value)} />
           </div>
 

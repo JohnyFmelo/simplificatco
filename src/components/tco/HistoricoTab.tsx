@@ -219,33 +219,24 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
   }, [isDrugCase, autorSexo, providencias, setProvidencias]);
 
   useEffect(() => {
-    let anexos = ["TERMO DE COMPROMISSO"];
-    
-    if (!isDrugCase) {
-      anexos.push("TERMO DE MANIFESTAÇÃO");
-    }
-    
-    const hasFielDepositario = autores.some(a => a.fielDepositario === "Sim");
-    if (hasFielDepositario) {
-      anexos.push("TERMO DE DEPÓSITO");
-    }
+    const lista: string[] = [];
+    const flagSim = (val: any) => typeof val === "string" && val.trim().toLowerCase() === "sim";
+    const pessoasComLaudo = [
+      ...((autores || []).filter(a => flagSim((a as any).laudoPericial))).map(a => a.nome),
+      ...((vitimas || []).filter(v => flagSim((v as any).laudoPericial))).map(v => v.nome)
+    ].filter(n => n && String(n).trim() !== "");
+    const hasSeizure = isDrugCase || (apreensoes && apreensoes.trim() !== "");
 
-    if (apreensoes && apreensoes.trim() !== "") {
-      anexos.push("TERMO DE APREENSÃO");
-    }
-    
-    if (isDrugCase) {
-      anexos.push(`TERMO DE CONSTATAÇÃO PRELIMINAR DE DROGA LACRE Nº ${lacreNumero || "N/A"}`);
-      anexos.push("REQUISIÇÃO DE EXAME EM DROGAS DE ABUSO");
-    }
-    
-    if (solicitarCorpoDelito === "Sim") {
-      const generoSuffix = autorSexo?.toLowerCase() === "feminino" ? "A" : "O";
-      anexos.push(`REQUISIÇÃO DE EXAME DE LESÃO CORPORAL D${generoSuffix} ${autorSexo?.toLowerCase() === "feminino" ? "AUTORA" : "AUTOR"}`);
-    }
-    
-    setDocumentosAnexos(anexos.join("\n"));
-  }, [isDrugCase, apreensoes, solicitarCorpoDelito, autorSexo, setDocumentosAnexos, lacreNumero, autores]);
+    if (autores && autores.length > 0) lista.push("TERMO DE COMPROMISSO DE COMPARECIMENTO");
+    if (!isDrugCase && vitimas && vitimas.length > 0) lista.push("TERMO DE MANIFESTAÇÃO DA VÍTIMA");
+    if (hasSeizure) lista.push("TERMO DE APREENSÃO");
+    if (isDrugCase) lista.push(`TERMO DE CONSTATAÇÃO PRELIMINAR DE DROGA${lacreNumero ? ` - LACRE Nº ${lacreNumero}` : ""}`);
+    if (nomearFielDepositario?.trim().toLowerCase() === "sim" && (fielDepositarioSelecionado || "").trim() !== "" && hasSeizure) lista.push("TERMO DE DEPÓSITO");
+    if (pessoasComLaudo.length > 0) lista.push("REQUISIÇÃO DE EXAME DE LESÃO CORPORAL");
+    lista.push("TERMO DE ENCERRAMENTO E REMESSA");
+
+    setDocumentosAnexos(lista.join("\n"));
+  }, [isDrugCase, vitimas, apreensoes, nomearFielDepositario, fielDepositarioSelecionado, lacreNumero, autores, setDocumentosAnexos]);
 
   useEffect(() => {
     if (isDrugCase && internalDrugs && internalDrugs.length > 0) {
@@ -260,6 +251,17 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
       }
     }
   }, [isDrugCase, internalDrugs, apreensoes, setApreensoes]);
+
+  useEffect(() => {
+    if (!conclusaoPolicial || conclusaoPolicial.trim() === "" || conclusaoPolicial === "Não informado.") {
+      const generoSuffix = autorSexo?.toLowerCase() === "feminino" ? "A" : "O";
+      const base = "DIANTE DO EXPOSTO, POR SER INFRAÇÃO DE MENOR POTENCIAL OFENSIVO, LAVREI O TERMO CIRCUNSTANCIADO E PROVIDENCIEI SUA REMESSA AO JUIZADO ESPECIAL CRIMINAL.";
+      const corpoDelito = solicitarCorpoDelito === "Sim"
+        ? ` O(A) AUTOR(A) FOI COMPROMISSADO(A) A COMPARECER EM JUÍZO E LIBERAD${generoSuffix} COM LESÕES CORPORAIS APARENTES, SENDO REQUISITADO EXAME DE CORPO DE DELITO.`
+        : ` O(A) AUTOR(A) FOI COMPROMISSADO(A) A COMPARECER EM JUÍZO E LIBERAD${generoSuffix} SEM LESÕES CORPORAIS APARENTES.`;
+      setConclusaoPolicial(`${base}${corpoDelito}`);
+    }
+  }, [solicitarCorpoDelito, autorSexo, conclusaoPolicial, setConclusaoPolicial]);
 
   useEffect(() => {
     if (conclusaoPolicial) {
@@ -654,7 +656,8 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
         
         <div>
           <Label htmlFor="conclusaoPolicial">CONCLUSÃO POLICIAL</Label>
-          <Textarea id="conclusaoPolicial" placeholder="Descreva a conclusão policial" value={conclusaoPolicial} onChange={e => setConclusaoPolicial(e.target.value)} className="min-h-[150px]" />
+          <p className="text-xs text-red-600 mt-1">ATENÇÃO: EM CASOS DE LESÃO CORPORAL, SOLICITE EXAME DE CORPO DE DELITO E AJUSTE O TEXTO.</p>
+          <Textarea id="conclusaoPolicial" placeholder="Descreva a conclusão policial" value={conclusaoPolicial} onChange={e => setConclusaoPolicial((e.target.value || "").toUpperCase())} className="min-h-[150px]" />
           {solicitarCorpoDelito === "Sim" && (
             <p className="text-xs text-green-600 mt-1">
               Observação: O texto será ajustado para indicar que o autor possui lesões corporais aparentes.
