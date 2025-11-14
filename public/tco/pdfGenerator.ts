@@ -131,34 +131,34 @@ export const generatePDF = async (inputData: any): Promise<Blob> => {
             yPosition = generateAutuacaoPage(doc, MARGIN_TOP, data);
             yPosition = addNewPage(doc, data);
 
-            // << CORREÇÃO: Lógica para preparar a lista de anexos agora usa o array 'data.drogas' >>
             const isDrugCase = Array.isArray(data.drogas) && data.drogas.length > 0;
-            const documentosAnexosList = [];
+            const documentosAnexosList: string[] = [];
 
             if (data.autores && data.autores.length > 0) {
-                data.autores.forEach((autor: any) => {
-                    if (autor.nome && autor.nome.trim()) {
-                        documentosAnexosList.push(`TERMO DE COMPROMISSO DE ${autor.nome.toUpperCase()}`);
-                    }
-                });
+                documentosAnexosList.push("TERMO DE COMPROMISSO DE COMPARECIMENTO");
             }
 
             if (!isDrugCase && data.vitimas && data.vitimas.length > 0) {
-                data.vitimas.forEach((vitima: any) => {
-                    if (vitima.nome && vitima.nome.trim()) {
-                        documentosAnexosList.push(`TERMO DE MANIFESTAÇÃO DA VÍTIMA ${vitima.nome.toUpperCase()}`);
-                    }
-                });
+                documentosAnexosList.push("TERMO DE MANIFESTAÇÃO DA VÍTIMA");
             }
 
+            if (isDrugCase || (data.apreensoes && data.apreensoes.trim() !== '')) {
+                documentosAnexosList.push("TERMO DE APREENSÃO");
+            }
+
+            if (isDrugCase) {
+                documentosAnexosList.push("TERMO DE CONSTATAÇÃO PRELIMINAR DE DROGA");
+            }
+
+            const flagSim = (val: any) => typeof val === 'string' && val.trim().toLowerCase() === 'sim';
             const pessoasComLaudo = [
-                ...(data.autores || []).filter((a: any) => a.laudoPericial === "Sim").map((a: any) => ({ nome: a.nome, sexo: a.sexo, tipo: "Autor" })),
-                ...(data.vitimas || []).filter((v: any) => v.laudoPericial === "Sim").map((v: any) => ({ nome: v.nome, sexo: v.sexo, tipo: "Vítima" }))
-            ].filter((p: any) => p.nome && p.nome.trim());
+                ...(data.autores || []).filter((a: any) => flagSim(a.laudoPericial)).map((a: any) => ({ nome: a.nome, sexo: a.sexo, tipo: "Autor" })),
+                ...(data.vitimas || []).filter((v: any) => flagSim(v.laudoPericial)).map((v: any) => ({ nome: v.nome, sexo: v.sexo, tipo: "Vítima" }))
+            ].filter((p: any) => p.nome && String(p.nome).trim());
 
             const updatedData = {
                 ...data,
-                documentosAnexos: documentosAnexosList.join('\n')
+                documentosAnexos: [...documentosAnexosList, "TERMO DE ENCERRAMENTO E REMESSA"].join('\n')
             };
 
             generateHistoricoContent(doc, yPosition, updatedData)

@@ -224,6 +224,7 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
       anexos.push(`REQUISIÇÃO DE EXAME DE LESÃO CORPORAL D${generoSuffix} ${autorSexo?.toLowerCase() === "feminino" ? "AUTORA" : "AUTOR"}`);
     }
     
+    anexos.push("TERMO DE ENCERRAMENTO E REMESSA");
     setDocumentosAnexos(anexos.join("\n"));
   }, [isDrugCase, apreensoes, solicitarCorpoDelito, autorSexo, setDocumentosAnexos, lacreNumero, autores]);
 
