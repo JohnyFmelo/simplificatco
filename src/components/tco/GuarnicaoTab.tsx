@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabaseClient";
 
 // --- Funções Auxiliares ---
@@ -117,8 +116,7 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState<boolean>(false);
   const [newOfficerFormData, setNewOfficerFormData] = useState<PoliceOfficerFormData>(initialOfficerFormData);
-  const [isFetchingDialogDetails, setIsFetchingDialogDetails] = useState<boolean>(false); // NOVO ESTADO
-  const [registerTab, setRegisterTab] = useState<"condutor" | "policial">("condutor"); // Aba ativa no diálogo
+  const [isFetchingDialogDetails, setIsFetchingDialogDetails] = useState<boolean>(false);
 
   useEffect(() => {
     console.log("[GuarnicaoTab] Prop 'currentGuarnicaoList' recebida:", currentGuarnicaoList);
@@ -220,7 +218,6 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setNewOfficerFormData(initialOfficerFormData); // Reseta o formulário ao abrir
-    setRegisterTab("condutor"); // Começa na aba Condutor
     setIsRegisterDialogOpen(true);
   };
 
@@ -330,41 +327,10 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
   };
 
   const handleSaveNewOfficer = async () => {
-    console.log("[GuarnicaoTab] Tentando salvar novo registro (aba:", registerTab, "):", newOfficerFormData);
+    console.log("[GuarnicaoTab] Tentando salvar/atualizar policial:", newOfficerFormData);
     const { rgpm, nome, graduacao, pai, mae, naturalidade, cpf, telefone } = newOfficerFormData;
 
-    // Validação condicional por aba
-    if (registerTab === "policial") {
-      const camposObrigatoriosPolicial: (keyof PoliceOfficerFormData)[] = ["rgpm", "nome", "graduacao"];
-      const faltandoPolicial = camposObrigatoriosPolicial.filter(key => !newOfficerFormData[key]?.trim());
-      if (faltandoPolicial.length > 0) {
-        toast({ variant: "destructive", title: "Campos Obrigatórios", description: `Preencha: ${faltandoPolicial.join(', ')}` });
-        return;
-      }
-      const rgpmNumeros = somenteNumeros(rgpm);
-      if (rgpmNumeros.length !== 6) {
-        toast({ variant: "destructive", title: "RGPM Inválido", description: "O RGPM deve ter 6 dígitos." });
-        return;
-      }
-      try {
-        const dataToSave = {
-          rgpm: rgpmNumeros,
-          nome_completo: nome.toUpperCase(),
-          graduacao: graduacao,
-        };
-        const { error } = await supabase
-          .from("police_officers")
-          .upsert(dataToSave, { onConflict: "rgpm" });
-        if (error) throw error;
-        toast({ title: "Sucesso", description: "Dados do policial salvos/atualizados." });
-        closeRegisterDialog();
-        return;
-      } catch (error: any) {
-        console.error("[GuarnicaoTab] Erro ao salvar (policial):", error);
-        toast({ variant: "destructive", title: "Erro ao Salvar no BD", description: `Falha: ${error.message || 'Erro desconhecido'}` });
-        return;
-      }
-    }
+    
 
     // Fluxo padrão para Condutor: valida tudo
     const camposObrigatorios: (keyof PoliceOfficerFormData)[] = ["rgpm", "nome", "graduacao", "pai", "mae", "naturalidade", "cpf", "telefone"];
@@ -401,7 +367,7 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
         cpf: cpfNumeros,
         telefone: telefoneNumeros
       };
-      console.log("[GuarnicaoTab] Dados a serem salvos/atualizados no BD (condutor):", dataToSave);
+      console.log("[GuarnicaoTab] Dados a serem salvos/atualizados no BD:", dataToSave);
 
       const { error } = await supabase
         .from("police_officers")
@@ -410,21 +376,15 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
       if (error) {
         throw error;
       }
-      toast({ title: "Sucesso", description: "Condutor cadastrado/atualizado no banco de dados." });
+      toast({ title: "Sucesso", description: "Policial cadastrado/atualizado no banco de dados." });
       closeRegisterDialog();
     } catch (error: any) {
-      console.error("[GuarnicaoTab] Erro ao salvar (condutor):", error);
+      console.error("[GuarnicaoTab] Erro ao salvar policial:", error);
       toast({ variant: "destructive", title: "Erro ao Salvar no BD", description: `Falha: ${error.message || 'Erro desconhecido'}` });
     }
   };
 
   const isSaveDisabled = useCallback((): boolean => {
-    if (registerTab === "policial") {
-      const { rgpm, nome, graduacao } = newOfficerFormData;
-      if (!rgpm || !nome || !graduacao) return true;
-      if (somenteNumeros(rgpm).length !== 6) return true;
-      return false;
-    }
     const { rgpm, nome, graduacao, pai, mae, naturalidade, cpf, telefone } = newOfficerFormData;
     if (!rgpm || !nome || !graduacao || !pai || !mae || !naturalidade || !cpf || !telefone) return true;
     if (somenteNumeros(rgpm).length !== 6) return true;
@@ -432,7 +392,7 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
     const telNums = somenteNumeros(telefone);
     if (telNums.length !== 10 && telNums.length !== 11) return true;
     return false;
-  }, [newOfficerFormData, registerTab]);
+  }, [newOfficerFormData]);
 
   return (
     <Card>
@@ -520,84 +480,52 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Cadastrar ou Atualizar</DialogTitle>
-            <DialogDescription>Selecione Condutor ou Policial e preencha os campos.</DialogDescription>
+            <DialogDescription>Preencha os dados do policial.</DialogDescription>
           </DialogHeader>
-
-          <Tabs value={registerTab} onValueChange={(val) => setRegisterTab(val as any)} className="space-y-3">
-            <TabsList className="grid grid-cols-2">
-              <TabsTrigger value="condutor">Condutor</TabsTrigger>
-              <TabsTrigger value="policial">Policial</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="condutor">
-              <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-3 px-[5px] py-0 my-0">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="dlg-rgpm">RGPM* <Info className="inline h-3 w-3 text-muted-foreground ml-1" aria-label="Usado para buscar e identificar o policial" /></Label>
-                    <Input id="dlg-rgpm" value={newOfficerFormData.rgpm} onChange={e => handleRegisterInputChange("rgpm", e.target.value)} onBlur={handleRgpmDialogBlur} placeholder="000000" required inputMode="numeric" maxLength={6} disabled={isFetchingDialogDetails} />
-                    {isFetchingDialogDetails && <p className="text-xs text-muted-foreground mt-1">Buscando dados do RGPM...</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor="dlg-graduacao">Graduação *</Label>
-                    <select id="dlg-graduacao" value={newOfficerFormData.graduacao} onChange={e => handleRegisterInputChange("graduacao", e.target.value)} required className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" disabled={isFetchingDialogDetails}>
-                      <option value="">Selecione...</option>
-                      {graduacoes.map(grad => <option key={grad} value={grad}>{grad}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="dlg-nome">Nome Completo *</Label>
-                  <Input id="dlg-nome" value={newOfficerFormData.nome} onChange={e => handleRegisterInputChange("nome", e.target.value)} placeholder="Nome completo" required disabled={isFetchingDialogDetails} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="dlg-cpf">CPF *</Label>
-                    <Input id="dlg-cpf" value={newOfficerFormData.cpf} onChange={e => handleRegisterInputChange("cpf", e.target.value)} placeholder="000.000.000-00" required inputMode="numeric" maxLength={14} disabled={isFetchingDialogDetails} />
-                  </div>
-                  <div>
-                    <Label htmlFor="dlg-telefone">Telefone (com DDD) *</Label>
-                    <Input id="dlg-telefone" value={newOfficerFormData.telefone} onChange={e => handleRegisterInputChange("telefone", e.target.value)} placeholder="(00) 00000-0000" required inputMode="tel" maxLength={15} disabled={isFetchingDialogDetails} />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="dlg-naturalidade">Naturalidade (Cidade/UF) *</Label>
-                  <Input id="dlg-naturalidade" value={newOfficerFormData.naturalidade} onChange={e => handleRegisterInputChange("naturalidade", e.target.value)} placeholder="Ex: Cuiabá/MT" required disabled={isFetchingDialogDetails} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="dlg-pai">Nome do Pai *</Label>
-                    <Input id="dlg-pai" value={newOfficerFormData.pai} onChange={e => handleRegisterInputChange("pai", e.target.value)} required placeholder="Nome completo do pai" disabled={isFetchingDialogDetails} />
-                  </div>
-                  <div>
-                    <Label htmlFor="dlg-mae">Nome da Mãe *</Label>
-                    <Input id="dlg-mae" value={newOfficerFormData.mae} onChange={e => handleRegisterInputChange("mae", e.target.value)} required placeholder="Nome completo da mãe" disabled={isFetchingDialogDetails} />
-                  </div>
-                </div>
+          <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-3 px-[5px] py-0 my-0">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="dlg-rgpm">RGPM* <Info className="inline h-3 w-3 text-muted-foreground ml-1" aria-label="Usado para buscar e identificar o policial" /></Label>
+                <Input id="dlg-rgpm" value={newOfficerFormData.rgpm} onChange={e => handleRegisterInputChange("rgpm", e.target.value)} onBlur={handleRgpmDialogBlur} placeholder="000000" required inputMode="numeric" maxLength={6} disabled={isFetchingDialogDetails} />
+                {isFetchingDialogDetails && <p className="text-xs text-muted-foreground mt-1">Buscando dados do RGPM...</p>}
               </div>
-            </TabsContent>
-
-            <TabsContent value="policial">
-              <div className="grid gap-4 max-h-[60vh] overflow-y-auto pr-3 px-[5px] py-0 my-0">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="dlg-rgpm-pol">RGPM *</Label>
-                    <Input id="dlg-rgpm-pol" value={newOfficerFormData.rgpm} onChange={e => handleRegisterInputChange("rgpm", e.target.value)} onBlur={handleRgpmDialogBlur} placeholder="000000" required inputMode="numeric" maxLength={6} />
-                  </div>
-                  <div>
-                    <Label htmlFor="dlg-graduacao-pol">Graduação *</Label>
-                    <select id="dlg-graduacao-pol" value={newOfficerFormData.graduacao} onChange={e => handleRegisterInputChange("graduacao", e.target.value)} required className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                      <option value="">Selecione...</option>
-                      {graduacoes.map(grad => <option key={grad} value={grad}>{grad}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="dlg-nome-pol">Nome Completo *</Label>
-                  <Input id="dlg-nome-pol" value={newOfficerFormData.nome} onChange={e => handleRegisterInputChange("nome", e.target.value)} placeholder="Nome completo" required />
-                </div>
+              <div>
+                <Label htmlFor="dlg-graduacao">Graduação *</Label>
+                <select id="dlg-graduacao" value={newOfficerFormData.graduacao} onChange={e => handleRegisterInputChange("graduacao", e.target.value)} required className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" disabled={isFetchingDialogDetails}>
+                  <option value="">Selecione...</option>
+                  {graduacoes.map(grad => <option key={grad} value={grad}>{grad}</option>)}
+                </select>
               </div>
-            </TabsContent>
-          </Tabs>
+            </div>
+            <div>
+              <Label htmlFor="dlg-nome">Nome Completo *</Label>
+              <Input id="dlg-nome" value={newOfficerFormData.nome} onChange={e => handleRegisterInputChange("nome", e.target.value)} placeholder="Nome completo" required disabled={isFetchingDialogDetails} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="dlg-cpf">CPF *</Label>
+                <Input id="dlg-cpf" value={newOfficerFormData.cpf} onChange={e => handleRegisterInputChange("cpf", e.target.value)} placeholder="000.000.000-00" required inputMode="numeric" maxLength={14} disabled={isFetchingDialogDetails} />
+              </div>
+              <div>
+                <Label htmlFor="dlg-telefone">Telefone (com DDD) *</Label>
+                <Input id="dlg-telefone" value={newOfficerFormData.telefone} onChange={e => handleRegisterInputChange("telefone", e.target.value)} placeholder="(00) 00000-0000" required inputMode="tel" maxLength={15} disabled={isFetchingDialogDetails} />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="dlg-naturalidade">Naturalidade (Cidade/UF) *</Label>
+              <Input id="dlg-naturalidade" value={newOfficerFormData.naturalidade} onChange={e => handleRegisterInputChange("naturalidade", e.target.value)} placeholder="Ex: Cuiabá/MT" required disabled={isFetchingDialogDetails} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="dlg-pai">Nome do Pai *</Label>
+                <Input id="dlg-pai" value={newOfficerFormData.pai} onChange={e => handleRegisterInputChange("pai", e.target.value)} required placeholder="Nome completo do pai" disabled={isFetchingDialogDetails} />
+              </div>
+              <div>
+                <Label htmlFor="dlg-mae">Nome da Mãe *</Label>
+                <Input id="dlg-mae" value={newOfficerFormData.mae} onChange={e => handleRegisterInputChange("mae", e.target.value)} required placeholder="Nome completo da mãe" disabled={isFetchingDialogDetails} />
+              </div>
+            </div>
+          </div>
 
           <DialogFooter>
             <p className="text-xs text-muted-foreground mr-auto">

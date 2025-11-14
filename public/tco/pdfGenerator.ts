@@ -201,6 +201,9 @@ export const generatePDF = async (inputData: any): Promise<Blob> => {
 
                     addTermoEncerramentoRemessa(doc, updatedData);
 
+                    doc.setPage(1);
+                    addStandardFooterContent(doc);
+
                     const pageCount = doc.internal.pages.length - 1;
                     if (!updatedData.hidePagination) {
                         for (let i = 1; i <= pageCount; i++) {
