@@ -4,7 +4,8 @@ import jsPDF from "jspdf";
 import {
     MARGIN_TOP, MARGIN_BOTTOM, MARGIN_RIGHT, getPageConstants,
     addNewPage,
-    addStandardFooterContent
+    addStandardFooterContent,
+    addFirstPageFooterContent
 } from './PDF/pdfUtils.js';
 
 // Importa geradores de conteúdo da subpasta PDF
@@ -107,6 +108,22 @@ export const generatePDF = async (inputData: any): Promise<Blob> => {
                 format: "a4",
             });
 
+            const loadImageDataURL = async (url: string): Promise<string | null> => {
+                try {
+                    const res = await fetch(url, { cache: 'no-cache' });
+                    if (!res.ok) return null;
+                    const blob = await res.blob();
+                    return await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(String(reader.result));
+                        reader.onerror = () => resolve(null);
+                        reader.readAsDataURL(blob);
+                    });
+                } catch {
+                    return null;
+                }
+            };
+
             let processedVideoLinks = inputData.videoLinks;
             if (processedVideoLinks && Array.isArray(processedVideoLinks)) {
                 processedVideoLinks = processedVideoLinks.map((link, index) => {
@@ -117,12 +134,28 @@ export const generatePDF = async (inputData: any): Promise<Blob> => {
                 });
             }
 
+            const logoCandidates = [
+                '/Brasão.jpg',
+                '/Bras%C3%A3o.jpg',
+                '/brasao.jpg',
+                '/Brasao.jpg',
+                '/Brasão.JPG',
+                '/Brasao.JPG'
+            ];
+            let logoBase64 = inputData.logoBase64 || null;
+            if (!logoBase64) {
+                for (const url of logoCandidates) {
+                    const b64 = await loadImageDataURL(url);
+                    if (b64) { logoBase64 = b64; break; }
+                }
+            }
             const data = {
                 ...inputData,
                 juizadoEspecialData: juizadoData,
                 juizadoEspecialHora: juizadoHora,
                 videoLinks: processedVideoLinks,
-                hidePagination: true
+                hidePagination: true,
+                logoBase64: logoBase64 || undefined
             };
 
             const { PAGE_WIDTH, PAGE_HEIGHT } = getPageConstants(doc);
@@ -201,8 +234,14 @@ export const generatePDF = async (inputData: any): Promise<Blob> => {
 
                     addTermoEncerramentoRemessa(doc, updatedData);
 
-                    doc.setPage(1);
+                    const lastPage = (typeof (doc as any).getNumberOfPages === 'function')
+                        ? (doc as any).getNumberOfPages()
+                        : (doc.internal?.pages?.length ? doc.internal.pages.length - 1 : 1);
+                    doc.setPage(lastPage);
                     addStandardFooterContent(doc);
+
+                    doc.setPage(1);
+                    addFirstPageFooterContent(doc);
 
                     const pageCount = doc.internal.pages.length - 1;
                     if (!updatedData.hidePagination) {

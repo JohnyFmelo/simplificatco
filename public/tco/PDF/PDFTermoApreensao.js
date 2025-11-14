@@ -189,8 +189,7 @@ export function addTermoApreensao(doc, data) {
     currentY += 8;
 
     // Configurações da tabela
-    const rowHeight = 7;
-    const bigRowHeight = 20;
+    const rowHeight = 15;
     const colWidth = MAX_LINE_WIDTH / 3;
     const startX = MARGIN_LEFT;
     
@@ -204,42 +203,42 @@ export function addTermoApreensao(doc, data) {
     
     const dataHoraObj = formatarDataHora(data.dataTerminoRegistro || data.dataFato, data.horaTerminoRegistro || data.horaFato, true);
     doc.rect(startX, rowY, colWidth, rowHeight);
-    doc.text(`DATA: ${dataHoraObj.date}`, startX + 2, rowY + 5);
+    doc.text(`DATA: ${dataHoraObj.date}`, startX + 2, rowY + 9);
     doc.rect(startX + colWidth, rowY, colWidth, rowHeight);
-    doc.text(`HORA: ${dataHoraObj.time}`, startX + colWidth + 2, rowY + 5);
+    doc.text(`HORA: ${dataHoraObj.time}`, startX + colWidth + 2, rowY + 9);
     doc.rect(startX + 2 * colWidth, rowY, colWidth, rowHeight);
-    doc.text(`LOCAL: 25º BPM`, startX + 2 * colWidth + 2, rowY + 5);
+    doc.text(`LOCAL: 25º BPM`, startX + 2 * colWidth + 2, rowY + 9);
     currentY = rowY + rowHeight;
 
     // LINHA 2: NOME DO POLICIAL (1 coluna)
     rowY = currentY;
     const nomePolicial = `${condutor?.nome || ""} ${condutor?.posto || ""}`.trim().toUpperCase();
     doc.rect(startX, rowY, MAX_LINE_WIDTH, rowHeight);
-    doc.text(`NOME DO POLICIAL: ${nomePolicial}`, startX + 2, rowY + 5);
+    doc.text(`NOME DO POLICIAL: ${nomePolicial}`, startX + 2, rowY + 9);
     currentY = rowY + rowHeight;
 
     // LINHA 3: FILIAÇÃO PAI (1 coluna)
     rowY = currentY;
     const nomePai = (condutor?.pai || autor?.filiacaoPai || "").toUpperCase();
     doc.rect(startX, rowY, MAX_LINE_WIDTH, rowHeight);
-    doc.text(`FILIAÇÃO PAI: ${nomePai}`, startX + 2, rowY + 5);
+    doc.text(`FILIAÇÃO PAI: ${nomePai}`, startX + 2, rowY + 9);
     currentY = rowY + rowHeight;
 
     // LINHA 4: FILIAÇÃO MÃE (1 coluna)
     rowY = currentY;
     const nomeMae = (condutor?.mae || autor?.filiacaoMae || "").toUpperCase();
     doc.rect(startX, rowY, MAX_LINE_WIDTH, rowHeight);
-    doc.text(`FILIAÇÃO MÃE: ${nomeMae}`, startX + 2, rowY + 5);
+    doc.text(`FILIAÇÃO MÃE: ${nomeMae}`, startX + 2, rowY + 9);
     currentY = rowY + rowHeight;
 
     // LINHA 5: NATURALIDADE | RGPM | CPF (3 colunas)
     rowY = currentY;
     doc.rect(startX, rowY, colWidth, rowHeight);
-    doc.text(`NATURALIDADE: ${(condutor?.naturalidade || autor?.naturalidade || "").toUpperCase()}`, startX + 2, rowY + 5);
+    doc.text(`NATURALIDADE: ${(condutor?.naturalidade || autor?.naturalidade || "").toUpperCase()}`, startX + 2, rowY + 9);
     doc.rect(startX + colWidth, rowY, colWidth, rowHeight);
-    doc.text(`RGPM: ${condutor?.rg || ""}`, startX + colWidth + 2, rowY + 5);
+    doc.text(`RGPM: ${condutor?.rg || ""}`, startX + colWidth + 2, rowY + 9);
     doc.rect(startX + 2 * colWidth, rowY, colWidth, rowHeight);
-    doc.text(`CPF: ${condutor?.cpf || autor?.cpf || ""}`, startX + 2 * colWidth + 2, rowY + 5);
+    doc.text(`CPF: ${condutor?.cpf || autor?.cpf || ""}`, startX + 2 * colWidth + 2, rowY + 9);
     currentY = rowY + rowHeight;
 
     // LINHA 6: END. (1 coluna)
@@ -247,27 +246,35 @@ export function addTermoApreensao(doc, data) {
     const endereco = "AV. DR. PARANÁ, S/N° COMPLEXO DA UNIVAG, AO LADO DO NÚCLEO DE PRÁTICA JURÍDICA. BAIRRO CRISTO REI CEP 78.110-100, VG - MT";
     doc.rect(startX, rowY, MAX_LINE_WIDTH, rowHeight);
     doc.setFont(DEFAULT_FONT_NAME, "bold");
-    doc.text("END.:", startX + 2, rowY + 5);
+    doc.text("END.:", startX + 2, rowY + 9);
     doc.setFont(DEFAULT_FONT_NAME, "normal");
     const endLines = doc.splitTextToSize(endereco, MAX_LINE_WIDTH - 15);
-    doc.text(endLines[0], startX + 15, rowY + 5);
+    doc.text(endLines[0], startX + 15, rowY + 9);
     currentY = rowY + rowHeight;
+    for (let i = 1; i < endLines.length; i++) {
+        rowY = currentY;
+        currentY = checkPageBreak(doc, rowY, rowHeight, data);
+        if (currentY !== rowY) rowY = currentY;
+        doc.rect(startX, rowY, MAX_LINE_WIDTH, rowHeight);
+        doc.text(endLines[i], startX + 2, rowY + 9);
+        currentY = rowY + rowHeight;
+    }
 
     // LINHA 7: MUNICÍPIO | UF | TEL (3 colunas)
     rowY = currentY;
     doc.setFont(DEFAULT_FONT_NAME, "bold");
     doc.rect(startX, rowY, colWidth, rowHeight);
-    doc.text(`MUNICÍPIO: VÁRZEA GRANDE`, startX + 2, rowY + 5);
+    doc.text(`MUNICÍPIO: VÁRZEA GRANDE`, startX + 2, rowY + 9);
     doc.rect(startX + colWidth, rowY, colWidth, rowHeight);
-    doc.text(`UF: MT`, startX + colWidth + 2, rowY + 5);
+    doc.text(`UF: MT`, startX + colWidth + 2, rowY + 9);
     doc.rect(startX + 2 * colWidth, rowY, colWidth, rowHeight);
-    doc.text(`TEL: ${condutor?.telefone || autor?.celular || ""}`, startX + 2 * colWidth + 2, rowY + 5);
+    doc.text(`TEL: ${condutor?.telefone || autor?.celular || ""}`, startX + 2 * colWidth + 2, rowY + 9);
     currentY = rowY + rowHeight;
 
     // LINHA 8: FICA APREENDIDO O DESCRITO ABAIXO (1 coluna)
     rowY = currentY;
     doc.rect(startX, rowY, MAX_LINE_WIDTH, rowHeight);
-    doc.text("FICA APREENDIDO O DESCRITO ABAIXO:", startX + 2, rowY + 5);
+    doc.text("FICA APREENDIDO O DESCRITO ABAIXO:", startX + 2, rowY + 9);
     currentY = rowY + rowHeight;
 
     // LINHA 9: Descrição do item apreendido (1 coluna com altura maior)
@@ -275,20 +282,28 @@ export function addTermoApreensao(doc, data) {
     const textoApreensao = (data.apreensoes || "").toUpperCase();
     doc.setFont(DEFAULT_FONT_NAME, "normal");
     const apreensaoLines = doc.splitTextToSize(textoApreensao, MAX_LINE_WIDTH - 4);
-    const descHeight = Math.max(bigRowHeight, apreensaoLines.length * 4 + 4);
-    doc.rect(startX, rowY, MAX_LINE_WIDTH, descHeight);
-    doc.text(apreensaoLines, startX + 2, rowY + 4);
-    currentY = rowY + descHeight;
+    for (let i = 0; i < apreensaoLines.length; i++) {
+        rowY = currentY;
+        currentY = checkPageBreak(doc, rowY, rowHeight, data);
+        if (currentY !== rowY) rowY = currentY;
+        doc.rect(startX, rowY, MAX_LINE_WIDTH, rowHeight);
+        doc.text(apreensaoLines[i], startX + 2, rowY + 9);
+        currentY = rowY + rowHeight;
+    }
 
     // LINHA 10: Texto legal (1 coluna)
     rowY = currentY;
     doc.setFont(DEFAULT_FONT_NAME, "normal");
     const textoLegal = "O PRESENTE TERMO DE APREENSÃO FOI LAVRADO COM BASE NO ART. 6º, II, DO CÓDIGO DE PROCESSO PENAL, E ART. 92 DA LEI 9.999/1995.";
     const legalLines = doc.splitTextToSize(textoLegal, MAX_LINE_WIDTH - 4);
-    const legalHeight = Math.max(rowHeight * 2, legalLines.length * 3.5 + 4);
-    doc.rect(startX, rowY, MAX_LINE_WIDTH, legalHeight);
-    doc.text(legalLines, startX + 2, rowY + 4);
-    currentY = rowY + legalHeight;
+    for (let i = 0; i < legalLines.length; i++) {
+        rowY = currentY;
+        currentY = checkPageBreak(doc, rowY, rowHeight, data);
+        if (currentY !== rowY) rowY = currentY;
+        doc.rect(startX, rowY, MAX_LINE_WIDTH, rowHeight);
+        doc.text(legalLines[i], startX + 2, rowY + 9);
+        currentY = rowY + rowHeight;
+    }
 
     currentY += 5;
     doc.setFont(DEFAULT_FONT_NAME, "normal");

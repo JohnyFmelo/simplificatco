@@ -156,6 +156,15 @@ export const getPageConstants = (doc) => {
 export const addStandardHeaderContent = (doc, data = {}) => {
     const { PAGE_WIDTH } = getPageConstants(doc);
     let headerY = MARGIN_TOP;
+    const logo = data?.logoBase64;
+    if (logo) {
+        try {
+            const match = String(logo).match(/^data:image\/(png|jpeg);base64,(.*)$/i);
+            const fmt = match ? match[1].toUpperCase() : 'JPEG';
+            const payload = match ? match[2] : String(logo).replace(/^data:[^;]+;base64,/, '');
+            doc.addImage(payload, fmt, MARGIN_LEFT, headerY, 18, 18);
+        } catch (_) {}
+    }
     doc.setFont("helvetica", "bold"); doc.setFontSize(12);
     doc.text("ESTADO DE MATO GROSSO", PAGE_WIDTH / 2, headerY, { align: "center" }); headerY += 4;
     doc.text("POLÍCIA MILITAR", PAGE_WIDTH / 2, headerY, { align: "center" }); headerY += 4;
@@ -163,8 +172,8 @@ export const addStandardHeaderContent = (doc, data = {}) => {
     doc.setDrawColor(0); doc.setLineWidth(0.2);
     doc.line(MARGIN_LEFT, headerY, PAGE_WIDTH - MARGIN_RIGHT, headerY); headerY += 4;
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    const tcoNum = data?.tcoNumber || "Não informado."; // Pega dos dados passados
-    const year = new Date().getFullYear(); // Pega o ano atual dinamicamente
+    const tcoNum = data?.tcoNumber || "Não informado.";
+    const year = new Date().getFullYear();
     doc.text(`REF.:TERMO CIRCUNSTANCIADO DE OCORRÊNCIA Nº ${tcoNum}/2ºCR/${year}`, MARGIN_LEFT, headerY);
 };
 
@@ -174,11 +183,31 @@ export const addStandardFooterContent = (doc) => {
     doc.setFont("helvetica", "normal"); doc.setFontSize(8);
     const footerText = "25º Batalhão de Polícia Militar\nAv. Dr. Paraná, s/nº complexo da Univag, ao lado do núcleo de Pratica Jurídica. Bairro Cristo Rei\nCEP 78.110-100, Várzea Grande - MT";
     const footerLines = doc.splitTextToSize(footerText, MAX_LINE_WIDTH);
-    // Posiciona o rodapé a partir da margem inferior da página
-    let footerY = PAGE_HEIGHT - MARGIN_BOTTOM - (footerLines.length * 3) - 2; // Pequeno ajuste para subir um pouco
+    const lineHeight = 3;
+    const startY = PAGE_HEIGHT - MARGIN_BOTTOM - (footerLines.length * lineHeight);
+    doc.setLineWidth(0.2);
+    doc.line(MARGIN_LEFT, startY - 2, PAGE_WIDTH - MARGIN_RIGHT, startY - 2);
+    let footerY = startY;
     footerLines.forEach(line => {
         doc.text(line, PAGE_WIDTH / 2, footerY, { align: "center" });
-        footerY += 3; // Espaçamento entre linhas do rodapé
+        footerY += lineHeight;
+    });
+};
+
+/** Rodapé específico e independente da primeira página */
+export const addFirstPageFooterContent = (doc) => {
+    const { PAGE_WIDTH, PAGE_HEIGHT, MAX_LINE_WIDTH } = getPageConstants(doc);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    const footerText = "25º Batalhão de Polícia Militar\nAv. Dr. Paraná, s/nº complexo da Univag, ao lado do núcleo de Pratica Jurídica. Bairro Cristo Rei\nCEP 78.110-100, Várzea Grande - MT";
+    const footerLines = doc.splitTextToSize(footerText, MAX_LINE_WIDTH);
+    const lineHeight = 3;
+    const baseY = PAGE_HEIGHT - MARGIN_BOTTOM - (footerLines.length * lineHeight) - 1;
+    doc.setLineWidth(0.2);
+    doc.line(MARGIN_LEFT, baseY - 2, PAGE_WIDTH - MARGIN_RIGHT, baseY - 2);
+    let y = baseY;
+    footerLines.forEach(line => {
+        doc.text(line, PAGE_WIDTH / 2, y, { align: "center" });
+        y += lineHeight;
     });
 };
 

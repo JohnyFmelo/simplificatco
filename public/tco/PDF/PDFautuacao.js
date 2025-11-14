@@ -15,6 +15,11 @@ export const generateAutuacaoPage = (doc, currentY, data) => {
     let yPos = currentY; // Geralmente MARGIN_TOP
 
     // --- Cabeçalho Específico da Página 1 ---
+    if (data.logoBase64) {
+        try {
+            doc.addImage(data.logoBase64, 'JPEG', 20, yPos, 18, 18);
+        } catch (_) {}
+    }
     doc.setFont("helvetica", "bold"); doc.setFontSize(12);
     doc.text("ESTADO DE MATO GROSSO", PAGE_WIDTH / 2, yPos, { align: "center" }); yPos += 4;
     doc.text("POLÍCIA MILITAR", PAGE_WIDTH / 2, yPos, { align: "center" }); yPos += 4;
@@ -109,8 +114,6 @@ export const generateAutuacaoPage = (doc, currentY, data) => {
     doc.text("CONDUTOR DA OCORRÊNCIA", PAGE_WIDTH / 2, yPos, { align: "center" });
     yPos += 10;
 
-    // --- Rodapé Específico da Página 1 ---
-    addStandardFooterContent(doc);
-
+    // Rodapé será desenhado de forma independente pelo gerador principal
     return yPos;
 };
