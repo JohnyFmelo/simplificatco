@@ -584,6 +584,20 @@ const TCOForm: React.FC = () => {
 
   // Download do TCO em DOCX na aba "Audiência" (parte final)
   const handleDownloadWord = () => {
+    const flagSim = (val: any) => typeof val === 'string' && val.trim().toLowerCase() === 'sim';
+    const isDrugCaseLocal = Array.isArray(drogasAdicionadas) && drogasAdicionadas.length > 0;
+    const anexosList: string[] = [];
+    if (autores && autores.length > 0) anexosList.push("TERMO DE COMPROMISSO DE COMPARECIMENTO");
+    if (!isDrugCaseLocal && vitimas && vitimas.length > 0) anexosList.push("TERMO DE MANIFESTAÇÃO DA VÍTIMA");
+    if (isDrugCaseLocal || (apreensoes && apreensoes.trim() !== '')) anexosList.push("TERMO DE APREENSÃO");
+    if (isDrugCaseLocal) anexosList.push("TERMO DE CONSTATAÇÃO PRELIMINAR DE DROGA");
+    const pessoasComLaudo = [
+      ...(autores || []).filter(a => flagSim(a.laudoPericial)).map(a => ({ nome: a.nome })),
+      ...(vitimas || []).filter(v => flagSim(v.laudoPericial)).map(v => ({ nome: v.nome }))
+    ].filter(p => p.nome && String(p.nome).trim());
+    if (pessoasComLaudo.length > 0) anexosList.push("REQUISIÇÃO DE EXAME DE LESÃO CORPORAL");
+    anexosList.push("TERMO DE ENCERRAMENTO E REMESSA");
+
     downloadTcoDocx({
       unidade,
       cr,
@@ -597,7 +611,8 @@ const TCOForm: React.FC = () => {
       relatoPolicial,
       conclusaoPolicial,
       providencias,
-      documentosAnexos,
+      documentosAnexos: anexosList.join('\n'),
+      periciasLesao: pessoasComLaudo.map(p => p.nome),
       condutor: componentesGuarnicao[0] ? {
         // Frontend-style
         nome: componentesGuarnicao[0].nome,

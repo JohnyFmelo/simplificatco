@@ -280,6 +280,7 @@ export async function downloadTcoDocx(opts: {
   drogas?: Array<{ id: string; quantidade: string; substancia: string; cor: string; odor: string; indicios: string; isUnknownMaterial?: boolean; customMaterialDesc?: string; }>;
   lacreNumero?: string;
   numeroRequisicao?: string;
+  periciasLesao?: string[];
 }) {
   const { Document, Packer, Paragraph, TextRun, AlignmentType, Header, Footer, ImageRun, PageBreak, BorderStyle, convertMillimetersToTwip, Table, TableRow, TableCell, WidthType } = await import('docx');
 
@@ -341,24 +342,33 @@ export async function downloadTcoDocx(opts: {
   const unidadeLinha = unidadeAbr || '***';
   const crParte = crAbr ? ` / ${crAbr}` : '';
 
-  // carregar brasão do diretório public, opcional
+  // carregar brasão do diretório public, opcional (lida com acento e extensão)
   let imageParagraph: any = null;
-  try {
-    const imgResp = await fetch(encodeURI('/brasão.jpg'));
-    if (imgResp.ok) {
-      const imgArray = new Uint8Array(await imgResp.arrayBuffer());
+  const logoCandidates = [
+    '/Brasão.png', '/Bras%C3%A3o.png', '/brasao.png', '/Brasao.png',
+    '/Brasão.jpg', '/Bras%C3%A3o.jpg', '/brasao.jpg', '/Brasao.jpg',
+    '/Brasão', '/Bras%C3%A3o', '/brasao', '/Brasao'
+  ];
+  for (const url of logoCandidates) {
+    try {
+      const resp = await fetch(encodeURI(url));
+      if (!resp.ok) continue;
+      const bytes = new Uint8Array(await resp.arrayBuffer());
+      const ct = (resp.headers.get('Content-Type') || '').toLowerCase();
+      const isPng = ct.includes('png') || url.toLowerCase().endsWith('.png');
+      const isJpeg = ct.includes('jpeg') || ct.includes('jpg') || url.toLowerCase().endsWith('.jpg');
+      const imgType = isPng ? 'png' : 'jpg';
       imageParagraph = new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 0, after: 0 },
         children: [new ImageRun({ 
-          data: imgArray, 
+          data: bytes, 
           transformation: { width: 80, height: 80 },
-          type: 'jpg'
+          type: imgType
         })],
       });
-    }
-  } catch (_) {
-    // falha silenciosa: sem brasão se não carregar
+      break;
+    } catch { /* tenta próximo candidato */ }
   }
 
   // ===== Corpo da página: AUTUAÇÃO =====
@@ -789,6 +799,21 @@ export async function downloadTcoDocx(opts: {
     }
   }
 
+  // ===== 7. REQUISIÇÃO DE EXAME DE LESÃO CORPORAL =====
+  if (opts.periciasLesao && opts.periciasLesao.length > 0) {
+    segundaPaginaChildren.push(new Paragraph({ children: [ new PageBreak() ] }));
+    opts.periciasLesao.forEach((nome, idx) => {
+      const titulo = `REQUISIÇÃO DE EXAME DE LESÃO CORPORAL`;
+      const corpo = `REQUISITO EXAME DE CORPO DE DELITO EM FAVOR DE ${String(nome || '').toUpperCase()}, QUE SEJA SUBMETIDO AO EXAME PERICIAL, CONSIGNANDO-SE OS QUESITOS PERTINENTES.`;
+      segundaPaginaChildren.push(
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: titulo, bold: true, size: 28 }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+        new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: corpo }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      );
+    });
+  }
+
   // ===== 6. IDENTIFICAÇÃO DA GUARNIÇÃO =====
   // Garantir separação visual da seção anterior
   segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }));
@@ -1041,7 +1066,7 @@ export async function downloadTcoDocx(opts: {
           first: new Header({ children: firstPageHeaderChildren }),
           default: new Header({ children: headerChildren })
         },
-        footers: { default: new Footer({ children: footerChildren }) },
+        footers: { first: new Footer({ children: footerChildren }), default: new Footer({ children: footerChildren }) },
         children: [
           ...corpoChildren,
           new Paragraph({ children: [ new PageBreak() ] }), // Quebra de página
