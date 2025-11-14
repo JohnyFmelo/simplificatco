@@ -114,7 +114,7 @@ const TCOForm: React.FC = () => {
     "4º Batalhão de Polícia Militar": "Várzea Grande",
     "15ª Cia Independente de Polícia Militar - Força Tática": "Várzea Grande",
     "2ª Companhia de Polícia Militar do Bairro Jardim Imperial": "Várzea Grande",
-    "3ª Companhia de Polícia Militar do Bairro São Matheus": "Várzea Grande",
+    "25ª Companhia Independente de Polícia Militar": "Várzea Grande",
     "25º Batalhão de Polícia Militar do Bairro Cristo Rei": "Várzea Grande",
     "7º Batalhão de Polícia Militar - Rosário Oeste": "Rosário Oeste",
     "Núcleo de Polícia Militar - Bauxi": "Distrito de Bauxi",
@@ -356,9 +356,11 @@ const TCOForm: React.FC = () => {
     })();
   }, [tcoId]);
   const onAddFotos = async (files: File[]) => {
-    const imagens = files.filter(f => f.type.startsWith("image/"));
+    const MAX_PHOTOS = 20;
+    const MAX_SIZE = 5 * 1024 * 1024;
+    const imagens = files.filter(f => f.type.startsWith("image/") && f.size <= MAX_SIZE);
     if (imagens.length === 0) return;
-    const capacidade = 5 - fotosArquivos.length;
+    const capacidade = MAX_PHOTOS - fotosArquivos.length;
     if (capacidade <= 0) return;
     const imagensLimitadas = imagens.slice(0, capacidade);
     const userId = await getUserIdOrAnon();
@@ -691,28 +693,27 @@ const TCOForm: React.FC = () => {
       fielDepositarioSelecionado
     });
   };
-  return <div className="container mx-auto max-w-screen-lg px-2 sm:px-3 py-3 sm:py-4">
-      <Card className="mb-3 sm:mb-4">
-        <CardHeader>
-          <CardTitle className="text-xl sm:text-2xl">SimplificaTCO</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs sm:text-sm text-muted-foreground">Preencha as informações do Termo Circunstanciado de Ocorrência.</p>
-        </CardContent>
-      </Card>
+  return <div className="container">
+      <div className="header">
+        <h1><i className="fas fa-file-alt"></i> Termo Circunstanciado de Ocorrência</h1>
+        <p>Registro de Ocorrência Policial - Sistema Integrado</p>
+      </div>
 
-      <Tabs value={activeTab} className="space-y-4" onValueChange={val => setActiveTab(val)}>
-        <TabsList className="flex gap-2 overflow-x-auto whitespace-nowrap sm:flex-wrap sm:overflow-visible">
-          <TabsTrigger className="shrink-0" value="basico">Informações Básicas</TabsTrigger>
-          <TabsTrigger className="shrink-0" value="geral">Dados da Ocorrência</TabsTrigger>
-          {isDrugCase && <TabsTrigger className="shrink-0" value="drogas">Drogas</TabsTrigger>}
-          <TabsTrigger className="shrink-0" value="pessoas">Pessoas envolvidas</TabsTrigger>
-          <TabsTrigger className="shrink-0" value="guarnicao">Guarnição</TabsTrigger>
-          <TabsTrigger className="shrink-0" value="historico">Histórico</TabsTrigger>
-          <TabsTrigger className="shrink-0" value="arquivos">Fotos</TabsTrigger>
-          <TabsTrigger className="shrink-0" value="audiencia">Audiência</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={val => setActiveTab(val)}>
+        <div className="tabs">
+          <TabsList className="flex w-full">
+            <TabsTrigger className={activeTab === "basico" ? "tab active" : "tab"} value="basico"><i className="fas fa-info-circle"></i> Informações Básicas</TabsTrigger>
+            <TabsTrigger className={activeTab === "geral" ? "tab active" : "tab"} value="geral"><i className="fas fa-calendar-alt"></i> Dados da Ocorrência</TabsTrigger>
+            {isDrugCase && <TabsTrigger className={activeTab === "drogas" ? "tab active" : "tab"} value="drogas"><i className="fas fa-flask"></i> Drogas</TabsTrigger>}
+            <TabsTrigger className={activeTab === "pessoas" ? "tab active" : "tab"} value="pessoas"><i className="fas fa-users"></i> Pessoas Envolvidas</TabsTrigger>
+            <TabsTrigger className={activeTab === "guarnicao" ? "tab active" : "tab"} value="guarnicao"><i className="fas fa-shield-alt"></i> Guarnição</TabsTrigger>
+            <TabsTrigger className={activeTab === "historico" ? "tab active" : "tab"} value="historico"><i className="fas fa-history"></i> Histórico</TabsTrigger>
+            <TabsTrigger className={activeTab === "arquivos" ? "tab active" : "tab"} value="arquivos"><i className="fas fa-camera"></i> Fotos</TabsTrigger>
+            <TabsTrigger className={activeTab === "audiencia" ? "tab active" : "tab"} value="audiencia"><i className="fas fa-gavel"></i> Audiência</TabsTrigger>
+          </TabsList>
+        </div>
 
+        <div className="form-content">
         <TabsContent value="basico">
           <BasicInformationTab tcoNumber={tcoNumber} setTcoNumber={setTcoNumber} natureza={natureza} setNatureza={setNatureza} autor={autor} setAutor={setAutor} penaDescricao={penaDescricao} naturezaOptions={naturezaOptions} customNatureza={customNatureza} setCustomNatureza={setCustomNatureza} startTime={startTime} isTimerRunning={isTimerRunning} cr={cr} setCr={setCr} unidade={unidade} setUnidade={value => {
           setUnidade(value);
@@ -724,11 +725,16 @@ const TCOForm: React.FC = () => {
             "2º Comando Regional - Sede": "",
             "4º Batalhão de Polícia Militar": "Várzea Grande",
             "15ª Cia Independente de Polícia Militar - Força Tática": "Várzea Grande",
-            "25º Batalhão de Polícia Militar do Bairro Cristo Rei": "Várzea Grande"
+            "25º Batalhão de Polícia Militar do Bairro Cristo Rei": "Várzea Grande",
+            "25ª Companhia Independente de Polícia Militar": "Várzea Grande"
           };
           setMunicipio(MAPA[value] || municipio);
-          if (cr === "2º Comando Regional" && /25º\s*Batalhão de Polícia Militar/i.test(value)) {
-            setLocalRegistro("CISC DO PARQUE DO LAGO");
+          if (cr === "2º Comando Regional") {
+            if (/25º\s*Batalhão\s+de\s+Polícia\s+Militar/i.test(value)) {
+              setLocalRegistro("CISC DO PARQUE DO LAGO");
+            } else if (/25\s*[ºª]\s*(CIPM|Companhia\s+Independente)/i.test(value)) {
+              setLocalRegistro("BASE DA 25ª CIPM");
+            }
           }
         }} localRegistro={localRegistro} setLocalRegistro={setLocalRegistro} onTipificacaoChange={setTipificacao} />
         </TabsContent>
@@ -769,12 +775,13 @@ const TCOForm: React.FC = () => {
         <TabsContent value="audiencia">
           <AudienciaTab audienciaData={audienciaData} setAudienciaData={setAudienciaData} audienciaHora={audienciaHora} setAudienciaHora={setAudienciaHora} />
         </TabsContent>
+        </div>
       </Tabs>
 
-      <div className="mt-6 flex gap-2">
-        {activeTab !== "audiencia" ? <Button onClick={goToNextTab} className="ml-auto">Próximo</Button> : <>
+      <div className="footer">
+        {activeTab !== "audiencia" ? <button className="btn-primary" onClick={goToNextTab}>Próximo <i className="fas fa-arrow-right"></i></button> : <>
             <Button variant="default" onClick={handleTestFill}>Teste</Button>
-            <Button onClick={handleDownloadWord} className="ml-auto bg-green-600 hover:bg-green-700 text-white px-6">Baixar TCO</Button>
+            <button className="btn-primary" onClick={handleDownloadWord}>Baixar TCO <i className="fas fa-download"></i></button>
           </>}
       </div>
     </div>;

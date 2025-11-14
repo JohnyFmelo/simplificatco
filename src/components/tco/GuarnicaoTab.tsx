@@ -1,10 +1,9 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trash2, Users, UserPlus, Info, Search, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabaseClient";
@@ -395,86 +394,64 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
   }, [newOfficerFormData]);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <div>
-            <CardTitle className="flex items-center">
-              <Users className="mr-2 h-5 w-5" /> GUARNIÇÃO
-            </CardTitle>
-            <CardDescription>Adicione os componentes buscando por RGPM</CardDescription>
-          </div>
-          <Button variant="outline" size="sm" onClick={openRegisterDialog} type="button">
-            <UserPlus className="h-4 w-4 mr-2" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4 px-[8px]">
-        <div className="space-y-2">
-          <div className="flex gap-2 items-center">
-            <Input
-              id="rgpmSearchInput"
-              type="text"
-              inputMode="numeric"
-              placeholder="Digite o RGPM para adicionar à guarnição"
-              value={searchRgpm}
-              onChange={handleSearchRgpmChange}
-              disabled={isSearching}
-              className="flex-grow"
-              maxLength={6}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !isSearching && searchRgpm.length === 6) handleSearchAndAdd();
-              }}
-            />
-            <Button onClick={handleSearchAndAdd} disabled={isSearching || searchRgpm.length !== 6}>
-              {isSearching ? "Buscando..." : <><Search className="h-4 w-4 mr-1" /> Adicionar</>}
-            </Button>
-          </div>
+    <div>
+      <h2 className="section-title">Guarnição</h2>
+      <p className="section-subtitle">Adicione os componentes buscando por RGPM</p>
+
+      <div className="form-grid">
+        <div className="form-group" style={{alignItems:'flex-end'}}>
+          <button className="add-button" onClick={openRegisterDialog} type="button">
+            <UserPlus className="mr-2 h-4 w-4" /> Cadastrar/Atualizar Policial
+          </button>
         </div>
 
-        <div className="space-y-2">
+        <div className="search-box">
+          <Input
+            id="rgpmSearchInput"
+            type="text"
+            inputMode="numeric"
+            className="search-input"
+            placeholder="Digite o RGPM para adicionar à guarnição"
+            value={searchRgpm}
+            onChange={handleSearchRgpmChange}
+            disabled={isSearching}
+            maxLength={6}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !isSearching && searchRgpm.length === 6) handleSearchAndAdd();
+            }}
+          />
+          <button className="btn-add" onClick={handleSearchAndAdd} disabled={isSearching || searchRgpm.length !== 6}>
+            Adicionar
+          </button>
+        </div>
+
+        <div className="form-group">
           <Label>Componentes da Guarnição Atual</Label>
           {currentGuarnicaoList.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4 border rounded-md border-dashed">
-              Nenhum componente adicionado. Use a busca acima.
-            </p>
+            <div className="members-list"><div className="empty">Nenhum componente adicionado. Use a busca acima.</div></div>
           ) : (
-            <div className="border rounded-md overflow-hidden">
-              {currentGuarnicaoList.map((componente, index) => (
-                <div key={`${componente.rg}-${index}`} className={`flex items-center justify-between p-3 ${index > 0 ? "border-t" : ""} ${index === 0 ? "bg-blue-50" : "bg-background"}`}>
-                  <div className="flex flex-col flex-grow mr-2 truncate">
-                    <span className="text-sm font-medium truncate" title={`${componente.posto} ${componente.nome} (RGPM: ${componente.rg})`}>
-                      {index === 0 && <span className="font-bold text-blue-800">(Condutor) </span>}
-                      {index > 0 && componente.apoio && <span className="font-semibold text-orange-600">(Apoio) </span>}
-                      <span>{componente.posto || "Sem Posto"}</span>{' '}
-                      <span>{componente.nome || "Sem Nome"}</span>
-                    </span>
-                    <span className="text-xs text-muted-foreground text-slate-400 text-left px-[2px]">RGPM: {componente.rg || "Não informado"}</span>
-                  </div>
-                  <div className="flex items-center flex-shrink-0 space-x-1">
-                    {index > 0 && (
-                      <div className="flex items-center space-x-1" title={componente.apoio ? "Desmarcar como apoio" : "Marcar como apoio"}>
-                        <Switch
-                          id={`apoio-switch-${index}`}
-                          checked={!!componente.apoio}
-                          onCheckedChange={() => handleToggleApoio(index)}
-                          aria-label={componente.apoio ? "Desmarcar como apoio" : "Marcar como apoio"}
-                        />
-                        <Label htmlFor={`apoio-switch-${index}`} className="text-xs cursor-pointer select-none">
-                          Apoio
-                        </Label>
+            <div>
+              {currentGuarnicaoList.map((componente, index) => {
+                const initials = String(componente.nome || '').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+                return (
+                  <div key={`${componente.rg}-${index}`} className="member-item">
+                    <div className="member-info">
+                      <div className="member-avatar">{initials || 'PM'}</div>
+                      <div className="member-details">
+                        <h4>{componente.nome || 'Sem Nome'}</h4>
+                        <p>{componente.posto || 'Sem Posto'} • RGPM: {componente.rg || 'Não informado'}</p>
                       </div>
-                    )}
-                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-8 w-8 flex-shrink-0" onClick={() => handleRemove(index)} aria-label={`Remover ${componente.nome}`}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </div>
+                    <div className="member-actions">
+                      <button className="btn-remove" onClick={() => handleRemove(index)} title="Remover"><i className="fas fa-trash"></i></button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
-      </CardContent>
+      </div>
 
       <Dialog open={isRegisterDialogOpen} onOpenChange={setIsRegisterDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
@@ -528,15 +505,12 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
           </div>
 
           <DialogFooter>
-            <p className="text-xs text-muted-foreground mr-auto">
-              Os dados serão armazenados até o encerramento do termo e, depois, excluídos. Em um novo TCO será necessário preencher novamente.
-            </p>
             <Button variant="outline" onClick={closeRegisterDialog} type="button" disabled={isFetchingDialogDetails}>Cancelar</Button>
-            <Button onClick={handleSaveNewOfficer} disabled={isSaveDisabled() || isFetchingDialogDetails} type="button">Cadastrar</Button>
+            <Button onClick={handleSaveNewOfficer} disabled={isFetchingDialogDetails} type="button">Cadastrar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </Card>
+    </div>
   );
 };
 

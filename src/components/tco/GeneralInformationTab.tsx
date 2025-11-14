@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface GeneralInformationTabProps {
   natureza: string;
@@ -171,32 +168,16 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
   }, [natureza, isCustomNatureza, tipificacao, setTipificacao]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Dados da Ocorrência</CardTitle>
-        <CardDescription>
-          Informações gerais sobre a ocorrência registrada
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="px-[5px]">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <Label htmlFor="naturezaDisplay">Natureza da Ocorrência</Label>
-            <Input id="naturezaDisplay" readOnly value={isCustomNatureza ? customNatureza : natureza} className="bg-gray-100" placeholder="Nenhuma natureza selecionada" />
-          </div>
+    <div>
+      <h2 className="section-title">Dados da Ocorrência</h2>
+      <p className="section-subtitle">Informações gerais sobre a ocorrência registrada</p>
+      <div className="form-grid">
+        
 
-          <div className="md:col-span-2">
-            <Label htmlFor="tipificacao">Tipificação Legal</Label>
-            {isCustomNatureza ? (
-              <Input id="tipificacao" placeholder="Digite a tipificação legal" value={tipificacao} onChange={e => setTipificacao(e.target.value)} />
-            ) : (
-              <Input id="tipificacao" readOnly value={tipificacao || getTipificacaoCompleta()} className="bg-gray-100" placeholder="Tipificação será gerada automaticamente" />
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="dataFato">Data do Fato *</Label>
-            <Input id="dataFato" type="text" inputMode="numeric" placeholder="dd/mm/aaaa" value={dataFato} onChange={e => {
+        <div className="two-columns">
+          <div className="form-group">
+            <label>Data do Fato <span className="required">*</span></label>
+            <Input type="text" inputMode="numeric" placeholder="dd/mm/aaaa" value={dataFato} onChange={e => {
               const v = e.target.value.replace(/\D/g, '').slice(0,8);
               const dd = v.slice(0,2);
               const mm = v.slice(2,4);
@@ -205,66 +186,55 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
               setDataFato(formatted);
             }} />
           </div>
-
-          <div>
-            <Label htmlFor="horaFato">Hora do Fato *</Label>
-            <Input id="horaFato" type="time" lang="pt-BR" value={horaFato} onChange={e => setHoraFato(e.target.value)} />
+          <div className="form-group">
+            <label>Hora do Fato <span className="required">*</span></label>
+            <Input type="time" lang="pt-BR" value={horaFato} onChange={e => setHoraFato(e.target.value)} />
           </div>
-
-          {/* Campo livre Local do Fato com legenda explicativa */}
-          <div className="md:col-span-2">
-            <Label htmlFor="localFato">Local do Fato *</Label>
-            <p className="text-xs text-muted-foreground mb-1">
-              Informe o tipo de local (ex.: rua, casa, loja).
-              {' '}
-              <span className="text-destructive">Não é endereço.</span>
-            </p>
-            <Input id="localFato" placeholder="Ex.: Rua, Casa, Loja, Escola..." value={localFato} onChange={e => setLocalFato(e.target.value)} />
-          </div>
-
-          <div className="md:col-span-2">
-            <Label htmlFor="endereco">Endereço Completo *</Label>
-            <Input id="endereco" placeholder="Rua, número, bairro..." value={endereco} onChange={e => setEndereco(e.target.value)} />
-          </div>
-
-          <div>
-            <Label htmlFor="municipio">Município</Label>
-            <Input id="municipio" readOnly value={municipio} className="bg-gray-100" />
-          </div>
-
-          <div>
-            <Label htmlFor="comunicante">Comunicante *</Label>
-            <Select value={comunicante} onValueChange={setComunicante}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o comunicante" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="COPOM">COPOM</SelectItem>
-                <SelectItem value="CIOSP">CIOSP</SelectItem>
-                <SelectItem value="Adjunto">Adjunto</SelectItem>
-                <SelectItem value="Oficial de Área">Oficial de Área</SelectItem>
-                <SelectItem value="Patrulhamento">Patrulhamento</SelectItem>
-                <SelectItem value="Populares">Populares</SelectItem>
-                <SelectItem value="Guarda">Guarda</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="md:col-span-2">
-            <Label htmlFor="guarnicao">Placa da VTR *</Label>
-            <p className="text-xs text-muted-foreground mb-1">Digite apenas a placa da viatura (ex.: ABC1D23).</p>
-            <Input id="guarnicao" placeholder="Ex.: ABC1D23" value={guarnicao} onChange={e => setGuarnicao(e.target.value)} />
-          </div>
-
-          <div className="md:col-span-2">
-            <Label htmlFor="operacao">Operação (Opcional)</Label>
-            <Input id="operacao" placeholder="Ex: Operação Saturação, Operação Cidade Segura..." value={operacao} onChange={e => setOperacao(e.target.value)} />
-          </div>
-
-          {/* Dados do condutor ocultos */}
         </div>
-      </CardContent>
-    </Card>
+
+        <div className="form-group">
+          <label>Local do Fato <span className="required">*</span></label>
+          <Input className="input-hint" placeholder="Ex.: Rua, Casa, Loja, Escola..." value={localFato} onChange={e => setLocalFato(e.target.value)} />
+          <small className="field-hint">Informe o tipo de local (ex: rua, casa, loja). Não é endereço.</small>
+        </div>
+
+        <div className="form-group">
+          <label>Endereço Completo <span className="required">*</span></label>
+          <Input placeholder="Rua, número, bairro..." value={endereco} onChange={e => setEndereco(e.target.value)} />
+        </div>
+
+        <div className="two-columns">
+          <div className="form-group">
+            <label>Município</label>
+            <Input readOnly value={municipio} />
+          </div>
+          <div className="form-group">
+            <label>Placa da VTR <span className="required">*</span></label>
+            <Input placeholder="Ex: ABC1D23" maxLength={7} value={guarnicao} onChange={e => setGuarnicao(e.target.value.toUpperCase())} />
+            <small className="field-hint">Digite apenas a placa da viatura (ex: ABC1D23).</small>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>Comunicante <span className="required">*</span></label>
+          <select className="select-full" value={comunicante} onChange={e => setComunicante(e.target.value)}>
+            <option value="">Selecione o comunicante</option>
+            <option value="COPOM">COPOM</option>
+            <option value="CIOSP">CIOSP</option>
+            <option value="Adjunto">Adjunto</option>
+            <option value="Oficial de Área">Oficial de Área</option>
+            <option value="Patrulhamento">Patrulhamento</option>
+            <option value="Populares">Populares</option>
+            <option value="Guarda">Guarda</option>
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label>Operação (Opcional)</label>
+          <Input placeholder="Ex: Operação Saturação, Operação Cidade Segura..." value={operacao} onChange={e => setOperacao(e.target.value)} />
+        </div>
+      </div>
+    </div>
   );
 };
 

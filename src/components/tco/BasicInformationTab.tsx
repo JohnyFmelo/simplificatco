@@ -1,14 +1,9 @@
 // --- START OF FILE BasicInformationTab (5).tsx ---
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { X, AlertTriangle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 // Timer removido conforme solicitado
 import { useToast } from "@/hooks/use-toast";
@@ -102,7 +97,7 @@ const CR2_UNIDADES: { nome: string; cidade: string; endereco: string; email: str
   { nome: "4º Batalhão de Polícia Militar", cidade: "Várzea Grande", endereco: "Av. Filinto Muller, nº 538, Centro, CEP 78.110-100", email: "4bpm@pm.mt.gov.br", telefone: "(65) 3901-8295 / (65) 9996-9600" },
   { nome: "15ª Cia Independente de Polícia Militar - Força Tática", cidade: "Várzea Grande", endereco: "Rua das Camomilas, s/nº, Residencial Flor dos Ipês, CEP 78.117-360", email: "forcataticacr2@pm.mt.gov.br", telefone: "(65) 3691-1111" },
   { nome: "2ª Companhia de Polícia Militar do Bairro Jardim Imperial", cidade: "Várzea Grande", endereco: "Rua Bolívia, s/nº, Bairro Jardim Imperial, CEP 78.110-220", email: "2ciaimperial@gmail.com", telefone: "(65) 3901-8293 / (65) 9 9989-8413" },
-  { nome: "3ª Companhia de Polícia Militar do Bairro São Matheus", cidade: "Várzea Grande", endereco: "Rua 32, esquina com a Rua 12, Bairro São Matheus", email: "3ciasaomatheus@pm.mt.gov.br", telefone: "(65) 9 8171-0292" },
+  { nome: "25ª Companhia Independente de Polícia Militar", cidade: "Várzea Grande", endereco: "", email: "", telefone: "" },
   { nome: "25º Batalhão de Polícia Militar do Bairro Cristo Rei", cidade: "Várzea Grande", endereco: "Rua Senador Vicente Vuollo, s/nº, Praça Áurea Braz, CEP 78118-007", email: "25batalhao@pm.mt.gov.br", telefone: "(65) 3901-9156 / 3901-8291" },
   { nome: "7º Batalhão de Polícia Militar - Rosário Oeste", cidade: "Rosário Oeste", endereco: "Rod. BR 163/364, Km 542, Bairro Santo Antonio", email: "7bpm@pm.mt.gov.br", telefone: "(65) 3356-1190 / (65) 9 8170-0289" },
   { nome: "Núcleo de Polícia Militar - Bauxi", cidade: "Distrito de Bauxi", endereco: "MT 246 KM 135", email: "", telefone: "(65) 99670-7722" },
@@ -353,123 +348,96 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>INFORMAÇÕES BÁSICAS</CardTitle>
-        <CardDescription>Preencha os dados iniciais do TCO</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 gap-4">
-          <div>
-            <Label htmlFor="cr">CR *</Label>
-            <Select value={cr} onValueChange={setCr}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o CR" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={FIXED_CR}>{FIXED_CR}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+    <div className="form-grid">
+      <div className="two-columns">
+        <div className="form-group">
+          <label>CR <span className="required">*</span></label>
+          <select value={cr} onChange={(e) => setCr(e.target.value)}>
+            <option>{FIXED_CR}</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label>Unidade <span className="required">*</span></label>
+          <select value={unidade} onChange={(e) => setUnidade(e.target.value)}>
+            {unidadeOptions.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-          <div>
-            <Label htmlFor="unidade">Unidade *</Label>
-            <Select value={unidade} onValueChange={setUnidade}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a Unidade" />
-              </SelectTrigger>
-              <SelectContent>
-                {unidadeOptions.map(opt => (
-                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <div className="form-group">
+        <label>Local do Registro <span className="required">*</span></label>
+        <input type="text" value={localRegistro} onChange={(e) => setLocalRegistro(e.target.value)} placeholder="Digite o local do registro" />
+      </div>
 
-          <div>
-            <Label htmlFor="localRegistro">Local do Registro *</Label>
-            <Input id="localRegistro" placeholder="Ex.: CISC DO PARQUE DO LAGO" value={localRegistro} onChange={(e) => setLocalRegistro(e.target.value)} />
-          </div>
+      <div className="three-columns">
+        <div className="form-group">
+          <label>Número do TCO <span className="required">*</span></label>
+          <input type="number" value={tcoNumber} onChange={handleTcoNumberChange} placeholder="Número do TCO" />
+        </div>
+        <div className="form-group">
+          <label>Natureza <span className="required">*</span></label>
+          <select onChange={(e) => handleNaturezaSelectChange(e.target.value)}>
+            <option value="">Selecione a natureza</option>
+            {naturezaOptions.filter(option => !selectedNaturezas.includes(option)).map(option => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </div>
+        <div className="form-group">
+          <button className="add-button" onClick={() => setIsAddNaturezaOpen(true)}>
+            <i className="fas fa-plus"></i> Adicionar natureza personalizada
+          </button>
+        </div>
+      </div>
 
-          <div>
-            <Label htmlFor="tcoNumber">Número do TCO *</Label>
-            <Input id="tcoNumber" placeholder="000000" value={tcoNumber} onChange={handleTcoNumberChange} inputMode="numeric" />
-          </div>
-
-          <div>
-            <Label htmlFor="natureza">Natureza *</Label>
-            <div className="flex gap-2 items-end">
-              <div className="flex-1">
-                <Select onValueChange={handleNaturezaSelectChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma natureza para adicionar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {naturezaOptions
-                      .filter(option => !selectedNaturezas.includes(option))
-                      .map(option => (
-                        <SelectItem key={option} value={option}>{option}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button variant="outline" onClick={() => setIsAddNaturezaOpen(true)}>Adicionar natureza personalizada</Button>
+      <div className="form-group">
+        <label>Naturezas Selecionadas</label>
+        <div className="tag-container">
+          {selectedNaturezas.map((nat, index) => (
+            <div key={`${nat}-${index}`} className="tag">
+              {(nat || '').toUpperCase()} <span className="tag-close" onClick={() => handleRemoveNatureza(nat)}>×</span>
             </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="penalty-card">
+        <div className="penalty-header">
+          <i className="fas fa-balance-scale"></i>
+          <h3>Tipificação e Análise de Penas</h3>
+        </div>
+        <div className="penalty-list">
+          {naturezasComPena.map(({ nat, penaAnos }) => {
+            const custom = customNaturezas.find(c => c.nome === nat);
+            const legal = custom ? custom.tipificacao : naturezaTipificacoes[nat];
+            return (
+              <div key={`pen-${nat}`} className="penalty-item">
+                <div className="penalty-top">
+                  <div className="penalty-name">{(nat || '').toUpperCase()}</div>
+                  <div className="penalty-value">{formatarPena(penaAnos)}</div>
+                </div>
+                {legal && <div className="penalty-legal">{legal}</div>}
+              </div>
+            );
+          })}
+        </div>
+        <div className="penalty-total">
+          <span>Soma das Penas Máximas:</span>
+          <strong>{formatarPena(totalPenaAnos)}</strong>
+        </div>
+      </div>
+
+      {showPenaAlert && (
+        <div className="alert-box">
+          <div className="alert-icon">⚠️</div>
+          <div className="alert-content">
+            <strong>Atenção: Pena Máxima Superior a 2 Anos</strong>
+            <p>A soma das penas máximas ({formatarPena(totalPenaAnos)}) excede o limite de 2 anos. Não é permitido registrar TCO nesta situação. Verifique a existência de subsunção (se um crime absorve o outro) ou proceda com o registro adequado (B.O.).</p>
           </div>
         </div>
-
-        {showPenaAlert && (
-          <Alert variant="destructive" className="border-red-600 bg-red-50 dark:bg-red-950">
-            <AlertTriangle className="h-4 w-4 text-red-700 dark:text-red-400" />
-            <AlertTitle className="text-red-800 dark:text-red-300">Atenção: Pena Máxima Superior a 2 Anos</AlertTitle>
-            <AlertDescription className="text-red-700 dark:text-red-400">
-              A soma das penas máximas ({formatarPena(totalPenaAnos)}) excede o limite de 2 anos. 
-              Não é permitido registrar TCO nesta situação. Verifique a existência de subsunção (se um crime absorve o outro), se mesmo assim ultrapassar 2 anos proceda com o registro do B.O.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {selectedNaturezas.length > 0 && (
-          <div>
-            <Label>Naturezas Selecionadas</Label>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {selectedNaturezas.map((nat, index) => (
-                <Badge key={`${nat}-${index}`} variant="secondary" className="flex items-center gap-1">
-                  {(nat || '').toUpperCase()}
-                  <Button variant="ghost" size="sm" className="h-4 w-4 p-0 hover:bg-transparent text-muted-foreground hover:text-destructive" onClick={() => handleRemoveNatureza(nat)} aria-label={`Remover ${nat}`}>
-                    <X className="h-3 w-3" />
-                  </Button>
-                </Badge>
-              ))}
-            </div>
-            <div className="mt-3">
-              <Label>Naturezas e Penas</Label>
-              <div className="mt-2 space-y-1">
-                {naturezasComPena.map(({ nat, penaAnos }) => (
-                  <p key={`pena-${nat}`} className="text-xs text-gray-700 dark:text-gray-300">
-                    {(nat || '').toUpperCase()}: {formatarPena(penaAnos)}
-                  </p>
-                ))}
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Soma das Penas: {formatarPena(totalPenaAnos)}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Removido fluxo antigo "Outros"; uso de modal para natureza personalizada */}
-
-        {tipificacaoCompleta && (
-          <div>
-            <Label>Tipificação Legal Consolidada</Label>
-            <Input readOnly value={tipificacaoCompleta} className="bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600" />
-          </div>
-        )}
-
-        {/* Removido campo "Pena da Natureza Selecionada" conforme solicitado */}
-
-
-      </CardContent>
-      <CardFooter className="flex justify-between"></CardFooter>
+      )}
 
       <Dialog open={isAddNaturezaOpen} onOpenChange={setIsAddNaturezaOpen}>
         <DialogContent>
@@ -498,7 +466,7 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 };
 export default BasicInformationTab;

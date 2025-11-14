@@ -701,9 +701,8 @@ export async function downloadTcoDocx(opts: {
       segundaPaginaChildren.push(
         new Paragraph({ children: [ new TextRun({ text: `3.2 RELATO DO AUTOR DO FATO ${nomeA.toUpperCase()}`, bold: true }) ] }),
         new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: textoA }) ] }),
-        // Linhas de assinatura
+        // Espaço antes da identificação
         new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-        new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '—'.repeat(36) }) ] }),
         new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${nomeA.toUpperCase()}`, bold: true }) ] }),
         new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'AUTOR DO FATO' }) ] }),
         new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
@@ -720,9 +719,8 @@ export async function downloadTcoDocx(opts: {
       segundaPaginaChildren.push(
         new Paragraph({ children: [ new TextRun({ text: `3.2 RELATO DA VÍTIMA ${nomeV.toUpperCase()}`, bold: true }) ] }),
         new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: textoV }) ] }),
-        // Linhas de assinatura
+        // Espaço antes da identificação
         new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-        new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '—'.repeat(36) }) ] }),
         new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${nomeV.toUpperCase()}`, bold: true }) ] }),
         new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'VÍTIMA' }) ] }),
         new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
@@ -806,7 +804,9 @@ export async function downloadTcoDocx(opts: {
         return { width: 420, height: 280 };
       }
     };
-    const filteredUrls = (opts.imageUrls || []).filter(u => typeof u === 'string' && /^https?:/i.test(u) && !/via\.placeholder\.com/i.test(u));
+    const filteredUrls = (opts.imageUrls || [])
+      .filter(u => typeof u === 'string' && !/via\.placeholder\.com/i.test(u))
+      .filter(u => /^(https?:|blob:|data:)/i.test(u));
     for (const url of filteredUrls) {
       try {
         const resp = await fetch(url);
@@ -818,13 +818,17 @@ export async function downloadTcoDocx(opts: {
             segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: '5.2 IMAGENS', bold: true }) ] }));
           }
           imagensInseridas++;
+          const ct = (resp.headers.get('Content-Type') || '').toLowerCase();
+          const isPng = ct.includes('png') || /\.png(\?|$)/i.test(url);
+          const isJpeg = ct.includes('jpeg') || ct.includes('jpg') || /\.(jpe?g)(\?|$)/i.test(url);
+          const imgType = isPng ? 'png' : (isJpeg ? 'jpeg' : 'jpeg');
           segundaPaginaChildren.push(
             new Paragraph({
               alignment: AlignmentType.CENTER,
               children: [ new ImageRun({ 
                 data: bytes, 
                 transformation: { width: (dims?.width || 420), height: (dims?.height || 280) },
-                type: "png"
+                type: imgType
               }) ]
             }),
             new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
@@ -875,7 +879,9 @@ export async function downloadTcoDocx(opts: {
   const condutorPosto = (condutor?.posto || '').toUpperCase();
 
   const termoCompromissoChildren: any[] = [
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
     new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'TERMO DE COMPROMISSO DE COMPARECIMENTO', bold: true, size: 28 }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
     new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
     new Paragraph({
       alignment: AlignmentType.JUSTIFIED,
@@ -886,11 +892,15 @@ export async function downloadTcoDocx(opts: {
         })
       ]
     }),
+    // espaço entre corpo e data
     new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
     new Paragraph({ alignment: AlignmentType.RIGHT, children: [ new TextRun({ text: String(formatCidadeDataExtenso(cidadeEncAll, dataFato)).toUpperCase() }) ] }),
     new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
     new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: (autorNome || '__________________________'), bold: true }) ] }),
     new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'AUTOR DO FATO' }) ] }),
+    // dois espaços entre autor e condutor
+    new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
     new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
     new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }),
     new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] }),
@@ -920,8 +930,12 @@ export async function downloadTcoDocx(opts: {
     const codigo = `${base}.${crCode}.${acr}.${anoAtual}`;
 
     segundaPaginaChildren.push(
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'REQUISIÇÃO DE EXAME PERICIAL EM DROGAS', bold: true, size: 28 }) ] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: codigo, bold: true }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [
+        new TextRun({ text: 'REQUISIÇÃO DE EXAME PERICIAL EM DROGAS', bold: true, size: 28 }),
+        new TextRun({ break: 1, text: codigo, bold: true })
+      ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: `REQUISITA-SE À POLITEC, NOS TERMOS DO ARTIGO 159 E SEGUINTES DO CPP COMBINADO COM O ARTIGO 69, CAPUT DA LEI Nº 9.099/95, E ARTIGO 50, §1º DA LEI Nº 11.343/2006, A REALIZAÇÃO DE EXAME PERICIAL DEFINITIVO NA(S) SUBSTÂNCIA APREENDIDA E ACONDICIONADA SOB O LACRE Nº ${(lacreNumero || '').toUpperCase()}, ENCONTRADA EM POSSE DO AUTOR DO FATO ${(autoresNomes && autoresNomes[0]) ? autoresNomes[0].toUpperCase() : ''}, QUALIFICADO NESTE TCO.` }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
@@ -937,7 +951,6 @@ export async function downloadTcoDocx(opts: {
     }
 
     segundaPaginaChildren.push(
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: 'PARA TANTO, SOLICITA-SE QUE SEJA CONFECCIONADO O RESPECTIVO LAUDO PERICIAL DEFINITIVO, DEVENDO OS PERITOS RESPONDEREM AOS QUESITOS ABAIXO:' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
     );
@@ -947,12 +960,19 @@ export async function downloadTcoDocx(opts: {
       'QUAL O PESO LÍQUIDO TOTAL DA AMOSTRA APRESENTADA?'
     ];
     quesitosDrogas.forEach((q, i) => {
-      segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: `${i + 1}. ${q}` }) ] }));
+      segundaPaginaChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.JUSTIFIED,
+          indent: { left: convertMillimetersToTwip(25) },
+          children: [ new TextRun({ text: `${i + 1}. ${q}`, size: 20 }) ]
+        })
+      );
     });
 
     segundaPaginaChildren.push(
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.RIGHT, children: [ new TextRun({ text: String(formatCidadeDataExtenso(cidadeEncAll, dataFato)).toUpperCase() }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] })
@@ -962,6 +982,7 @@ export async function downloadTcoDocx(opts: {
 
     const tabelaReceb = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
+      columnWidths: [convertMillimetersToTwip(60), convertMillimetersToTwip(60), convertMillimetersToTwip(60)],
       rows: [
         new TableRow({ children: [
           new TableCell({ children: [ new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'DATA' }) ] }) ] }),
@@ -981,7 +1002,9 @@ export async function downloadTcoDocx(opts: {
     segundaPaginaChildren.push(new Paragraph({ children: [ new PageBreak() ] }));
 
     segundaPaginaChildren.push(
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'TERMO DE CONSTATAÇÃO PRELIMINAR DE DROGA', bold: true, size: 28 }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: `EM RAZÃO DA LAVRATURA DESTE TERMO CIRCUNSTANCIADO DE OCORRÊNCIA, PELO DELITO TIPIFICADO, FOI APREENDIDO O MATERIAL DESCRITO ABAIXO, EM PODER DO AUTOR ABAIXO ASSINADO JÁ QUALIFICADO NOS AUTOS. APÓS CIÊNCIA DAS IMPLICAÇÕES LEGAIS DO ENCARGO ASSUMIDO, FIRMOU-SE O COMPROMISSO LEGAL DE PROCEDER À ANÁLISE PRELIMINAR DOS SEGUINTES MATERIAIS:` }) ] })
     );
@@ -995,8 +1018,9 @@ export async function downloadTcoDocx(opts: {
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.RIGHT, children: [ new TextRun({ text: String(formatCidadeDataExtenso(cidadeEncAll, dataFato)).toUpperCase() }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] })
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] })
     );
 
     segundaPaginaChildren.push(new Paragraph({ children: [ new PageBreak() ] }));
@@ -1011,9 +1035,14 @@ export async function downloadTcoDocx(opts: {
     const labelValueParagraph = (label: string, value: string) => new Paragraph({ children: [ new TextRun({ text: `${label}: `, bold: true }), new TextRun({ text: value }) ] });
     const tituloApreensao = (lacreNumero && lacreNumero.trim()) ? `TERMO DE APREENSÃO LACRE Nº ${lacreNumero.trim().toUpperCase()}` : 'TERMO DE APREENSÃO';
     segundaPaginaChildren.push(
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: tituloApreensao, bold: true, size: 28 }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
     );
+    const descricaoLinha = (drogas && drogas.length > 0
+      ? drogas.map((drug, idx) => `${idx + 1}. ${drug.quantidade} de substância ${String(drug.substancia || '').toLowerCase()} de cor ${String(drug.cor || '').toLowerCase()}, com odor ${String(drug.odor || '').toLowerCase()}${drug.indicios ? `, ${String(drug.indicios || '').toLowerCase()}` : ''}${(idx === drogas.length - 1 && lacreNumero) ? `, tudo acondicionado sob o lacre nº ${lacreNumero}.` : '.'}`).join(' ')
+      : ((apreensoes || '').trim() || '—'));
     const tabela = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
@@ -1045,13 +1074,7 @@ export async function downloadTcoDocx(opts: {
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('TEL', condutor?.telefone || '') ] }),
           ]
         }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('FICA APREENDIDO O DESCRITO ABAIXO', '') ] }) ] }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [
-          ...(drogas && drogas.length > 0
-            ? drogas.map((drug, idx) => new Paragraph({ children: [ new TextRun({ text: `${idx + 1}. ${drug.quantidade} de substância ${String(drug.substancia || '').toLowerCase()} de cor ${String(drug.cor || '').toLowerCase()}, com odor ${String(drug.odor || '').toLowerCase()}${drug.indicios ? `, ${String(drug.indicios || '').toLowerCase()}` : ''}${(idx === drogas.length - 1 && lacreNumero) ? `, tudo acondicionado sob o lacre nº ${lacreNumero}.` : '.'}` }) ] }))
-            : [ new Paragraph({ children: [ new TextRun({ text: (apreensoes || '').trim() || '—' }) ] }) ]
-          )
-        ] }) ] }),
+        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ new Paragraph({ children: [ new TextRun({ text: 'FICA APREENDIDO O DESCRITO ABAIXO: ', bold: true }), new TextRun({ text: descricaoLinha }) ] }) ] }) ] }),
         new TableRow({ height: { value: convertMillimetersToTwip(15), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ new Paragraph({ children: [ new TextRun({ text: 'O PRESENTE TERMO TEM POR OBJETIVO APENAS A CONSTATAÇÃO PRELIMINAR DA NATUREZA DA SUBSTÂNCIA PARA FINS DE LAVRATURA DO TERMO CIRCUNSTANCIADO, NÃO SUPRINDO O EXAME PERICIAL DEFINITIVO (ART. 50, §1º DA LEI 11.343/2006).' }) ] }) ] }) ] })
       ]
     });
@@ -1059,12 +1082,10 @@ export async function downloadTcoDocx(opts: {
     segundaPaginaChildren.push(
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '_'.repeat(30) }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: (autoresNomes && autoresNomes[0]) ? autoresNomes[0].toUpperCase() : '__________________________', bold: true }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'AUTOR DOS FATOS' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: '_'.repeat(30) }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] })
     );
@@ -1082,7 +1103,9 @@ export async function downloadTcoDocx(opts: {
     const opcao1 = `( ${marcarRepresentar ? 'X' : ' '} ) EXERCER O DIREITO DE REPRESENTAÇÃO OU QUEIXA CONTRA O AUTOR DO FATO, JÁ QUALIFICADO NESTE TCO/PM (FICA CIENTIFICADA QUE EM CASO DE QUEIXA-CRIME, A VÍTIMA DEVERÁ CONSTITUIR ADVOGADO).`;
     const opcao2 = `( ${marcarPosterior ? 'X' : ' '} ) DECIDIR POSTERIORMENTE, ESTANDO CIENTE, PARA OS FINS PREVISTOS NO ART. 103 DO CÓDIGO PENAL E ART. 38 DO CÓDIGO DE PROCESSO PENAL QUE DEVO EXERCER O DIREITO DE REPRESENTAÇÃO OU DE QUEIXA, NO PRAZO DE 06 (SEIS) MESES, A CONTAR DESTA DATA, SENDO CERTO QUE MEU SILÊNCIO, ACARRETARÁ A EXTINÇÃO DE PUNIBILIDADE, NA FORMA DO ART. 107, INC. IV, DO CÓDIGO PENAL.`;
     const children: any[] = [
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `TERMO DE MANIFESTAÇÃO DA VÍTIMA ${nomeVitima}`, bold: true, size: 28 }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: 'EU, VÍTIMA ABAIXO ASSINADA, POR ESTE INSTRUMENTO MANIFESTO O MEU INTERESSE EM:' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
@@ -1097,6 +1120,7 @@ export async function downloadTcoDocx(opts: {
       // Espaço adicional antes da identificação
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.RIGHT, children: [ new TextRun({ text: String(formatCidadeDataExtenso(cidadeEncAll, dataFato)).toUpperCase() }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: nomeVitima, bold: true }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'VÍTIMA' }) ] }),
@@ -1126,7 +1150,9 @@ export async function downloadTcoDocx(opts: {
     const titulo = 'REQUISIÇÃO DE EXAME DE LESÃO CORPORAL';
     const corpo = `REQUISITA-SE EXAME PERICIAL EM FAVOR DE ${(String(nome || '').toUpperCase())}, CONSIGNANDO-SE OS QUESITOS PERTINENTES.`;
     segundaPaginaChildren.push(
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: titulo, bold: true, size: 28 }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: corpo }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
@@ -1144,11 +1170,18 @@ export async function downloadTcoDocx(opts: {
       'APONTE OUTRAS OBSERVAÇÕES RELEVANTES.'
     ];
     quesitos.forEach((q, i) => {
-      segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: `${i + 1}. ${q}` }) ] }));
+      segundaPaginaChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.JUSTIFIED,
+          indent: { left: convertMillimetersToTwip(25) },
+          children: [ new TextRun({ text: `${i + 1}. ${q}`, size: 20 }) ]
+        })
+      );
     });
     segundaPaginaChildren.push(
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.RIGHT, children: [ new TextRun({ text: String(formatCidadeDataExtenso(extrairCidadeDoMunicipio(municipio) || 'VÁRZEA GRANDE', dataFato)).toUpperCase() }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] })
@@ -1181,12 +1214,17 @@ export async function downloadTcoDocx(opts: {
 
     // Título
     segundaPaginaChildren.push(
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: tituloApreensao, bold: true, size: 28 }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
     );
 
     // Tabela principal (linhas essenciais)
     const horaApreensao = (horaTerminoRegistro || horaFato || '__:__');
+    const descricaoLinha2 = (drogas && drogas.length > 0
+      ? drogas.map((drug, idx) => `${idx + 1}. ${drug.quantidade} de substância ${drug.substancia.toLowerCase()} de cor ${drug.cor.toLowerCase()}, com odor ${drug.odor.toLowerCase()}${drug.indicios ? `, ${drug.indicios.toLowerCase()}` : ''}${(idx === drogas.length - 1 && lacreNumero) ? `, tudo acondicionado sob o lacre nº ${lacreNumero}.` : '.'}`).join(' ')
+      : ((apreensoes || '').trim() || '—'));
     const tabela = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
@@ -1218,15 +1256,7 @@ export async function downloadTcoDocx(opts: {
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('TEL', condutor?.telefone || '') ] }),
           ]
         }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('FICA APREENDIDO O DESCRITO ABAIXO', '') ] }) ] }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [
-          ...(drogas && drogas.length > 0
-            ? drogas.map((drug, idx) => new Paragraph({ children: [
-                new TextRun({ text: `${idx + 1}. ${drug.quantidade} de substância ${drug.substancia.toLowerCase()} de cor ${drug.cor.toLowerCase()}, com odor ${drug.odor.toLowerCase()}${drug.indicios ? `, ${drug.indicios.toLowerCase()}` : ''}${(idx === drogas.length - 1 && lacreNumero) ? `, tudo acondicionado sob o lacre nº ${lacreNumero}.` : '.'}` })
-              ] }))
-            : [ new Paragraph({ children: [ new TextRun({ text: (apreensoes || '').trim() || '—' }) ] }) ]
-          )
-        ] }) ] }),
+        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ new Paragraph({ children: [ new TextRun({ text: 'FICA APREENDIDO O DESCRITO ABAIXO: ', bold: true }), new TextRun({ text: descricaoLinha2 }) ] }) ] }) ] }),
         new TableRow({ height: { value: convertMillimetersToTwip(15), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [
           new Paragraph({ children: [ new TextRun({ text: (drogas && drogas.length > 0)
             ? 'O PRESENTE TERMO TEM POR OBJETIVO APENAS A CONSTATAÇÃO PRELIMINAR DA NATUREZA DA SUBSTÂNCIA PARA FINS DE LAVRATURA DO TERMO CIRCUNSTANCIADO, NÃO SUPRINDO O EXAME PERICIAL DEFINITIVO (ART. 50, §1º DA LEI 11.343/2006).' 
@@ -1239,6 +1269,7 @@ export async function downloadTcoDocx(opts: {
     // Data e identificação do condutor
     segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }));
     segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.RIGHT, children: [ new TextRun({ text: String(formatCidadeDataExtenso(extrairCidadeDoMunicipio(municipio) || 'VÁRZEA GRANDE', dataFato)).toUpperCase() }) ] }));
+    segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }));
     segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }));
     segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }));
     segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] }));
@@ -1277,7 +1308,8 @@ export async function downloadTcoDocx(opts: {
       segundaPaginaChildren.push(new Paragraph({ children: [ new PageBreak() ] }));
       segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'TERMO DE DEPÓSITO', bold: true, size: 28 }) ] }));
       segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }));
-      segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: 'Nomeio como fiel depositário, ficando ciente de que não poderá vender, usufruir, emprestar os bens mencionados, conforme os artigos 647 e 648 do Código Civil.' }) ] }));
+      segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }));
+      segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: 'NOMEIO COMO FIEL DEPOSITÁRIO, FICANDO CIENTE DE QUE NÃO PODERÁ VENDER, USUFRUIR, EMPRESTAR OS BENS MENCIONADOS, CONFORME OS ARTIGOS 647 E 648 DO CÓDIGO CIVIL.' }) ] }));
       segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }));
       const tabelaDep = new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
@@ -1312,7 +1344,7 @@ export async function downloadTcoDocx(opts: {
       const tabelaTestemunha = new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [
-          new TableRow({ height: { value: convertMillimetersToTwip(10), rule: HeightRule.EXACT }, children: [
+          new TableRow({ height: { value: convertMillimetersToTwip(6.2), rule: HeightRule.EXACT }, children: [
             new TableCell({ borders: tableCellBorders, columnSpan: 2, children: [ new Paragraph({ children: [ new TextRun({ text: 'Testemunha', bold: true }) ] }) ] })
           ] }),
           new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [
@@ -1333,11 +1365,14 @@ export async function downloadTcoDocx(opts: {
     const texto = `AOS ${numeroAte99PorExtenso(d.dia)} DIAS DO MÊS DE ${mesPorExtenso(d.mes)} DO ANO DE ${anoPorExtenso(d.ano)}, NESTA CIDADE DE ${cidadeEnc}, ESTADO DE MATO GROSSO, DOU POR ENCERRADA A LAVRATURA DO PRESENTE TERMO CIRCUNSTANCIADO DE OCORRÊNCIA Nº ${numeroDisplay}, PARA AS PROVIDÊNCIAS DE REMESSA DOS AUTOS PARA APRECIAÇÃO DO NÚCLEO DE JUSTIÇA DIGITAL DOS JUIZADOS ESPECIAIS.`;
     segundaPaginaChildren.push(
       new Paragraph({ children: [ new PageBreak() ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'TERMO DE ENCERRAMENTO E REMESSA', bold: true, size: 28 }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: texto }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.RIGHT, children: [ new TextRun({ text: String(formatCidadeDataExtenso(cidadeEncAll, dataFato)).toUpperCase() }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] })
