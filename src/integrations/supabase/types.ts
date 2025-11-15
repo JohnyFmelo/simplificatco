@@ -14,16 +14,126 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      police_officers: {
+        Row: {
+          cpf: string
+          created_at: string
+          graduacao: string
+          id: string
+          naturalidade: string
+          nome_completo: string
+          nome_mae: string
+          nome_pai: string
+          rgpm: string
+          telefone: string
+          updated_at: string
+        }
+        Insert: {
+          cpf: string
+          created_at?: string
+          graduacao: string
+          id?: string
+          naturalidade: string
+          nome_completo: string
+          nome_mae: string
+          nome_pai: string
+          rgpm: string
+          telefone: string
+          updated_at?: string
+        }
+        Update: {
+          cpf?: string
+          created_at?: string
+          graduacao?: string
+          id?: string
+          naturalidade?: string
+          nome_completo?: string
+          nome_mae?: string
+          nome_pai?: string
+          rgpm?: string
+          telefone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      unidades: {
+        Row: {
+          abreviacao: string | null
+          ativa: boolean
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          complemento: string | null
+          cr: string | null
+          created_at: string
+          endereco_linha1: string | null
+          endereco_linha2: string | null
+          endereco_linha3: string | null
+          id: string
+          logradouro: string | null
+          nome_oficial: string
+          numero: number | null
+          numero_endereco: string | null
+          possui_forca_tatica: boolean
+          tipo: Database["public"]["Enums"]["tipo_unidade"]
+          uf: string | null
+          updated_at: string
+        }
+        Insert: {
+          abreviacao?: string | null
+          ativa?: boolean
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          cr?: string | null
+          created_at?: string
+          endereco_linha1?: string | null
+          endereco_linha2?: string | null
+          endereco_linha3?: string | null
+          id?: string
+          logradouro?: string | null
+          nome_oficial: string
+          numero?: number | null
+          numero_endereco?: string | null
+          possui_forca_tatica?: boolean
+          tipo?: Database["public"]["Enums"]["tipo_unidade"]
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          abreviacao?: string | null
+          ativa?: boolean
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          cr?: string | null
+          created_at?: string
+          endereco_linha1?: string | null
+          endereco_linha2?: string | null
+          endereco_linha3?: string | null
+          id?: string
+          logradouro?: string | null
+          nome_oficial?: string
+          numero?: number | null
+          numero_endereco?: string | null
+          possui_forca_tatica?: boolean
+          tipo?: Database["public"]["Enums"]["tipo_unidade"]
+          uf?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      upsert_unidades_bulk: { Args: { payload: Json }; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      tipo_unidade: "BPM" | "CIPM" | "CPM" | "NPM" | "OUTRO"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +260,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      tipo_unidade: ["BPM", "CIPM", "CPM", "NPM", "OUTRO"],
+    },
   },
 } as const

@@ -821,7 +821,7 @@ export async function downloadTcoDocx(opts: {
           const ct = (resp.headers.get('Content-Type') || '').toLowerCase();
           const isPng = ct.includes('png') || /\.png(\?|$)/i.test(url);
           const isJpeg = ct.includes('jpeg') || ct.includes('jpg') || /\.(jpe?g)(\?|$)/i.test(url);
-          const imgType = isPng ? 'png' : (isJpeg ? 'jpeg' : 'jpeg');
+          const imgType = isPng ? 'png' : (isJpeg ? 'jpg' : 'jpg');
           segundaPaginaChildren.push(
             new Paragraph({
               alignment: AlignmentType.CENTER,
