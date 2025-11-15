@@ -151,6 +151,7 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
   setUnidade,
   localRegistro,
   setLocalRegistro,
+  onTipificacaoChange,
 }) => {
   const { toast } = useToast();
   const [isChecking, setIsChecking] = useState(false);
