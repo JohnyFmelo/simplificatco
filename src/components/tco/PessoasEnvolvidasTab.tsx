@@ -59,8 +59,6 @@ const PessoasEnvolvidasTab: React.FC<PessoasEnvolvidasTabProps> = ({
   const [active, setActive] = useState<'autor' | 'vitimas' | 'testemunhas'>('autor');
   return (
     <div>
-      <h2 className="section-title">Pessoas Envolvidas</h2>
-      <p className="section-subtitle">Autores, Vítimas e Testemunhas</p>
 
       <div className={`subtabs ${isDrugCase ? 'two' : 'three'}`}>
         <div className={active === 'autor' ? 'subtab active' : 'subtab'} onClick={() => setActive('autor')}>

@@ -10,8 +10,6 @@ interface AudienciaTabProps {
 const AudienciaTab: React.FC<AudienciaTabProps> = ({ audienciaData, setAudienciaData, audienciaHora, setAudienciaHora }) => {
   return (
     <div>
-      <h2 className="section-title">Audiência</h2>
-      <p className="section-subtitle">Informe data e hora da audiência</p>
       <div className="two-columns">
         <div className="form-group">
           <label htmlFor="audienciaData">Data</label>

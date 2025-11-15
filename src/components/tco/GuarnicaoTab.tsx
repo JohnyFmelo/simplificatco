@@ -395,8 +395,6 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
 
   return (
     <div>
-      <h2 className="section-title">Guarnição</h2>
-      <p className="section-subtitle">Adicione os componentes buscando por RGPM</p>
 
       <div className="form-grid">
         <div className="form-group" style={{alignItems:'flex-end'}}>

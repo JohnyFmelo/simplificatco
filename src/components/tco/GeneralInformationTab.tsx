@@ -24,6 +24,7 @@ interface GeneralInformationTabProps {
   endereco: string;
   setEndereco: (value: string) => void;
   municipio: string;
+  setMunicipio: (value: string) => void;
   comunicante: string;
   setComunicante: (value: string) => void;
   guarnicao: string;
@@ -110,6 +111,7 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
   endereco,
   setEndereco,
   municipio,
+  setMunicipio,
   comunicante,
   setComunicante,
   guarnicao,
@@ -122,6 +124,8 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 }) => {
   // Campo livre: remover estados internos do seletor anterior
   // (sem estados auxiliares; o valor é controlado diretamente por localFato)
+
+  const [cep, setCep] = useState<string>("");
 
   const getTipificacaoCompleta = () => {
     if (!natureza) return "";
@@ -169,8 +173,6 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
   return (
     <div>
-      <h2 className="section-title">Dados da Ocorrência</h2>
-      <p className="section-subtitle">Informações gerais sobre a ocorrência registrada</p>
       <div className="form-grid">
         
 
@@ -196,6 +198,29 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
           <label>Local do Fato <span className="required">*</span></label>
           <Input className="input-hint" placeholder="Ex.: Rua, Casa, Loja, Escola..." value={localFato} onChange={e => setLocalFato(e.target.value)} />
           <small className="field-hint">Informe o tipo de local (ex: rua, casa, loja). Não é endereço.</small>
+        </div>
+
+        <div className="form-group">
+          <label>Buscar por CEP</label>
+          <Input
+            placeholder="Ex: 78118-007"
+            inputMode="numeric"
+            value={cep}
+            onChange={e => {
+              const nums = e.target.value.replace(/\D/g, '').slice(0,8);
+              const masked = nums.length > 5 ? `${nums.slice(0,5)}-${nums.slice(5)}` : nums;
+              setCep(masked);
+              if (nums.length === 8) {
+                fetch(`https://viacep.com.br/ws/${nums}/json/`).then(r => r.json()).then(data => {
+                  if (!data || data.erro) return;
+                  const addr = [data.logradouro, data.bairro].filter(Boolean).join(', ');
+                  if (addr) setEndereco(addr);
+                  if (data.localidade) setMunicipio(data.localidade);
+                }).catch(() => {});
+              }
+            }}
+          />
+          <small className="field-hint">Digite 8 dígitos para buscar automaticamente.</small>
         </div>
 
         <div className="form-group">
