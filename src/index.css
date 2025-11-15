@@ -148,6 +148,7 @@ All colors MUST be HSL.
 .tab:hover { background: #e3e8ee; color: #003366; }
 .tab.active { background: #00509e; color: #ffffff; font-weight: 700; border-bottom-color: transparent; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,80,158,0.35); }
 .tab.active i { color: #ffffff; }
+.tab i { margin-right: 8px; }
 .form-content { padding: 40px; }
 .form-grid { display: grid; gap: 20px; }
 .two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

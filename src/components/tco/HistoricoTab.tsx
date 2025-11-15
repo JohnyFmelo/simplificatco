@@ -458,54 +458,45 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
   };
 
   return (
-    <div className="border rounded-lg shadow-sm bg-white">
-      <div className="p-6">
-        <h3 className="text-2xl font-semibold flex items-center">Histórico</h3>
-      </div>
-      <div className="p-6 space-y-6 px-[6px]">
-        <div>
+    <div>
+      <div className="form-grid">
+        <div className="form-group">
           <Label htmlFor="relatoPolicial">RELATÓRIO POLICIAL</Label>
-          <Textarea id="relatoPolicial" placeholder="Descreva o relato policial" value={relatoPolicial} onChange={e => setRelatoPolicial(e.target.value)} className="min-h-[150px]" />
+          <Textarea id="relatoPolicial" placeholder="Descreva o relato policial" value={relatoPolicial} onChange={e => setRelatoPolicial(e.target.value)} className="min-h-[150px] bg-white" />
         </div>
-        
+
         {validAutores.length > 0 && (
-          <div>
-            {validAutores.map((autor, index) => {
-              console.log(`Renderizando campo para autor ${index}:`, autor.nome);
-              return (
-                <div key={`autor-relato-${index}`} className="mb-6">
-                  <Label htmlFor={`relatoAutor-${index}`}>RELATO DO AUTOR {autor.nome}</Label>
-                  <Textarea 
-                    id={`relatoAutor-${index}`} 
-                    placeholder={`Descreva o relato do autor ${autor.nome}`} 
-                    value={autor.relato || "O AUTOR DOS FATOS ABAIXO ASSINADO, JÁ QUALIFICADO NOS AUTOS, CIENTIFICADO DE SEUS DIREITOS CONSTITUCIONAIS INCLUSIVE O DE PERMANECER EM SILÊNCIO, DECLAROU QUE [INSIRA DECLARAÇÃO]. LIDO E ACHADO CONFORME. NADA MAIS DISSE E NEM LHE FOI PERGUNTADO."} 
-                    onChange={e => handleAutorRelatoChange(index, e.target.value)} 
-                    className="min-h-[150px]" 
-                  />
-                </div>
-              );
-            })}
-          </div>
+          validAutores.map((autor, index) => (
+            <div key={`autor-relato-${index}`} className="form-group">
+              <Label htmlFor={`relatoAutor-${index}`}>RELATO DO AUTOR {autor.nome}</Label>
+              <Textarea
+                id={`relatoAutor-${index}`}
+                placeholder={`Descreva o relato do autor ${autor.nome}`}
+                value={autor.relato || "O AUTOR DOS FATOS ABAIXO ASSINADO, JÁ QUALIFICADO NOS AUTOS, CIENTIFICADO DE SEUS DIREITOS CONSTITUCIONAIS INCLUSIVE O DE PERMANECER EM SILÊNCIO, DECLAROU QUE [INSIRA DECLARAÇÃO]. LIDO E ACHADO CONFORME. NADA MAIS DISSE E NEM LHE FOI PERGUNTADO."}
+                onChange={e => handleAutorRelatoChange(index, e.target.value)}
+                className="min-h-[150px] bg-white"
+              />
+            </div>
+          ))
         )}
-        
-        {validVitimas.length > 0 && 
+
+        {validVitimas.length > 0 && (
           validVitimas.map((vitima, index) => (
-            <div key={`vitima-relato-${index}`} className="space-y-4">
-              <div>
+            <div key={`vitima-section-${index}`}>
+              <div className="form-group">
                 <Label htmlFor={`relatoVitima-${index}`}>RELATO DA VÍTIMA {vitima.nome}</Label>
-                <Textarea 
-                  id={`relatoVitima-${index}`} 
-                  placeholder={`Descreva o relato da vítima ${vitima.nome}`} 
-                  value={vitima.relato || "RELATOU A VÍTIMA, ABAIXO ASSINADA, JÁ QUALIFICADA NOS AUTOS, QUE [INSIRA DECLARAÇÃO]. LIDO E ACHADO CONFORME. NADA MAIS DISSE E NEM LHE FOI PERGUNTADO."} 
-                  onChange={e => handleVitimaRelatoChange(index, e.target.value)} 
-                  className="min-h-[150px]" 
+                <Textarea
+                  id={`relatoVitima-${index}`}
+                  placeholder={`Descreva o relato da vítima ${vitima.nome}`}
+                  value={vitima.relato || "RELATOU A VÍTIMA, ABAIXO ASSINADA, JÁ QUALIFICADA NOS AUTOS, QUE [INSIRA DECLARAÇÃO]. LIDO E ACHADO CONFORME. NADA MAIS DISSE E NEM LHE FOI PERGUNTADO."}
+                  onChange={e => handleVitimaRelatoChange(index, e.target.value)}
+                  className="min-h-[150px] bg-white"
                 />
               </div>
-              
-              <div className="mt-4 p-4 border rounded-md">
-                <Label className="font-bold mb-2 block">REPRESENTAÇÃO DA VÍTIMA {vitima.nome}</Label>
-                <RadioGroup 
-                  value={vitima.representacao || ""} 
+              <div className="form-group">
+                <Label>REPRESENTAÇÃO DA VÍTIMA {vitima.nome}</Label>
+                <RadioGroup
+                  value={vitima.representacao || ""}
                   onValueChange={(value) => handleVitimaRepresentacaoChange(index, value)}
                 >
                   <div className="flex items-center space-x-2">
@@ -520,45 +511,38 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
               </div>
             </div>
           ))
-        }
-        
-        {validTestemunhas.length > 0 && (
-          <div>
-            {validTestemunhas.map((testemunha, index) => {
-              console.log(`Renderizando campo para testemunha ${index}:`, testemunha.nome);
-              return (
-                <div key={`testemunha-relato-${index}`} className="mb-6">
-                  <Label htmlFor={`relatoTestemunha-${index}`}>RELATO DA TESTEMUNHA {testemunha.nome}</Label>
-                  <Textarea 
-                    id={`relatoTestemunha-${index}`} 
-                    placeholder={`Descreva o relato da testemunha ${testemunha.nome}`} 
-                    value={testemunha.relato || "A TESTEMUNHA ABAIXO ASSINADA, JÁ QUALIFICADA NOS AUTOS, COMPROMISSADA NA FORMA DA LEI, QUE AOS COSTUMES RESPONDEU NEGATIVAMENTE OU QUE É AMIGA/PARENTE DE UMA DAS PARTES, DECLAROU QUE [INSIRA DECLARAÇÃO]. LIDO E ACHADO CONFORME. NADA MAIS DISSERAM E NEM LHE FOI PERGUNTADO."} 
-                    onChange={e => handleTestemunhaRelatoChange(index, e.target.value)} 
-                    className="min-h-[150px]" 
-                  />
-                </div>
-              );
-            })}
-          </div>
         )}
-        
-        <div>
+
+        {validTestemunhas.length > 0 && (
+          validTestemunhas.map((testemunha, index) => (
+            <div key={`testemunha-relato-${index}`} className="form-group">
+              <Label htmlFor={`relatoTestemunha-${index}`}>RELATO DA TESTEMUNHA {testemunha.nome}</Label>
+              <Textarea
+                id={`relatoTestemunha-${index}`}
+                placeholder={`Descreva o relato da testemunha ${testemunha.nome}`}
+                value={testemunha.relato || "A TESTEMUNHA ABAIXO ASSINADA, JÁ QUALIFICADA NOS AUTOS, COMPROMISSADA NA FORMA DA LEI, QUE AOS COSTUMES RESPONDEU NEGATIVAMENTE OU QUE É AMIGA/PARENTE DE UMA DAS PARTES, DECLAROU QUE [INSIRA DECLARAÇÃO]. LIDO E ACHADO CONFORME. NADA MAIS DISSERAM E NEM LHE FOI PERGUNTADO."}
+                onChange={e => handleTestemunhaRelatoChange(index, e.target.value)}
+                className="min-h-[150px] bg-white"
+              />
+            </div>
+          ))
+        )}
+
+        <div className="form-group">
           <Label htmlFor="apreensoes">OBJETOS/DOCUMENTOS APREENDIDOS</Label>
-          <Textarea id="apreensoes" placeholder="Descreva os objetos ou documentos apreendidos, se houver" value={apreensoes} onChange={e => setApreensoes(e.target.value)} className="min-h-[100px]" />
-          <p className="text-xs text-muted-foreground mt-1">
+          <Textarea id="apreensoes" placeholder="Descreva os objetos ou documentos apreendidos, se houver" value={apreensoes} onChange={e => setApreensoes(e.target.value)} className="min-h-[100px] bg-white" />
+          <small className="field-hint">
             {!isDrugCase ? "Se houver apreensões, o Termo de Apreensão será gerado automaticamente no PDF." : "Para casos de drogas, o texto será adaptado automaticamente baseado nos tipos de drogas adicionados. Use um lacre único para todas as drogas."}
-          </p>
+          </small>
         </div>
 
-        {/* Seção do Fiel Depositário */}
         {apreensoes && apreensoes.trim() !== "" && (
-          <div className="mt-4 p-4 border rounded-md bg-gray-50">
-            <Label className="font-bold mb-3 block">FIEL DEPOSITÁRIO</Label>
-            <div className="space-y-4">
-              <div>
-                <Label className="mb-2 block">Nomear Fiel Depositário?</Label>
-                <RadioGroup 
-                  value={nomearFielDepositario || "Não"} 
+          <div className="form-group">
+            <Label>FIEL DEPOSITÁRIO</Label>
+            <div className="form-group">
+              <Label>Nomear Fiel Depositário?</Label>
+              <RadioGroup
+                  value={nomearFielDepositario || "Não"}
                   onValueChange={(value) => {
                     if (setNomearFielDepositario) {
                       setNomearFielDepositario(value);
@@ -567,36 +551,33 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
                       }
                     }
                   }}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Não" id="fiel-nao" />
-                    <Label htmlFor="fiel-nao">Não</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Sim" id="fiel-sim" />
-                    <Label htmlFor="fiel-sim">Sim</Label>
-                  </div>
-                </RadioGroup>
-              </div>
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="Não" id="fiel-nao" />
+                  <Label htmlFor="fiel-nao">Não</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="Sim" id="fiel-sim" />
+                  <Label htmlFor="fiel-sim">Sim</Label>
+                </div>
+              </RadioGroup>
+            </div>
 
-              {nomearFielDepositario === "Sim" && (
-                <div>
-                  <Label htmlFor="fielDepositarioSelect" className="mb-2 block">
-                    Selecionar Pessoa Envolvida como Fiel Depositário:
-                  </Label>
-                  <Select 
-                    value={fielDepositarioSelecionado || ""} 
+            {nomearFielDepositario === "Sim" && (
+              <div className="form-group">
+                <Label htmlFor="fielDepositarioSelect">Selecionar Pessoa Envolvida como Fiel Depositário:</Label>
+                <Select
+                    value={fielDepositarioSelecionado || ""}
                     onValueChange={(value) => {
                       if (setFielDepositarioSelecionado) {
                         setFielDepositarioSelecionado(value);
                       }
                     }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma pessoa envolvida" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* Autores */}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma pessoa envolvida" />
+                  </SelectTrigger>
+                  <SelectContent>
                       {autores && autores.length > 0 && autores.map((autor, index) => (
                         autor.nome && autor.nome.trim() !== "" && (
                           <SelectItem key={`autor-${index}`} value={`autor-${index}-${autor.nome}`}>
@@ -604,8 +585,6 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
                           </SelectItem>
                         )
                       ))}
-                      
-                      {/* Vítimas */}
                       {vitimas && vitimas.length > 0 && vitimas.map((vitima, index) => (
                         vitima.nome && vitima.nome.trim() !== "" && (
                           <SelectItem key={`vitima-${index}`} value={`vitima-${index}-${vitima.nome}`}>
@@ -613,8 +592,6 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
                           </SelectItem>
                         )
                       ))}
-                      
-                      {/* Testemunhas */}
                       {testemunhas && testemunhas.length > 0 && testemunhas.map((testemunha, index) => (
                         testemunha.nome && testemunha.nome.trim() !== "" && (
                           <SelectItem key={`testemunha-${index}`} value={`testemunha-${index}-${testemunha.nome}`}>
@@ -622,46 +599,40 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
                           </SelectItem>
                         )
                       ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  {fielDepositarioSelecionado && (
-                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
-                      <p className="text-sm text-green-700">
-                        <strong>Fiel Depositário Selecionado:</strong> {fielDepositarioSelecionado.split('-').slice(2).join('-')}
-                      </p>
-                      <p className="text-xs text-green-600 mt-1">
-                        Esta pessoa será responsável pela guarda dos objetos/documentos apreendidos.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                  </SelectContent>
+                </Select>
+                {fielDepositarioSelecionado && (
+                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-sm text-green-700">
+                      <strong>Fiel Depositário Selecionado:</strong> {fielDepositarioSelecionado.split('-').slice(2).join('-')}
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      Esta pessoa será responsável pela guarda dos objetos/documentos apreendidos.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
-        
-        <div>
+
+        <div className="form-group">
           <Label htmlFor="providencias">PROVIDÊNCIAS</Label>
-          <Textarea id="providencias" placeholder="Descreva as providências tomadas" value={providencias} onChange={e => setProvidencias(e.target.value)} className="min-h-[100px]" />
+          <Textarea id="providencias" placeholder="Descreva as providências tomadas" value={providencias} onChange={e => setProvidencias(e.target.value)} className="min-h-[100px] bg-white" />
         </div>
-        
-        <div>
+
+        <div className="form-group">
           <Label htmlFor="documentosAnexos">DOCUMENTOS ANEXOS</Label>
-          <Textarea id="documentosAnexos" placeholder="Documentos anexos ao TCO" value={documentosAnexos} onChange={e => setDocumentosAnexos(e.target.value)} className="min-h-[100px]" readOnly />
-          <p className="text-xs text-muted-foreground mt-1">
-            Lista de documentos gerada automaticamente com base nas informações do TCO.
-          </p>
+          <Textarea id="documentosAnexos" placeholder="Documentos anexos ao TCO" value={documentosAnexos} onChange={e => setDocumentosAnexos(e.target.value)} className="min-h-[100px] bg-white" readOnly />
+          <small className="field-hint">Lista de documentos gerada automaticamente com base nas informações do TCO.</small>
         </div>
-        
-        <div>
+
+        <div className="form-group">
           <Label htmlFor="conclusaoPolicial">CONCLUSÃO POLICIAL</Label>
-          <p className="text-xs text-red-600 mt-1">ATENÇÃO: EM CASOS DE LESÃO CORPORAL, SOLICITE EXAME DE CORPO DE DELITO E AJUSTE O TEXTO.</p>
-          <Textarea id="conclusaoPolicial" placeholder="Descreva a conclusão policial" value={conclusaoPolicial} onChange={e => setConclusaoPolicial((e.target.value || "").toUpperCase())} className="min-h-[150px]" />
+          <small className="field-hint">ATENÇÃO: EM CASOS DE LESÃO CORPORAL, SOLICITE EXAME DE CORPO DE DELITO E AJUSTE O TEXTO.</small>
+          <Textarea id="conclusaoPolicial" placeholder="Descreva a conclusão policial" value={conclusaoPolicial} onChange={e => setConclusaoPolicial((e.target.value || "").toUpperCase())} className="min-h-[150px] bg-white" />
           {solicitarCorpoDelito === "Sim" && (
-            <p className="text-xs text-green-600 mt-1">
-              Observação: O texto será ajustado para indicar que o autor possui lesões corporais aparentes.
-            </p>
+            <small className="field-hint">Observação: O texto será ajustado para indicar que o autor possui lesões corporais aparentes.</small>
           )}
         </div>
       </div>
