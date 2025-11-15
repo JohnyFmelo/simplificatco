@@ -268,3 +268,27 @@ All colors MUST be HSL.
 @media (max-width: 480px) { .gallery { grid-template-columns: 1fr; } }
 
 /* Container interno para seções das abas */
+/* Login page styles */
+.login-page-root { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: linear-gradient(135deg, #0a1f3d 0%, #003366 50%, #001f3f 100%); }
+.login-container { background: #ffffff; border-radius: 20px; width: 100%; max-width: 420px; box-shadow: 0 10px 30px rgba(0, 51, 102, 0.2); overflow: hidden; border: 1px solid #dee2e6; }
+.login-header { background: linear-gradient(135deg, #003366 0%, #00509e 100%); padding: 32px 40px; text-align: center; color: #fff; }
+.logo { width: 80px; height: 80px; background: #fff; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 36px; color: #003366; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+.login-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+.login-subtitle { font-size: 14px; opacity: 0.9; }
+.login-body { padding: 32px 40px; }
+.login-form-group { margin-bottom: 20px; position: relative; }
+.login-form-group label { display: block; font-size: 14px; font-weight: 600; color: #2c3e50; margin-bottom: 8px; }
+.input-wrapper { position: relative; }
+.input-wrapper i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c757d; font-size: 18px; pointer-events: none; }
+.login-form-group input { width: 100%; padding: 14px 16px 14px 44px; border: 1.5px solid #dee2e6; border-radius: 12px; font-size: 15px; background: #ffffff; transition: all 0.3s ease; }
+.login-form-group input:focus { outline: none; border-color: #003366; box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.15); }
+.form-options { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 24px; font-size: 13px; }
+.remember-me { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.remember-me input { margin: 0; }
+.btn-login { width: 100%; background: linear-gradient(135deg, #003366 0%, #00509e 100%); color: #fff; border: none; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0, 51, 102, 0.3); }
+.btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0, 51, 102, 0.4); }
+.btn-login.loading { opacity: 0.8; cursor: not-allowed; }
+.btn-login i.fa-spinner { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.login-footer { text-align: center; padding: 20px 40px; background: #f8f9fa; font-size: 13px; color: #6c757d; border-top: 1px solid #dee2e6; }
+.error-message { color: #e63946; font-size: 13px; margin-top: 8px; }
