@@ -72,7 +72,7 @@ const Login: React.FC = () => {
                 <i className="fas fa-lock" />
                 <input type={showPass ? 'text' : 'password'} id="senha" placeholder="••••••••" value={senha} onChange={e => setSenha(e.target.value)} className="pass-input" />
                 <button type="button" className="toggle-pass" onClick={() => setShowPass(v => !v)} aria-label="Mostrar/ocultar senha">
-                  <i className={showPass ? 'fas fa-eye-slash' : 'fas fa-eye'} />
+                  <i className={showPass ? 'fas fa-eye' : 'fas fa-eye-slash'} />
                 </button>
               </div>
               {error && <div className="error-message">{error}</div>}
