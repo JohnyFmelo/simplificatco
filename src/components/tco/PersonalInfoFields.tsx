@@ -45,6 +45,33 @@ const PersonalInfoFields: React.FC<PersonalInfoFieldsProps> = ({
   const [ageWarning, setAgeWarning] = useState<string | null>(null);
   const [cpfError, setCpfError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [cepPessoa, setCepPessoa] = useState<string>("");
+  const [cepStatus, setCepStatus] = useState<string>("");
+
+  const buscarEnderecoPessoa = async () => {
+    const nums = cepPessoa.replace(/\D/g, "");
+    if (nums.length !== 8) {
+      setCepStatus("Informe 8 dígitos.");
+      return;
+    }
+    try {
+      setCepStatus("Buscando...");
+      const resp = await fetch(`https://viacep.com.br/ws/${nums}/json/`);
+      const data = await resp.json();
+      if (data?.erro) {
+        setCepStatus("CEP não encontrado.");
+        return;
+      }
+      const enderecoBase = [data.logradouro, data.bairro].filter(Boolean).join(", ");
+      const cidadeUf = [data.localidade, data.uf].filter(Boolean).join("/");
+      const enderecoCompleto = [enderecoBase, cidadeUf].filter(Boolean).join(", ");
+      const novoEndereco = enderecoCompleto ? `${enderecoCompleto}${cepPessoa ? `, CEP ${cepPessoa}` : ""}` : data.cep;
+      onChangeHandler(index !== undefined ? index : null, 'endereco', novoEndereco);
+      setCepStatus(`CEP: ${data.cep} • ${data.logradouro} • ${data.bairro}`);
+    } catch {
+      setCepStatus("Erro ao buscar CEP.");
+    }
+  };
 
   // Format CPF: 000.000.000-00
   const formatCPF = (value: string) => {
@@ -202,14 +229,37 @@ const PersonalInfoFields: React.FC<PersonalInfoFieldsProps> = ({
         </div>
       </div>
 
-      <div>
-        <Label htmlFor={`${prefix}endereco_${index}`}>Endereço</Label>
-        <Input 
-          id={`${prefix}endereco_${index}`} 
-          placeholder="Ex: Rua, n°, Quadra, Bairro, Lote, Coordenadas..." 
-          value={data.endereco} 
-          onChange={e => onChangeHandler(index !== undefined ? index : null, 'endereco', e.target.value)} 
-        />
+      <div className="two-columns cep-address">
+        <div>
+          <Label>Buscar por CEP</Label>
+          <div className="input-row">
+            <Input
+              className="cep-input"
+              placeholder="Ex: 78118-007"
+              inputMode="numeric"
+              value={cepPessoa}
+              onChange={e => {
+                const nums = e.target.value.replace(/\D/g, '').slice(0,8);
+                const masked = nums.length > 5 ? `${nums.slice(0,5)}-${nums.slice(5)}` : nums;
+                setCepPessoa(masked);
+              }}
+              onKeyDown={e => { if (e.key === 'Enter') buscarEnderecoPessoa(); }}
+            />
+            <button type="button" className="icon-button" onClick={buscarEnderecoPessoa} aria-label="Buscar CEP"><i className="fas fa-search"></i></button>
+          </div>
+          {cepStatus && <small className="field-hint">{cepStatus}</small>}
+        </div>
+
+        <div>
+          <Label htmlFor={`${prefix}endereco_${index}`}>Endereço</Label>
+          <Input 
+            id={`${prefix}endereco_${index}`} 
+            placeholder="Ex: Rua, n°, Quadra, Bairro, Lote, Coordenadas..." 
+            value={data.endereco} 
+            onChange={e => onChangeHandler(index !== undefined ? index : null, 'endereco', e.target.value)} 
+          />
+        </div>
+
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

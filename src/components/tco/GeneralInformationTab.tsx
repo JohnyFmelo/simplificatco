@@ -126,6 +126,31 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
   // (sem estados auxiliares; o valor é controlado diretamente por localFato)
 
   const [cep, setCep] = useState<string>("");
+  const [cepStatus, setCepStatus] = useState<string>("");
+
+  const buscarEndereco = async () => {
+    const nums = cep.replace(/\D/g, "");
+    if (nums.length !== 8) {
+      setCepStatus("Informe 8 dígitos.");
+      return;
+    }
+    try {
+      setCepStatus("Buscando...");
+      const resp = await fetch(`https://viacep.com.br/ws/${nums}/json/`);
+      const data = await resp.json();
+      if (data?.erro) {
+        setCepStatus("CEP não encontrado.");
+        return;
+      }
+      const enderecoCompleto = [data.logradouro, data.bairro].filter(Boolean).join(", ");
+      const cepMask = cep;
+      if (enderecoCompleto) setEndereco(`${enderecoCompleto}${cepMask ? `, CEP ${cepMask}` : ""}`);
+      if (data.localidade) setMunicipio(data.localidade);
+      setCepStatus(`CEP: ${data.cep} • ${data.logradouro} • ${data.bairro}`);
+    } catch {
+      setCepStatus("Erro ao buscar CEP.");
+    }
+  };
 
   const getTipificacaoCompleta = () => {
     if (!natureza) return "";
@@ -200,35 +225,34 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
           <small className="field-hint">Informe o tipo de local (ex: rua, casa, loja). Não é endereço.</small>
         </div>
 
-        <div className="form-group">
-          <label>Buscar por CEP</label>
-          <Input
-            placeholder="Ex: 78118-007"
-            inputMode="numeric"
-            value={cep}
-            onChange={e => {
-              const nums = e.target.value.replace(/\D/g, '').slice(0,8);
-              const masked = nums.length > 5 ? `${nums.slice(0,5)}-${nums.slice(5)}` : nums;
-              setCep(masked);
-              if (nums.length === 8) {
-                fetch(`https://viacep.com.br/ws/${nums}/json/`).then(r => r.json()).then(data => {
-                  if (!data || data.erro) return;
-                  const addr = [data.logradouro, data.bairro].filter(Boolean).join(', ');
-                  if (addr) setEndereco(addr);
-                  if (data.localidade) setMunicipio(data.localidade);
-                }).catch(() => {});
-              }
-            }}
-          />
-          <small className="field-hint">Digite 8 dígitos para buscar automaticamente.</small>
+        <div className="two-columns cep-address">
+          <div className="form-group">
+            <label>Buscar por CEP</label>
+            <div className="input-row">
+              <Input
+                className="cep-input"
+                placeholder="Ex: 78118-007"
+                inputMode="numeric"
+                value={cep}
+                onChange={e => {
+                  const nums = e.target.value.replace(/\D/g, '').slice(0,8);
+                  const masked = nums.length > 5 ? `${nums.slice(0,5)}-${nums.slice(5)}` : nums;
+                  setCep(masked);
+                }}
+                onKeyDown={e => { if (e.key === 'Enter') buscarEndereco(); }}
+              />
+              <button type="button" className="icon-button" onClick={buscarEndereco} aria-label="Buscar CEP"><i className="fas fa-search"></i></button>
+            </div>
+            {cepStatus && <small className="field-hint">{cepStatus}</small>}
+          </div>
+
+          <div className="form-group">
+            <label>Endereço Completo <span className="required">*</span></label>
+            <Input className="address-input" placeholder="Rua, número, bairro..." value={endereco} onChange={e => setEndereco(e.target.value)} />
+          </div>
         </div>
 
-        <div className="form-group">
-          <label>Endereço Completo <span className="required">*</span></label>
-          <Input placeholder="Rua, número, bairro..." value={endereco} onChange={e => setEndereco(e.target.value)} />
-        </div>
-
-        <div className="two-columns">
+        <div className="four-columns">
           <div className="form-group">
             <label>Município</label>
             <Input readOnly value={municipio} />
@@ -238,25 +262,23 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
             <Input placeholder="Ex: ABC1D23" maxLength={7} value={guarnicao} onChange={e => setGuarnicao(e.target.value.toUpperCase())} />
             <small className="field-hint">Digite apenas a placa da viatura (ex: ABC1D23).</small>
           </div>
-        </div>
-
-        <div className="form-group">
-          <label>Comunicante <span className="required">*</span></label>
-          <select className="select-full" value={comunicante} onChange={e => setComunicante(e.target.value)}>
-            <option value="">Selecione o comunicante</option>
-            <option value="COPOM">COPOM</option>
-            <option value="CIOSP">CIOSP</option>
-            <option value="Adjunto">Adjunto</option>
-            <option value="Oficial de Área">Oficial de Área</option>
-            <option value="Patrulhamento">Patrulhamento</option>
-            <option value="Populares">Populares</option>
-            <option value="Guarda">Guarda</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label>Operação (Opcional)</label>
-          <Input placeholder="Ex: Operação Saturação, Operação Cidade Segura..." value={operacao} onChange={e => setOperacao(e.target.value)} />
+          <div className="form-group">
+            <label>Comunicante <span className="required">*</span></label>
+            <select className="select-full" value={comunicante} onChange={e => setComunicante(e.target.value)}>
+              <option value="">Selecione o comunicante</option>
+              <option value="COPOM">COPOM</option>
+              <option value="CIOSP">CIOSP</option>
+              <option value="Adjunto">Adjunto</option>
+              <option value="Oficial de Área">Oficial de Área</option>
+              <option value="Patrulhamento">Patrulhamento</option>
+              <option value="Populares">Populares</option>
+              <option value="Guarda">Guarda</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Operação (Opcional)</label>
+            <Input placeholder="Ex: Operação Saturação, Operação Cidade Segura..." value={operacao} onChange={e => setOperacao(e.target.value)} />
+          </div>
         </div>
       </div>
     </div>
