@@ -302,6 +302,8 @@ export async function downloadTcoDocx(opts: {
   autores?: Array<{ nome: string; sexo: string; estadoCivil: string; profissao: string; endereco: string; dataNascimento: string; naturalidade: string; filiacaoMae: string; filiacaoPai: string; rg: string; cpf: string; celular: string; email: string; semCpf?: string; }>;
   // URLs públicas de imagens anexadas (opcional)
   imageUrls?: string[];
+  // Legendas das imagens (na mesma ordem de imageUrls)
+  imageCaptions?: string[];
   // Audiência (nova página Termo de Compromisso)
   audienciaData?: string;
   audienciaHora?: string;
@@ -804,10 +806,11 @@ export async function downloadTcoDocx(opts: {
         return { width: 420, height: 280 };
       }
     };
-    const filteredUrls = (opts.imageUrls || [])
-      .filter(u => typeof u === 'string' && !/via\.placeholder\.com/i.test(u))
-      .filter(u => /^(https?:|blob:|data:)/i.test(u));
-    for (const url of filteredUrls) {
+    const pairs = (opts.imageUrls || []).map((u, i) => ({ url: u, caption: (opts.imageCaptions || [])[i] || '' }));
+    const filteredPairs = pairs
+      .filter(p => typeof p.url === 'string' && !/via\.placeholder\.com/i.test(p.url))
+      .filter(p => /^(https?:|blob:|data:)/i.test(p.url));
+    for (const { url, caption } of filteredPairs) {
       try {
         const resp = await fetch(url);
         if (resp.ok) {
@@ -831,8 +834,14 @@ export async function downloadTcoDocx(opts: {
                 type: imgType
               }) ]
             }),
-            new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
           );
+          const captionText = (caption || '').trim();
+          if (captionText) {
+            segundaPaginaChildren.push(
+              new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: captionText, italics: true }) ] })
+            );
+          }
+          segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }));
         }
       } catch (e) {
         // falha silenciosa por imagem específica

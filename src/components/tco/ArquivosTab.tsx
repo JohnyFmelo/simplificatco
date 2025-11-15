@@ -15,6 +15,9 @@ interface ArquivosTabProps {
   onRemoveFoto: (id: string) => void;
   cr: string;
   unidade: string;
+  // Legendas controladas
+  captionsById?: Record<string, string>;
+  onCaptionChange?: (id: string, caption: string) => void;
   // Novas props para geração do DOCX
   tcoNumber: string;
   natureza: string;
@@ -41,12 +44,12 @@ interface ArquivosTabProps {
   vitimas?: Array<{ nome: string; sexo: string; estadoCivil: string; profissao: string; endereco: string; dataNascimento: string; naturalidade: string; filiacaoMae: string; filiacaoPai: string; rg: string; cpf: string; celular: string; email: string; semCpf?: string; }>;
 }
 
-const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFoto }) => {
+const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFoto, captionsById: captionsProp, onCaptionChange }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
   const [dragOver, setDragOver] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [captionsById, setCaptionsById] = useState<Record<string, string>>({});
+  const [captionsByIdLocal, setCaptionsByIdLocal] = useState<Record<string, string>>({});
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImgSrc, setLightboxImgSrc] = useState("");
   const [lightboxCaption, setLightboxCaption] = useState("");
@@ -81,7 +84,8 @@ const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFo
 
   const onOpenLightbox = (id: string, src: string) => {
     setLightboxImgSrc(src);
-    setLightboxCaption(captionsById[id] || "Sem legenda");
+    const map = captionsProp ?? captionsByIdLocal;
+    setLightboxCaption(map[id] || "Sem legenda");
     setLightboxOpen(true);
   };
 
@@ -137,7 +141,20 @@ const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFo
               <img src={foto.url} className="photo-img" alt={foto.name} onClick={() => onOpenLightbox(foto.id, foto.url)} />
               <div className="photo-body">
                 <div className="photo-label">Legenda *</div>
-                <input type="text" className="photo-caption" placeholder="Ex: Local do fato, objeto apreendido..." value={captionsById[foto.id] || ""} onChange={e => setCaptionsById(prev => ({ ...prev, [foto.id]: e.target.value }))} />
+                <input
+                  type="text"
+                  className="photo-caption"
+                  placeholder="Ex: Local do fato, objeto apreendido..."
+                  value={(captionsProp ?? captionsByIdLocal)[foto.id] || ""}
+                  onChange={e => {
+                    const text = e.target.value;
+                    if (onCaptionChange) {
+                      onCaptionChange(foto.id, text);
+                    } else {
+                      setCaptionsByIdLocal(prev => ({ ...prev, [foto.id]: text }));
+                    }
+                  }}
+                />
               </div>
               <div className="photo-footer">
                 <button className="btn-remove" title="Remover" onClick={() => handleRemove(foto.id)}>

@@ -538,13 +538,12 @@ const HistoricoTab: React.FC<HistoricoTabProps> = ({
 
         {apreensoes && apreensoes.trim() !== "" && (
           <div className="form-group">
-            <Label>FIEL DEPOSITÁRIO</Label>
             <div className="form-group">
               <Label>Nomear Fiel Depositário?</Label>
               <RadioGroup
-                  value={nomearFielDepositario || "Não"}
-                  onValueChange={(value) => {
-                    if (setNomearFielDepositario) {
+                value={nomearFielDepositario || "Não"}
+                onValueChange={(value) => {
+                  if (setNomearFielDepositario) {
                       setNomearFielDepositario(value);
                       if (value === "Não" && setFielDepositarioSelecionado) {
                         setFielDepositarioSelecionado("");

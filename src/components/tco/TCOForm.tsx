@@ -411,6 +411,7 @@ const TCOForm: React.FC = () => {
   const isDrugCase = natureza === "Porte de drogas para consumo";
   const [audienciaData, setAudienciaData] = useState("");
   const [audienciaHora, setAudienciaHora] = useState("");
+  const [photoCaptions, setPhotoCaptions] = useState<Record<string, string>>({});
 
   // Navegação controlada por etapas
   const {
@@ -677,6 +678,7 @@ const TCOForm: React.FC = () => {
       testemunhas,
       vitimas,
       imageUrls: fotosArquivos.map(f => f.url),
+      imageCaptions: fotosArquivos.map(f => (photoCaptions[f.id] || "")),
       guarnicaoLista: componentesGuarnicao.map(g => ({
         nome: g.nome,
         posto: g.posto,
@@ -758,7 +760,7 @@ const TCOForm: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="arquivos">
-          <ArquivosTab fotos={fotosArquivos} onAddFotos={onAddFotos} onRemoveFoto={onRemoveFoto} cr={cr} unidade={unidade} tcoNumber={tcoNumber} natureza={natureza} autoresNomes={autores.map(a => a.nome).filter(Boolean)} autoresDetalhados={autores.map(a => ({
+          <ArquivosTab fotos={fotosArquivos} onAddFotos={onAddFotos} onRemoveFoto={onRemoveFoto} cr={cr} unidade={unidade} captionsById={photoCaptions} onCaptionChange={(id, caption) => setPhotoCaptions(prev => ({ ...prev, [id]: caption }))} tcoNumber={tcoNumber} natureza={natureza} autoresNomes={autores.map(a => a.nome).filter(Boolean)} autoresDetalhados={autores.map(a => ({
           nome: a.nome,
           relato: a.relato
         }))} relatoPolicial={relatoPolicial} conclusaoPolicial={conclusaoPolicial} providencias={providencias} documentosAnexos={documentosAnexos} condutor={componentesGuarnicao[0] ? {
