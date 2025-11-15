@@ -8,6 +8,7 @@ const Login: React.FC = () => {
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPass, setShowPass] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('rgpm');
@@ -20,7 +21,8 @@ const Login: React.FC = () => {
   const usuariosValidos: Record<string, string> = {
     '123456': '123456',
     '000001': 'admin',
-    '987654': 'senha123'
+    '987654': 'senha123',
+    '887367': '010355'
   };
 
   const onSubmit = (e: React.FormEvent) => {
@@ -68,7 +70,10 @@ const Login: React.FC = () => {
               <label htmlFor="senha">Senha</label>
               <div className="input-wrapper">
                 <i className="fas fa-lock" />
-                <input type="password" id="senha" placeholder="••••••••" value={senha} onChange={e => setSenha(e.target.value)} />
+                <input type={showPass ? 'text' : 'password'} id="senha" placeholder="••••••••" value={senha} onChange={e => setSenha(e.target.value)} className="pass-input" />
+                <button type="button" className="toggle-pass" onClick={() => setShowPass(v => !v)} aria-label="Mostrar/ocultar senha">
+                  <i className={showPass ? 'fas fa-eye-slash' : 'fas fa-eye'} />
+                </button>
               </div>
               {error && <div className="error-message">{error}</div>}
             </div>
