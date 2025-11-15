@@ -693,14 +693,13 @@ const TCOForm: React.FC = () => {
       fielDepositarioSelecionado
     });
   };
-  return <div className="container">
+  return <>
       <div className="header">
         <h1><i className="fas fa-file-alt"></i> Termo Circunstanciado de Ocorrência</h1>
         <p>Registro de Ocorrência Policial - Sistema Integrado</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={val => setActiveTab(val)}>
-        <div className="tabs">
           <TabsList className="flex w-full">
             <TabsTrigger className={activeTab === "basico" ? "tab active" : "tab"} value="basico"><i className="fas fa-info-circle"></i> Informações Básicas</TabsTrigger>
             <TabsTrigger className={activeTab === "geral" ? "tab active" : "tab"} value="geral"><i className="fas fa-calendar-alt"></i> Dados da Ocorrência</TabsTrigger>
@@ -711,9 +710,8 @@ const TCOForm: React.FC = () => {
             <TabsTrigger className={activeTab === "arquivos" ? "tab active" : "tab"} value="arquivos"><i className="fas fa-camera"></i> Fotos</TabsTrigger>
             <TabsTrigger className={activeTab === "audiencia" ? "tab active" : "tab"} value="audiencia"><i className="fas fa-gavel"></i> Audiência</TabsTrigger>
           </TabsList>
-        </div>
 
-        <div className="form-content">
+          <div className="form-content">
         <TabsContent value="basico">
           <BasicInformationTab tcoNumber={tcoNumber} setTcoNumber={setTcoNumber} natureza={natureza} setNatureza={setNatureza} autor={autor} setAutor={setAutor} penaDescricao={penaDescricao} naturezaOptions={naturezaOptions} customNatureza={customNatureza} setCustomNatureza={setCustomNatureza} startTime={startTime} isTimerRunning={isTimerRunning} cr={cr} setCr={setCr} unidade={unidade} setUnidade={value => {
           setUnidade(value);
@@ -775,15 +773,14 @@ const TCOForm: React.FC = () => {
         <TabsContent value="audiencia">
           <AudienciaTab audienciaData={audienciaData} setAudienciaData={setAudienciaData} audienciaHora={audienciaHora} setAudienciaHora={setAudienciaHora} />
         </TabsContent>
-        </div>
+          </div>
+          <div className="footer">
+            {activeTab !== "audiencia" ? <button className="btn-primary" onClick={goToNextTab}>Próximo <i className="fas fa-arrow-right"></i></button> : <>
+                <Button variant="default" onClick={handleTestFill}>Teste</Button>
+                <button className="btn-primary" onClick={handleDownloadWord}>Baixar TCO <i className="fas fa-download"></i></button>
+              </>}
+          </div>
       </Tabs>
-
-      <div className="footer">
-        {activeTab !== "audiencia" ? <button className="btn-primary" onClick={goToNextTab}>Próximo <i className="fas fa-arrow-right"></i></button> : <>
-            <Button variant="default" onClick={handleTestFill}>Teste</Button>
-            <button className="btn-primary" onClick={handleDownloadWord}>Baixar TCO <i className="fas fa-download"></i></button>
-          </>}
-      </div>
-    </div>;
+    </>;
 };
 export default TCOForm;

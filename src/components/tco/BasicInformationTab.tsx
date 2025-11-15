@@ -403,30 +403,28 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
         </div>
       </div>
 
-      <div className="penalty-card">
-        <div className="penalty-header">
-          <i className="fas fa-balance-scale"></i>
-          <h3>Tipificação e Análise de Penas</h3>
-        </div>
-        <div className="penalty-list">
-          {naturezasComPena.map(({ nat, penaAnos }) => {
-            const custom = customNaturezas.find(c => c.nome === nat);
-            const legal = custom ? custom.tipificacao : naturezaTipificacoes[nat];
-            return (
-              <div key={`pen-${nat}`} className="penalty-item">
-                <div className="penalty-top">
-                  <div className="penalty-name">{(nat || '').toUpperCase()}</div>
-                  <div className="penalty-value">{formatarPena(penaAnos)}</div>
-                </div>
-                {legal && <div className="penalty-legal">{legal}</div>}
+      <div className="penalty-header">
+        <i className="fas fa-balance-scale"></i>
+        <h3>Tipificação e Análise de Penas</h3>
+      </div>
+      <div className="penalty-list">
+        {naturezasComPena.map(({ nat, penaAnos }) => {
+          const custom = customNaturezas.find(c => c.nome === nat);
+          const legal = custom ? custom.tipificacao : naturezaTipificacoes[nat];
+          return (
+            <div key={`pen-${nat}`} className="penalty-item">
+              <div className="penalty-top">
+                <div className="penalty-name">{(nat || '').toUpperCase()}</div>
+                <div className="penalty-value">{formatarPena(penaAnos)}</div>
               </div>
-            );
-          })}
-        </div>
-        <div className="penalty-total">
-          <span>Soma das Penas Máximas:</span>
-          <strong>{formatarPena(totalPenaAnos)}</strong>
-        </div>
+              {legal && <div className="penalty-legal">{legal}</div>}
+            </div>
+          );
+        })}
+      </div>
+      <div className="penalty-total">
+        <span>Soma das Penas Máximas:</span>
+        <strong>{formatarPena(totalPenaAnos)}</strong>
       </div>
 
       {showPenaAlert && (

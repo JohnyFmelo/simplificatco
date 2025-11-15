@@ -107,24 +107,31 @@ const ArquivosTab: React.FC<ArquivosTabProps> = ({ fotos, onAddFotos, onRemoveFo
 
   return (
     <div>
-      <h2 className="section-title">Fotos da Ocorrência</h2>
-      <p className="section-subtitle">Anexe imagens do local, objetos ou envolvidos</p>
+      {fotos.length === 0 ? (
+        <div className="photos-wrapper">
+          <label htmlFor="file-input-fotos" className={`upload-zone${dragOver ? " dragover" : ""}`} onDragEnter={ev => { ev.preventDefault(); setDragOver(true); }} onDragOver={ev => { ev.preventDefault(); setDragOver(true); }} onDragLeave={ev => { ev.preventDefault(); setDragOver(false); }} onDrop={onDropFiles}>
+            <div className="upload-icon">
+              <i className="fas fa-camera"></i>
+            </div>
+            <div className="upload-title">Arraste as fotos aqui ou clique para selecionar</div>
+            <div className="upload-info">Formatos: JPG, PNG, WEBP • Máx. 5MB por foto</div>
+            <div className="upload-progress" style={{ width: `${progress}%` }} />
+          </label>
+        </div>
+      ) : (
+        <div className="photo-actions">
+          <Button variant="outline" onClick={() => inputRef.current?.click()}><i className="fas fa-camera"></i> Adicionar fotos</Button>
+        </div>
+      )}
+      <input ref={inputRef} id="file-input-fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileChange} style={{ display: "none" }} />
 
-        <label htmlFor="file-input-fotos" className={`upload-zone${dragOver ? " dragover" : ""}`} onClick={() => inputRef.current?.click()} onDragEnter={ev => { ev.preventDefault(); setDragOver(true); }} onDragOver={ev => { ev.preventDefault(); setDragOver(true); }} onDragLeave={ev => { ev.preventDefault(); setDragOver(false); }} onDrop={onDropFiles}>
-          <div className="upload-icon">
-            <i className="fas fa-camera"></i>
-          </div>
-          <div className="upload-title">Arraste as fotos aqui ou clique para selecionar</div>
-          <div className="upload-info">Formatos: JPG, PNG, WEBP • Máx. 5MB por foto</div>
-          <div className="upload-progress" style={{ width: `${progress}%` }} />
-        </label>
-        <input ref={inputRef} id="file-input-fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileChange} style={{ display: "none" }} />
-
+      {fotos.length > 0 && (
         <div className="photo-stats">
           <span id="photo-count">{fotos.length} foto(s) adicionada(s)</span>
         </div>
+      )}
 
-        <div className="gallery" id="gallery">
+      <div className="gallery" id="gallery">
           {fotos.map((foto) => (
             <div className="photo-card" key={foto.id} data-id={foto.id}>
               <img src={foto.url} className="photo-img" alt={foto.name} onClick={() => onOpenLightbox(foto.id, foto.url)} />
