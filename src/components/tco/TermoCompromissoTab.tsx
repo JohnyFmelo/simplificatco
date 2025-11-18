@@ -80,10 +80,28 @@ const TermoCompromissoTab: React.FC<TermoCompromissoTabProps> = ({
             <Label htmlFor="juizadoHora">Hora</Label>
             <Input
               id="juizadoHora"
-              type="time"
-              lang="pt-BR"
+              type="text"
+              inputMode="numeric"
+              placeholder="hh:mm"
               value={juizadoEspecialHora}
-              onChange={(e) => setJuizadoEspecialHora(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, '').slice(0,4);
+                const hh = v.slice(0,2);
+                const mm = v.slice(2,4);
+                const formatted = [hh, mm].filter(Boolean).join(':');
+                setJuizadoEspecialHora(formatted);
+              }}
+              onBlur={(e) => {
+                const m = e.target.value.match(/^(\d{2}):(\d{2})$/);
+                if (!m) return;
+                let h = parseInt(m[1], 10);
+                let mi = parseInt(m[2], 10);
+                if (isNaN(h) || isNaN(mi)) return;
+                if (h > 23) h = 23;
+                if (mi > 59) mi = 59;
+                const s = `${String(h).padStart(2,'0')}:${String(mi).padStart(2,'0')}`;
+                setJuizadoEspecialHora(s);
+              }}
             />
           </div>
         </div>
