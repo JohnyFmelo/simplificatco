@@ -595,6 +595,8 @@ const InactivityGuard = () => {
         try {
           localStorage.removeItem("rgpm");
           sessionStorage.removeItem("rgpm");
+          localStorage.removeItem("nivel_acesso");
+          sessionStorage.removeItem("nivel_acesso");
         } finally {
           navigate("/login");
         }
