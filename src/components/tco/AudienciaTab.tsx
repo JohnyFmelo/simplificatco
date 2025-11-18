@@ -1,4 +1,9 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Input } from "@/components/ui/input";
 
 interface AudienciaTabProps {
   audienciaData: string;
@@ -8,16 +13,60 @@ interface AudienciaTabProps {
 }
 
 const AudienciaTab: React.FC<AudienciaTabProps> = ({ audienciaData, setAudienciaData, audienciaHora, setAudienciaHora }) => {
+  const [open, setOpen] = useState(false);
+  const selectedDate = useMemo(() => {
+    const m = audienciaData && audienciaData.match?.(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) {
+      const dd = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10) - 1;
+      const yyyy = parseInt(m[3], 10);
+      return new Date(yyyy, mm, dd);
+    }
+    return undefined;
+  }, [audienciaData]);
   return (
     <div>
       <div className="two-columns">
         <div className="form-group">
           <label htmlFor="audienciaData">Data</label>
-          <input id="audienciaData" type="date" placeholder="dd/mm/aaaa" value={audienciaData} onChange={(e) => setAudienciaData(e.target.value)} />
+          <div className="input-row">
+            <Input
+              id="audienciaData"
+              type="text"
+              inputMode="numeric"
+              placeholder="dd/mm/aaaa"
+              value={audienciaData}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, '').slice(0,8);
+                const dd = v.slice(0,2);
+                const mm = v.slice(2,4);
+                const yyyy = v.slice(4,8);
+                const formatted = [dd, mm, yyyy].filter(Boolean).join('/');
+                setAudienciaData(formatted);
+              }}
+            />
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <button type="button" className="icon-button" aria-label="Abrir calendário"><i className="fas fa-calendar-alt"></i></button>
+              </PopoverTrigger>
+              <PopoverContent align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(d) => {
+                    if (d) {
+                      setAudienciaData(format(d, 'dd/MM/yyyy', { locale: ptBR }));
+                      setOpen(false);
+                    }
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
         <div className="form-group">
           <label htmlFor="audienciaHora">Hora</label>
-          <input id="audienciaHora" type="time" placeholder="--:--" value={audienciaHora} onChange={(e) => setAudienciaHora(e.target.value)} />
+          <Input id="audienciaHora" type="time" lang="pt-BR" placeholder="--:--" value={audienciaHora} onChange={(e) => setAudienciaHora(e.target.value)} />
         </div>
       </div>
     </div>

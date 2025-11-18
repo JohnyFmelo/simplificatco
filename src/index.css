@@ -189,6 +189,8 @@ All colors MUST be HSL.
 .footer { padding: 28px 40px; background: #f8f9fa; display: flex; justify-content: flex-end; border-top: 1px solid #e9ecef; }
 .btn-primary { background: linear-gradient(135deg, #003366 0%, #00509e 100%); color: #fff; border: none; padding: 14px 36px; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.25s ease; box-shadow: 0 4px 15px rgba(0,51,102,0.3); display: inline-flex; align-items: center; gap: 8px; }
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,51,102,0.4); }
+.btn-primary.loading { opacity: 0.8; cursor: not-allowed; }
+.btn-primary i.fa-spinner { animation: spin 1s linear infinite; }
 @media (max-width: 992px) { .four-columns { grid-template-columns: 1fr 1fr; } .three-columns.cep-address { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 768px) { .two-columns { grid-template-columns: 1fr; } .three-columns { grid-template-columns: 1fr; } .four-columns { grid-template-columns: 1fr; } .form-content, .footer { padding: 24px; } .header { padding: 28px 20px; } .header h1 { font-size: 22px; } .tabs { padding: 0 8px; } .tab { padding: 14px 16px; font-size: 13px; } }
 @media (max-width: 480px) { .penalty-top { flex-direction: column; align-items: flex-start; gap: 8px; } .penalty-value { align-self: flex-end; } }

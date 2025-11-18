@@ -452,6 +452,7 @@ const TCOForm: React.FC = () => {
     if (idx >= 0 && idx < tabOrder.length - 1) setActiveTab(tabOrder[idx + 1]);
   };
   const isLastTab = activeTab === tabOrder[tabOrder.length - 1];
+  const [isDownloadingDocx, setIsDownloadingDocx] = useState(false);
   const validateForm = (): boolean => {
     const errors: string[] = [];
     // Básico
@@ -642,7 +643,7 @@ const TCOForm: React.FC = () => {
   };
 
   // Download do TCO em DOCX na aba "Audiência" (parte final)
-  const handleDownloadWord = () => {
+  const handleDownloadWord = async () => {
     const flagSim = (val: any) => typeof val === 'string' && val.trim().toLowerCase() === 'sim';
     const isDrugCaseLocal = Array.isArray(drogasAdicionadas) && drogasAdicionadas.length > 0;
     const anexosList: string[] = [];
@@ -657,71 +658,74 @@ const TCOForm: React.FC = () => {
     ].filter(p => p.nome && String(p.nome).trim());
     if (pessoasComLaudo.length > 0) anexosList.push("REQUISIÇÃO DE EXAME DE LESÃO CORPORAL");
     anexosList.push("TERMO DE ENCERRAMENTO E REMESSA");
-
-    downloadTcoDocx({
-      unidade,
-      cr,
-      tcoNumber,
-      natureza,
-      autoresNomes: autores.map(a => a.nome).filter(Boolean),
-      autoresDetalhados: autores.map(a => ({
-        nome: a.nome,
-        relato: a.relato
-      })),
-      autores,
-      relatoPolicial,
-      conclusaoPolicial,
-      providencias,
-      documentosAnexos: anexosList.join('\n'),
-      periciasLesao: pessoasComLaudo.map(p => p.nome),
-      condutor: componentesGuarnicao[0] ? {
-        // Frontend-style
-        nome: componentesGuarnicao[0].nome,
-        posto: componentesGuarnicao[0].posto,
-        rg: componentesGuarnicao[0].rg,
-        pai: componentesGuarnicao[0].pai,
-        mae: componentesGuarnicao[0].mae,
-        naturalidade: componentesGuarnicao[0].naturalidade,
-        cpf: componentesGuarnicao[0].cpf,
-        telefone: componentesGuarnicao[0].telefone,
-        // Supabase-style (se existirem)
-        nome_completo: componentesGuarnicao[0].nome,
-        graduacao: componentesGuarnicao[0].posto,
-        rgpm: componentesGuarnicao[0].rg,
-        nome_pai: componentesGuarnicao[0].pai,
-        nome_mae: componentesGuarnicao[0].mae
-      } : undefined,
-      localRegistro,
-      municipio,
-      tipificacao,
-      dataFato,
-      horaFato,
-      dataInicioRegistro,
-      horaInicioRegistro,
-      dataTerminoRegistro,
-      horaTerminoRegistro,
-      localFato,
-      endereco,
-      comunicante,
-      testemunhas,
-      vitimas,
-      imageUrls: fotosArquivos.map(f => f.url),
-      imageCaptions: fotosArquivos.map(f => (photoCaptions[f.id] || "")),
-      guarnicaoLista: componentesGuarnicao.map(g => ({
-        nome: g.nome,
-        posto: g.posto,
-        rg: g.rg
-      })),
-      audienciaData,
-      audienciaHora,
-      // Novos campos para o Termo de Apreensão
-      apreensoes,
-      drogas: drogasAdicionadas,
-      lacreNumero,
-      numeroRequisicao,
-      nomearFielDepositario,
-      fielDepositarioSelecionado
-    });
+    try {
+      setIsDownloadingDocx(true);
+      await downloadTcoDocx({
+        unidade,
+        cr,
+        tcoNumber,
+        natureza,
+        autoresNomes: autores.map(a => a.nome).filter(Boolean),
+        autoresDetalhados: autores.map(a => ({
+          nome: a.nome,
+          relato: a.relato
+        })),
+        autores,
+        relatoPolicial,
+        conclusaoPolicial,
+        providencias,
+        documentosAnexos: anexosList.join('\n'),
+        periciasLesao: pessoasComLaudo.map(p => p.nome),
+        condutor: componentesGuarnicao[0] ? {
+          nome: componentesGuarnicao[0].nome,
+          posto: componentesGuarnicao[0].posto,
+          rg: componentesGuarnicao[0].rg,
+          pai: componentesGuarnicao[0].pai,
+          mae: componentesGuarnicao[0].mae,
+          naturalidade: componentesGuarnicao[0].naturalidade,
+          cpf: componentesGuarnicao[0].cpf,
+          telefone: componentesGuarnicao[0].telefone,
+          nome_completo: componentesGuarnicao[0].nome,
+          graduacao: componentesGuarnicao[0].posto,
+          rgpm: componentesGuarnicao[0].rg,
+          nome_pai: componentesGuarnicao[0].pai,
+          nome_mae: componentesGuarnicao[0].mae
+        } : undefined,
+        localRegistro,
+        municipio,
+        tipificacao,
+        dataFato,
+        horaFato,
+        dataInicioRegistro,
+        horaInicioRegistro,
+        dataTerminoRegistro,
+        horaTerminoRegistro,
+        localFato,
+        endereco,
+        comunicante,
+        testemunhas,
+        vitimas,
+        imageUrls: fotosArquivos.map(f => f.url),
+        imageCaptions: fotosArquivos.map(f => (photoCaptions[f.id] || "")),
+        guarnicaoLista: componentesGuarnicao.map(g => ({
+          nome: g.nome,
+          posto: g.posto,
+          rg: g.rg
+        })),
+        audienciaData,
+        audienciaHora,
+        apreensoes,
+        drogas: drogasAdicionadas,
+        lacreNumero,
+        numeroRequisicao,
+        nomearFielDepositario,
+        fielDepositarioSelecionado
+      });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao gerar DOCX", description: e?.message || String(e) });
+    } finally {
+      setIsDownloadingDocx(false);
+    }
   };
   return <>
       <div className="header">
@@ -812,7 +816,14 @@ const TCOForm: React.FC = () => {
           <div className="footer">
             {activeTab !== "audiencia" ? <button className="btn-primary" onClick={goToNextTab}>Próximo <i className="fas fa-arrow-right"></i></button> : <>
                 <Button variant="default" onClick={handleTestFill}>Teste</Button>
-                <button className="btn-primary" onClick={handleDownloadWord}>Baixar TCO <i className="fas fa-download"></i></button>
+                <button
+                  className={`btn-primary ${isDownloadingDocx ? 'loading' : ''}`}
+                  onClick={handleDownloadWord}
+                  disabled={isDownloadingDocx}
+                  aria-disabled={isDownloadingDocx}
+                >
+                  {isDownloadingDocx ? 'Baixando TCO...' : 'Baixar TCO'} {isDownloadingDocx ? <i className="fas fa-spinner" /> : <i className="fas fa-download" />}
+                </button>
               </>}
           </div>
       </Tabs>

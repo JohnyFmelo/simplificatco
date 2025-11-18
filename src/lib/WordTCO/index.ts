@@ -8,20 +8,7 @@ const supabase = createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1YXl5bWFpcGlqb2R3dXpzbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1ODUyNjUsImV4cCI6MjA3NzE2MTI2NX0.MkCye1nIrRlXFM-deePfEuOqPXUHTkgHBv8O1UJzhTI"
 );
 
-export type TcoDocData = {
-  tcoNumber: string;
-  natureza: string;
-  dataFato?: string;
-  autores?: Array<{ nome: string; rg?: string; }>
-  // TODO: expandir com demais campos necessários
-};
-
-// Placeholder para futura implementação de geração DOCX
-export async function buildTcoDocx(_data: TcoDocData): Promise<Blob> {
-  // Em breve: usar biblioteca como `docx` para montar o documento
-  const dummy = new Blob(["Documento TCO (DOCX) em construção"], { type: "application/octet-stream" });
-  return dummy;
-}
+ 
 
 // Utilitário: abrevia unidade a partir do nome completo
 export function abbreviateUnidade(unidade?: string): string {
