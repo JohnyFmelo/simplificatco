@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { downloadTcoDocx } from "@/lib/WordTCO";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -493,154 +492,6 @@ const TCOForm: React.FC = () => {
     });
   };
 
-  const handleTestFill = () => {
-    const pad2 = (n: number) => n.toString().padStart(2, "0");
-    const now = new Date();
-    const dd = pad2(now.getDate());
-    const mm = pad2(now.getMonth() + 1);
-    const yyyy = String(now.getFullYear());
-    const rand = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
-    const numero = String(100000 + Math.floor(Math.random() * 900000));
-    // Natureza de teste focada em drogas
-    setTcoNumber(numero);
-    setNatureza("Porte de drogas para consumo");
-    setTipificacao("ART. 28 DA LEI Nº 11.343/2006");
-    setCr("2º Comando Regional");
-    const unidades = Object.keys(UNIDADE_TO_CIDADE);
-    const uni = rand(unidades);
-    setUnidade(uni);
-    setLocalRegistro("CISC DO PARQUE DO LAGO");
-    setDataFato(`${dd}/${mm}/${yyyy}`);
-    setHoraFato(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
-    setDataInicioRegistro(`${dd}/${mm}/${yyyy}`);
-    setHoraInicioRegistro(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
-    setDataTerminoRegistro(`${dd}/${mm}/${yyyy}`);
-    setHoraTerminoRegistro(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
-    setLocalFato("AV. DR. PARANÁ, S/Nº, BAIRRO CRISTO REI");
-    setEndereco("AV. DR. PARANÁ, S/Nº COMPLEXO DA UNIVAG, VG - MT");
-    setComunicante("Populares");
-    setGuarnicao("ABC1D23");
-    setOperacao("OPERAÇÃO ORDINÁRIA");
-
-    const autorTest = {
-      nome: "PAULO HERONCIO DE ARAUJO",
-      sexo: "MASCULINO",
-      estadoCivil: "SOLTEIRO",
-      profissao: "MECÂNICO",
-      endereco: "RUA TESTE, 100, CRISTO REI",
-      dataNascimento: "01/01/1995",
-      naturalidade: "VÁRZEA GRANDE",
-      filiacaoMae: "MARIA ARAUJO",
-      filiacaoPai: "JOÃO ARAUJO",
-      rg: "1234567",
-      cpf: "12345678901",
-      celular: "(65) 90000-0000",
-      email: "autor@exemplo.com",
-      laudoPericial: "Sim",
-      relato: "Relato do autor em teste."
-    };
-    const vitimaTest = {
-      nome: "ANA SILVA",
-      sexo: "FEMININO",
-      estadoCivil: "CASADO",
-      profissao: "ATENDENTE",
-      endereco: "RUA DAS FLORES, 200, CENTRO",
-      dataNascimento: "02/02/1992",
-      naturalidade: "VÁRZEA GRANDE",
-      filiacaoMae: "CARLA SILVA",
-      filiacaoPai: "PEDRO SILVA",
-      rg: "7654321",
-      cpf: "10987654321",
-      celular: "(65) 91111-1111",
-      email: "vitima@exemplo.com",
-      laudoPericial: "Sim",
-      relato: "Relato da vítima em teste.",
-      representacao: "representar"
-    };
-    const testemunhaTest = {
-      nome: "JOSÉ SOUZA",
-      sexo: "MASCULINO",
-      estadoCivil: "SOLTEIRO",
-      profissao: "VIGIA",
-      endereco: "RUA AZUL, 300, BAIRRO",
-      dataNascimento: "03/03/1990",
-      naturalidade: "VÁRZEA GRANDE",
-      filiacaoMae: "TEREZA SOUZA",
-      filiacaoPai: "CARLOS SOUZA",
-      rg: "3332221",
-      cpf: "32165498700",
-      celular: "(65) 92222-2222",
-      email: "testemunha@exemplo.com",
-      laudoPericial: "Não",
-      relato: "Relato da testemunha em teste."
-    };
-    setAutores([autorTest]);
-    setVitimas([vitimaTest]);
-    setTestemunhas([testemunhaTest]);
-
-    setComponentesGuarnicao([
-      {
-        rg: "887367",
-        nome: "MIGUEL ARCANJO DE PAULA NASCIMENTO",
-        posto: "3º SGT PM",
-        pai: "ARMANDO NASCIMENTO",
-        mae: "MARIA NASCIMENTO",
-        naturalidade: "VÁRZEA GRANDE",
-        cpf: "11122233344",
-        telefone: "(65) 93333-3333",
-        apoio: false
-      }
-    ]);
-
-    setRelatoPolicial("Patrulhamento ostensivo, situação simulada para teste.");
-    setRelatoAutor("Confessa parcialmente os fatos em ambiente de teste.");
-    setRelatoVitima("Relato coerente compatível com a dinâmica simulada.");
-    setRelatoTestemunha("Afirma ter presenciado os fatos de forma parcial.");
-    setApreensoes("");
-    setConclusaoPolicial("Encaminhamento ao Juizado Especial, sem outras medidas cautelares.");
-    setProvidencias("Autor e vítima conduzidos ao CISC para confecção do TCO.");
-    setDocumentosAnexos("");
-    setVideoLinks(["https://www.exemplo.com/video1"]);
-    setFotosArquivos([
-      {
-        id: `local-${Date.now()}-foto1.png`,
-        url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAHUlEQVR4nO3BMQEAAADCoPVPbQ0PoAAAAAAAAAAA4CkQGQAAI1rQXgAAAABJRU5ErkJggg==",
-        storagePath: "",
-        name: "foto1.png"
-      },
-      {
-        id: `local-${Date.now()}-foto2.png`,
-        url: "https://via.placeholder.com/400x300.png?text=FOTO+TESTE",
-        storagePath: "",
-        name: "foto2.png"
-      }
-    ]);
-
-    // Dados fakes de drogas
-    setLacreNumero("A230451881");
-    setNumeroRequisicao("250");
-    setDrogasAdicionadas([
-      {
-        id: Math.random().toString(36).slice(2),
-        quantidade: "UMA PORÇÃO",
-        substancia: "artificial",
-        cor: "branca",
-        odor: "inodoro",
-        indicios: "Cocaína",
-        isUnknownMaterial: false,
-        customMaterialDesc: ""
-      }
-    ]);
-
-    const future = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const fdd = pad2(future.getDate());
-    const fmm = pad2(future.getMonth() + 1);
-    const fyyyy = String(future.getFullYear());
-    const futureIso = `${fyyyy}-${fmm}-${fdd}`;
-    setAudienciaData(futureIso);
-    setAudienciaHora("09:00");
-    toast({ title: "Dados de teste preenchidos" });
-  };
 
   // Download do TCO em DOCX na aba "Audiência" (parte final)
   const handleDownloadWord = async () => {
@@ -815,7 +666,6 @@ const TCOForm: React.FC = () => {
           </div>
           <div className="footer">
             {activeTab !== "audiencia" ? <button className="btn-primary" onClick={goToNextTab}>Próximo <i className="fas fa-arrow-right"></i></button> : <>
-                <Button variant="default" onClick={handleTestFill}>Teste</Button>
                 <button
                   className={`btn-primary ${isDownloadingDocx ? 'loading' : ''}`}
                   onClick={handleDownloadWord}
