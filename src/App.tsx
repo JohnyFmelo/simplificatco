@@ -284,17 +284,28 @@ const HeaderActions = () => {
       return;
     }
     try {
-      const { data, error } = await supabase
+      // First, verify the current password
+      const { data: currentUser, error: selectError } = await supabase
         .from("usuarios_login" as any)
-        .update({ senha: baseNew })
+        .select("senha, rgpm")
         .eq("rgpm", storedRgpm)
-        .eq("senha", baseOld)
-        .select("rgpm");
-      if (error) throw error;
-      if (!data || data.length === 0) {
+        .maybeSingle();
+      
+      if (selectError) throw selectError;
+      
+      if (!currentUser || (currentUser as any).senha?.trim() !== baseOld) {
         toast({ variant: "destructive", title: "Senha incorreta", description: "A senha atual está incorreta." });
         return;
       }
+      
+      // Now update the password
+      const { error: updateError } = await supabase
+        .from("usuarios_login" as any)
+        .update({ senha: baseNew })
+        .eq("rgpm", storedRgpm);
+        
+      if (updateError) throw updateError;
+      
       toast({ title: "Senha alterada", description: "Sua senha foi atualizada com sucesso." });
       setOpenChangePassword(false);
       setOldPassword("");
