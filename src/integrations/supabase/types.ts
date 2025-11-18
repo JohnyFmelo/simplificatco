@@ -125,6 +125,39 @@ export type Database = {
         }
         Relationships: []
       }
+      usuarios_login: {
+        Row: {
+          cr: string
+          created_at: string
+          id: number
+          nivel_acesso: string
+          rgpm: string
+          senha: string
+          unidade: string
+          updated_at: string | null
+        }
+        Insert: {
+          cr: string
+          created_at?: string
+          id?: number
+          nivel_acesso: string
+          rgpm: string
+          senha: string
+          unidade: string
+          updated_at?: string | null
+        }
+        Update: {
+          cr?: string
+          created_at?: string
+          id?: number
+          nivel_acesso?: string
+          rgpm?: string
+          senha?: string
+          unidade?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
