@@ -438,6 +438,9 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
                       <div className="member-details">
                         <h4>{componente.nome || 'Sem Nome'}</h4>
                         <p>{componente.posto || 'Sem Posto'} • RGPM: {componente.rg || 'Não informado'}</p>
+                        {index === 0 && (
+                          <small className="field-hint"><i className="fas fa-shield-alt"></i> Condutor da ocorrência</small>
+                        )}
                       </div>
                     </div>
                     <div className="member-actions">

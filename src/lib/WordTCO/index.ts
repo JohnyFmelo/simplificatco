@@ -582,26 +582,31 @@ export async function downloadTcoDocx(opts: {
   ];
 
   // ===== Seção de Autores =====
-  if (autoresNomes && autoresNomes.length > 0) {
-    autoresNomes.forEach((autor, index) => {
-      if (autor && autor.trim()) {
+  {
+    const listaAutores: any[] = (Array.isArray(autores) && autores.length > 0)
+      ? autores
+      : (autoresNomes || []).filter(n => n && n.trim()).map(n => ({ nome: n }));
+
+    listaAutores.forEach((a, index) => {
+      const nome = (a?.nome || '').trim();
+      if (nome) {
         const numeroAutor = `2.${index + 1}`;
         segundaPaginaChildren.push(
-          new Paragraph({ children: [ new TextRun({ text: `${numeroAutor} AUTOR ${autor.toUpperCase()}`, bold: true }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `${numeroAutor} AUTOR ${nome.toUpperCase()}`, bold: true }) ] }),
           new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `NOME: ${toDisplay(autor)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `SEXO: ${toDisplay('')}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `ESTADO CIVIL: ${toDisplay('')}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `PROFISSÃO: ${toDisplay('')}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `ENDEREÇO: ${toDisplay('')}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `DATA DE NASCIMENTO: ${toDisplay('')}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `NATURALIDADE: ${toDisplay('')}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - MÃE: ${toDisplay('')}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - PAI: ${toDisplay('')}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `RG: ${toDisplay('')}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `CPF: ${toDisplay('')}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `CELULAR: ${toDisplay('')}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `E-MAIL: ${toDisplay('')}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `NOME: ${toDisplay(a?.nome)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `SEXO: ${toDisplay(a?.sexo)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `ESTADO CIVIL: ${toDisplay(a?.estadoCivil)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `PROFISSÃO: ${toDisplay(a?.profissao)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `ENDEREÇO: ${toDisplay(a?.endereco)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `DATA DE NASCIMENTO: ${toDisplay(a?.dataNascimento)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `NATURALIDADE: ${toDisplay(a?.naturalidade)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - MÃE: ${toDisplay(a?.filiacaoMae)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - PAI: ${toDisplay(a?.filiacaoPai)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `RG: ${toDisplay(a?.rg)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `${(String(a?.semCpf || '').toLowerCase() === 'true') ? 'CPF: Não possui CPF' : `CPF: ${toDisplay(a?.cpf)}`}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `CELULAR: ${toDisplay(a?.celular)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `E-MAIL: ${toDisplay(a?.email)}`, bold: false }) ] }),
           new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
         );
       }
@@ -609,7 +614,10 @@ export async function downloadTcoDocx(opts: {
   }
 
   // ===== Seção de Vítimas ===== (antes das testemunhas)
-  let proximoNumero = (autoresNomes && autoresNomes.length > 0) ? autoresNomes.length + 1 : 1;
+  const totalAutores = (Array.isArray(autores) && autores.length > 0)
+    ? autores.filter(a => a?.nome && String(a.nome).trim()).length
+    : ((autoresNomes && autoresNomes.length > 0) ? autoresNomes.filter(n => n && n.trim()).length : 0);
+  let proximoNumero = totalAutores > 0 ? totalAutores + 1 : 1;
   
   if (vitimas && vitimas.length > 0) {
     vitimas.forEach((vitima, index) => {
@@ -634,7 +642,7 @@ export async function downloadTcoDocx(opts: {
           new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - MÃE: ${toDisplay(vitima.filiacaoMae)}`, bold: false }) ] }),
           new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - PAI: ${toDisplay(vitima.filiacaoPai)}`, bold: false }) ] }),
           new Paragraph({ children: [ new TextRun({ text: `RG: ${toDisplay(vitima.rg)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `${vitima.semCpf === 'true' ? 'Não possui CPF ' : ''}CPF: ${toDisplay(vitima.cpf)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `${(String(vitima?.semCpf || '').toLowerCase() === 'true') ? 'CPF: Não possui CPF' : `CPF: ${toDisplay(vitima?.cpf)}`}`, bold: false }) ] }),
           new Paragraph({ children: [ new TextRun({ text: `CELULAR: ${toDisplay(vitima.celular)}`, bold: false }) ] }),
           new Paragraph({ children: [ new TextRun({ text: `E-MAIL: ${toDisplay(vitima.email)}`, bold: false }) ] }),
           new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
@@ -669,7 +677,7 @@ export async function downloadTcoDocx(opts: {
           new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - MÃE: ${toDisplay(testemunha.filiacaoMae)}`, bold: false }) ] }),
           new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - PAI: ${toDisplay(testemunha.filiacaoPai)}`, bold: false }) ] }),
           new Paragraph({ children: [ new TextRun({ text: `RG: ${toDisplay(testemunha.rg)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `${testemunha.semCpf === 'true' ? 'Não possui CPF ' : ''}CPF: ${toDisplay(testemunha.cpf)}`, bold: false }) ] }),
+          new Paragraph({ children: [ new TextRun({ text: `${(String(testemunha?.semCpf || '').toLowerCase() === 'true') ? 'CPF: Não possui CPF' : `CPF: ${toDisplay(testemunha?.cpf)}`}`, bold: false }) ] }),
           new Paragraph({ children: [ new TextRun({ text: `CELULAR: ${toDisplay(testemunha.celular)}`, bold: false }) ] }),
           new Paragraph({ children: [ new TextRun({ text: `E-MAIL: ${toDisplay(testemunha.email)}`, bold: false }) ] }),
           new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
@@ -693,47 +701,45 @@ export async function downloadTcoDocx(opts: {
     new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: relatoPmTexto }) ] }),
     new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
   );
+  let historicoSeq = 2;
 
-  // 3.2 RELATO DO AUTOR DO FATO <NOME>
   if (autoresDetalhados && autoresDetalhados.length > 0) {
     autoresDetalhados.forEach((autor) => {
       const nomeA = (autor?.nome || '').trim();
       if (!nomeA) return;
       const textoA = (autor?.relato && autor.relato.trim().length > 0) ? autor.relato.toUpperCase() : 'NÃO INFORMADO';
       segundaPaginaChildren.push(
-        new Paragraph({ children: [ new TextRun({ text: `3.2 RELATO DO AUTOR DO FATO ${nomeA.toUpperCase()}`, bold: true }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `3.${historicoSeq} RELATO DO AUTOR DO FATO ${nomeA.toUpperCase()}`, bold: true }) ] }),
         new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: textoA }) ] }),
-        // Espaço antes da identificação
         new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
         new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${nomeA.toUpperCase()}`, bold: true }) ] }),
         new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'AUTOR DO FATO' }) ] }),
         new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       );
+      historicoSeq += 1;
     });
   }
 
-  // 3.2 RELATO DA VÍTIMA <NOME>
   if (vitimas && vitimas.length > 0) {
     vitimas.forEach((vit) => {
       const nomeV = (vit?.nome || '').trim();
       if (!nomeV) return;
       const textoV = (vit?.relato && vit.relato.trim().length > 0) ? vit.relato.toUpperCase() : 'NÃO INFORMADO';
       segundaPaginaChildren.push(
-        new Paragraph({ children: [ new TextRun({ text: `3.2 RELATO DA VÍTIMA ${nomeV.toUpperCase()}`, bold: true }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `3.${historicoSeq} RELATO DA VÍTIMA ${nomeV.toUpperCase()}`, bold: true }) ] }),
         new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: textoV }) ] }),
-        // Espaço antes da identificação
         new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
         new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${nomeV.toUpperCase()}`, bold: true }) ] }),
         new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'VÍTIMA' }) ] }),
         new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       );
+      historicoSeq += 1;
     });
   }
 
-  // 3.3 CONCLUSÃO DO POLICIAL (extraída do campo histórico)
   const conclusaoTexto = (conclusaoPolicial && conclusaoPolicial.trim().length > 0) ? conclusaoPolicial.toUpperCase() : 'NÃO INFORMADO';
   segundaPaginaChildren.push(
-    new Paragraph({ children: [ new TextRun({ text: '3.3 CONCLUSÃO DO POLICIAL', bold: true }) ] }),
+    new Paragraph({ children: [ new TextRun({ text: `3.${historicoSeq} CONCLUSÃO DO POLICIAL`, bold: true }) ] }),
     new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: conclusaoTexto }) ] }),
     new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
   );
@@ -934,9 +940,10 @@ export async function downloadTcoDocx(opts: {
     const cidadeEnc = extrairCidadeDoMunicipio(municipio) || 'VÁRZEA GRANDE';
     const anoAtual = new Date().getFullYear();
     const crCode = (crAbr || '').replace(/\s+/g, '');
-    const acr = cityAcronym(cidadeEnc);
+    const acrRaw = cityAcronym(cidadeEnc);
+    const acrPart = acrRaw && acrRaw.length >= 2 ? `.${acrRaw}` : '';
     const base = (numeroRequisicao && numeroRequisicao.trim()) ? numeroRequisicao.trim() : (tcoNumber || '').trim();
-    const codigo = `${base}.${crCode}.${acr}.${anoAtual}`;
+    const codigo = `${base}.${crCode}${acrPart}.${anoAtual}`;
 
     segundaPaginaChildren.push(
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
@@ -952,14 +959,16 @@ export async function downloadTcoDocx(opts: {
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
     );
     const apensoLinhas = (drogas && drogas.length > 0) ? drogas.map((drug) => `${(drug.quantidade || '').trim()} DE SUBSTÂNCIA ${String(drug.substancia || '').toUpperCase()}, DE COR ${String(drug.cor || '').toUpperCase()}, COM ODOR ${String(drug.odor || '').toUpperCase()}${drug.indicios ? `, ${String(drug.indicios || '').toUpperCase()}` : ''}.`) : [(apreensoes || '').trim()].filter(Boolean);
-    apensoLinhas.forEach((ln) => {
-      segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: `- ${ln}` }) ] }));
-    });
+    let apensoTexto = apensoLinhas.join(' ').trim();
     if (lacreNumero && lacreNumero.trim()) {
-      segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: `O MATERIAL ENCONTRA-SE DEVIDAMENTE ACONDICIONADO SOB O LACRE Nº ${lacreNumero.trim().toUpperCase()}.` }) ] }));
+      apensoTexto = `${apensoTexto} O MATERIAL ENCONTRA-SE DEVIDAMENTE ACONDICIONADO SOB O LACRE Nº ${lacreNumero.trim().toUpperCase()}.`;
+    }
+    if (apensoTexto) {
+      segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: `- ${apensoTexto}` }) ] }));
     }
 
     segundaPaginaChildren.push(
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: 'PARA TANTO, SOLICITA-SE QUE SEJA CONFECCIONADO O RESPECTIVO LAUDO PERICIAL DEFINITIVO, DEVENDO OS PERITOS RESPONDEREM AOS QUESITOS ABAIXO:' }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
     );
@@ -1084,7 +1093,7 @@ export async function downloadTcoDocx(opts: {
           ]
         }),
         new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ new Paragraph({ children: [ new TextRun({ text: 'FICA APREENDIDO O DESCRITO ABAIXO: ', bold: true }), new TextRun({ text: descricaoLinha }) ] }) ] }) ] }),
-        new TableRow({ height: { value: convertMillimetersToTwip(15), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ new Paragraph({ children: [ new TextRun({ text: 'O PRESENTE TERMO TEM POR OBJETIVO APENAS A CONSTATAÇÃO PRELIMINAR DA NATUREZA DA SUBSTÂNCIA PARA FINS DE LAVRATURA DO TERMO CIRCUNSTANCIADO, NÃO SUPRINDO O EXAME PERICIAL DEFINITIVO (ART. 50, §1º DA LEI 11.343/2006).' }) ] }) ] }) ] })
+        new TableRow({ height: { value: convertMillimetersToTwip(20.7), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ new Paragraph({ children: [ new TextRun({ text: 'O PRESENTE TERMO TEM POR OBJETIVO APENAS A CONSTATAÇÃO PRELIMINAR DA NATUREZA DA SUBSTÂNCIA PARA FINS DE LAVRATURA DO TERMO CIRCUNSTANCIADO, NÃO SUPRINDO O EXAME PERICIAL DEFINITIVO (ART. 50, §1º DA LEI 11.343/2006).' }) ] }) ] }) ] })
       ]
     });
     segundaPaginaChildren.push(tabela);

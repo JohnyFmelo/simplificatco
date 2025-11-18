@@ -14,6 +14,7 @@ import PessoasEnvolvidasTab from "./PessoasEnvolvidasTab";
 import ArquivosTab from "./ArquivosTab";
 import AudienciaTab from "./AudienciaTab";
 import { uploadPhoto, listPhotos, deletePhoto, getUserIdOrAnon } from "@/lib/supabasePhotos";
+import { supabase } from "@/integrations/supabase/client";
 
 // Tipos mínimos para composição
 interface ComponenteGuarnicao {
@@ -107,6 +108,8 @@ const TCOForm: React.FC = () => {
   const [condutorNome] = useState("");
   const [condutorPosto] = useState("");
   const [condutorRg] = useState("");
+  const [userSubtitle, setUserSubtitle] = useState("SimplificaTCO");
+  const [accessLevel, setAccessLevel] = useState("");
 
   // Mapeamento Unidade -> Cidade para preencher município automaticamente
   const UNIDADE_TO_CIDADE: Record<string, string> = {
@@ -130,6 +133,31 @@ const TCOForm: React.FC = () => {
     const cidade = UNIDADE_TO_CIDADE[unidade] || "";
     setMunicipio(formatMunicipio(cidade));
   }, [unidade]);
+
+  useEffect(() => {
+    const rg = localStorage.getItem("rgpm") || sessionStorage.getItem("rgpm") || "";
+    const nivel = localStorage.getItem("nivel_acesso") || sessionStorage.getItem("nivel_acesso") || "";
+    setAccessLevel(nivel || "");
+    (async () => {
+      try {
+        if (rg) {
+          const { data, error } = await supabase
+            .from("police_officers")
+            .select("nome_completo, graduacao")
+            .eq("rgpm", rg)
+            .single();
+          if (!error && data) {
+            const nome = String(data.nome_completo || "").trim();
+            const primeiro = nome ? nome.split(" ")[0] : "";
+            const grad = String(data.graduacao || "").trim();
+            setUserSubtitle(`SimplificaTCO: ${grad} ${primeiro}`.trim());
+            return;
+          }
+        }
+      } catch {}
+      setUserSubtitle("SimplificaTCO");
+    })();
+  }, []);
 
   // Pessoas Envolvidas
   type PersonalInfo = {
@@ -698,7 +726,12 @@ const TCOForm: React.FC = () => {
   return <>
       <div className="header">
         <h1><i className="fas fa-file-alt"></i> Termo Circunstanciado de Ocorrência</h1>
-        <p>Registro de Ocorrência Policial - Sistema Integrado</p>
+        <div className="flex items-center gap-2 justify-center">
+          <p>{userSubtitle}</p>
+          {(accessLevel && accessLevel.toLowerCase().startsWith("admin")) && (
+            <span className="tag">Administrador</span>
+          )}
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={val => setActiveTab(val)}>
