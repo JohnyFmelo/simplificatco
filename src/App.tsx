@@ -384,8 +384,9 @@ const HeaderActions = () => {
                       <div>
                         <Label>Nível de acesso</Label>
                         <select value={nivelAcesso} onChange={e => setNivelAcesso(e.target.value)} className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none">
-                          <option value="Operacional">Operacional</option>
                           <option value="Administrador">Administrador</option>
+                          <option value="Padrão">Padrão</option>
+                          <option value="Operador">Operador</option>
                         </select>
                       </div>
                       <div>
