@@ -47,6 +47,7 @@ const HeaderActions = () => {
   const { toast } = useToast();
   const [openCreate, setOpenCreate] = React.useState(false);
   const [openCreateUnit, setOpenCreateUnit] = React.useState(false);
+  const [openViewProfiles, setOpenViewProfiles] = React.useState(false);
   const [nivelAcesso, setNivelAcesso] = React.useState("Operacional");
   const [cr, setCr] = React.useState("");
   const [unidade, setUnidade] = React.useState("");
@@ -64,6 +65,7 @@ const HeaderActions = () => {
   const [newPassword, setNewPassword] = React.useState("");
   const storedNivel = (localStorage.getItem("nivel_acesso") || sessionStorage.getItem("nivel_acesso") || "").trim();
   const isAdmin = storedNivel === "Administrador";
+  const isStandard = storedNivel === "Padrão";
   const storedRgpm = (localStorage.getItem("rgpm") || sessionStorage.getItem("rgpm") || "").trim();
   const [crList, setCrList] = React.useState<string[]>([]);
   const [unitOptions, setUnitOptions] = React.useState<{ id: string; cr: string; unidade: string }[]>([]);
@@ -81,6 +83,9 @@ const HeaderActions = () => {
   const [addingCr, setAddingCr] = React.useState(false);
   const [newCr, setNewCr] = React.useState("");
   const [isAddingCr, setIsAddingCr] = React.useState(false);
+  const [profiles, setProfiles] = React.useState<{ rgpm: string; nome: string; graduacao?: string; unidade?: string; nivel?: string }[]>([]);
+  const [profilesLoading, setProfilesLoading] = React.useState(false);
+  const [profilesSearch, setProfilesSearch] = React.useState("");
   const graduacoes = [
     "SD PM",
     "CB PM",
@@ -268,6 +273,28 @@ const HeaderActions = () => {
     }
   };
 
+  React.useEffect(() => {
+    let timer: any;
+    const checkAccess = async () => {
+      const current = (localStorage.getItem("rgpm") || sessionStorage.getItem("rgpm") || "").trim();
+      if (!current) return;
+      try {
+        const { data } = await supabase
+          .from("usuarios_login" as any)
+          .select("nivel_acesso")
+          .eq("rgpm", current)
+          .limit(1);
+        const row = data && data[0];
+        if (!row || String(row.nivel_acesso).trim() === "Bloqueado") {
+          handleLogout();
+        }
+      } catch {}
+    };
+    checkAccess();
+    timer = setInterval(checkAccess, 10000);
+    return () => { if (timer) clearInterval(timer); };
+  }, []);
+
   const handleSubmitChangePassword = async () => {
     const baseOld = oldPassword.trim();
     const baseNew = newPassword.trim();
@@ -345,7 +372,7 @@ const HeaderActions = () => {
           senha: senha.trim(),
           cr: cr.trim(),
           unidade: unidade.trim(),
-          nivel_acesso: nivelAcesso.trim() || "Operador",
+          nivel_acesso: (nivelAcesso.trim() === "Administrador" ? "Administrador" : "Operacional"),
         }, { onConflict: "rgpm" });
       if (e2) throw e2;
       toast({ title: "Perfil criado", description: "Dados inseridos com sucesso." });
@@ -368,6 +395,7 @@ const HeaderActions = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {(isAdmin || isStandard) && <DropdownMenuItem onClick={() => setOpenCreate(true)}>Criar perfil</DropdownMenuItem>}
+                  {(isAdmin || isStandard) && <DropdownMenuItem onClick={() => { setOpenViewProfiles(true); loadProfiles(); }}>Ver perfis</DropdownMenuItem>}
                   {isAdmin && <DropdownMenuItem onClick={() => setOpenCreateUnit(true)}>Criar unidade</DropdownMenuItem>}
                   <DropdownMenuItem onClick={() => setOpenChangePassword(true)}>Alterar senha</DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout}>Sair</DropdownMenuItem>
@@ -467,6 +495,55 @@ const HeaderActions = () => {
                   <DialogFooter>
                     <Button onClick={handleSubmitCreate}>Salvar</Button>
                   </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Dialog open={openViewProfiles} onOpenChange={setOpenViewProfiles}>
+                <DialogContent className="sm:max-w-[800px]">
+                  <DialogHeader>
+                    <DialogTitle>Perfis</DialogTitle>
+                    <DialogDescription>Lista de perfis cadastrados.</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <Input placeholder="Buscar por nome ou RGPM" value={profilesSearch} onChange={e => setProfilesSearch(e.target.value)} />
+                      <Button variant="outline" onClick={loadProfiles} disabled={profilesLoading}>Atualizar</Button>
+                    </div>
+                    <div className="overflow-auto max-h-[50vh]">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr>
+                            <th className="text-left p-2">RGPM</th>
+                            <th className="text-left p-2">Nome</th>
+                            <th className="text-left p-2">Graduação</th>
+                            <th className="text-left p-2">Unidade</th>
+                            <th className="text-left p-2">Nível</th>
+                            <th className="text-left p-2">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(profiles.filter(p => {
+                            const q = profilesSearch.trim().toLowerCase();
+                            if (!q) return true;
+                            return p.rgpm.toLowerCase().includes(q) || p.nome.toLowerCase().includes(q);
+                          })).map(p => (
+                            <tr key={p.rgpm} className="border-t">
+                              <td className="p-2">{p.rgpm}</td>
+                              <td className="p-2">{p.nome}</td>
+                              <td className="p-2">{p.graduacao || '-'}</td>
+                              <td className="p-2">{p.unidade || '-'}</td>
+                              <td className="p-2">{p.nivel || '-'}</td>
+                              <td className="p-2 flex gap-2">
+                                <Button size="sm" variant="outline" onClick={() => handleEditProfile(p)} disabled={!isAdmin}>Editar</Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleBlockProfile(p.rgpm)} disabled={!isAdmin}>Bloquear</Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleDeleteProfile(p.rgpm)} disabled={!isAdmin}>Excluir</Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {profilesLoading && <div className="p-3 text-center text-muted-foreground">Carregando...</div>}
+                    </div>
+                  </div>
                 </DialogContent>
               </Dialog>
               <Dialog open={openChangePassword} onOpenChange={setOpenChangePassword}>
@@ -630,3 +707,66 @@ const InactivityGuard = () => {
 
   return null;
 };
+  const loadProfiles = async () => {
+    try {
+      setProfilesLoading(true);
+      const [officers, logins] = await Promise.all([
+        supabase.from("police_officers").select("rgpm,nome_completo,graduacao"),
+        supabase.from("usuarios_login" as any).select("rgpm,unidade,nivel_acesso"),
+      ]);
+      const mapLogin = new Map<string, { unidade?: string; nivel?: string }>();
+      if (logins.data) {
+        logins.data.forEach((r: any) => {
+          mapLogin.set(String(r.rgpm), { unidade: r.unidade, nivel: r.nivel_acesso });
+        });
+      }
+      const rows: { rgpm: string; nome: string; graduacao?: string; unidade?: string; nivel?: string }[] = (officers.data || []).map((o: any) => {
+        const l = mapLogin.get(String(o.rgpm));
+        return { rgpm: String(o.rgpm), nome: String(o.nome_completo || ""), graduacao: o.graduacao, unidade: l?.unidade, nivel: l?.nivel };
+      });
+      setProfiles(rows);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao carregar perfis", description: e?.message || String(e) });
+    } finally {
+      setProfilesLoading(false);
+    }
+  };
+
+  const handleBlockProfile = async (targetRgpm: string) => {
+    try {
+      const { error } = await supabase
+        .from("usuarios_login" as any)
+        .update({ nivel_acesso: "Bloqueado" })
+        .eq("rgpm", targetRgpm);
+      if (error) throw error;
+      if (storedRgpm === targetRgpm) handleLogout();
+      toast({ title: "Perfil bloqueado" });
+      await loadProfiles();
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao bloquear", description: e?.message || String(e) });
+    }
+  };
+
+  const handleDeleteProfile = async (targetRgpm: string) => {
+    try {
+      const [{ error: e1 }, { error: e2 }] = await Promise.all([
+        supabase.from("usuarios_login" as any).delete().eq("rgpm", targetRgpm),
+        supabase.from("police_officers").delete().eq("rgpm", targetRgpm),
+      ]);
+      if (e1) throw e1; if (e2) throw e2;
+      if (storedRgpm === targetRgpm) handleLogout();
+      toast({ title: "Perfil excluído" });
+      await loadProfiles();
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao excluir", description: e?.message || String(e) });
+    }
+  };
+
+  const handleEditProfile = (p: { rgpm: string; nome: string; graduacao?: string; unidade?: string; nivel?: string }) => {
+    setRgpm(p.rgpm);
+    setNome(p.nome);
+    setGraduacao(p.graduacao || "");
+    setUnidade(p.unidade || "");
+    setNivelAcesso(p.nivel || "Operador");
+    setOpenCreate(true);
+  };

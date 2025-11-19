@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -18,37 +19,51 @@ const Login: React.FC = () => {
     }
   }, []);
 
-  const usuariosValidos: Record<string, string> = {
-    '123456': '123456',
-    '000001': 'admin',
-    '987654': 'senha123',
-    '887367': '010355'
-  };
+  const onlyDigits = (s: string) => s.replace(/\D+/g, '');
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!rgpm || !senha) {
+    const rg = onlyDigits(rgpm).slice(0, 6);
+    const pass = senha.trim();
+    if (!rg || !pass) {
       setError('Preencha RGPM e senha.');
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      const ok = usuariosValidos[rgpm] === senha;
-      if (ok) {
-        if (remember) {
-          localStorage.setItem('rgpm', rgpm);
-          localStorage.setItem('nivel_acesso', rgpm === '887367' ? 'Administrador' : 'Operador');
-        } else {
-          sessionStorage.setItem('rgpm', rgpm);
-          sessionStorage.setItem('nivel_acesso', rgpm === '887367' ? 'Administrador' : 'Operador');
-        }
-        navigate('/');
-      } else {
+    try {
+      const { data, error } = await supabase
+        .from('usuarios_login' as any)
+        .select('rgpm, senha, nivel_acesso')
+        .eq('rgpm', rg)
+        .eq('senha', pass)
+        .limit(1);
+      if (error) throw error;
+      const row = data && data[0];
+      if (!row) {
         setError('RGPM ou senha incorretos.');
         setLoading(false);
+        return;
       }
-    }, 800);
+      const nivelDb = String(row.nivel_acesso || '').trim();
+      if (nivelDb === 'Bloqueado') {
+        setError('Perfil bloqueado. Contate o administrador.');
+        setLoading(false);
+        return;
+      }
+      const nivelClient = (nivelDb === 'Administrador') ? 'Administrador' : 'Operador';
+      if (remember) {
+        localStorage.setItem('rgpm', rg);
+        localStorage.setItem('nivel_acesso', nivelClient);
+      } else {
+        sessionStorage.setItem('rgpm', rg);
+        sessionStorage.setItem('nivel_acesso', nivelClient);
+      }
+      navigate('/');
+    } catch (err: any) {
+      setError(err?.message || String(err));
+      setLoading(false);
+    }
   };
 
   return (
