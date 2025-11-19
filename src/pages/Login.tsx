@@ -45,7 +45,7 @@ const Login: React.FC = () => {
         setLoading(false);
         return;
       }
-      const nivelDb = String(row.nivel_acesso || '').trim();
+      const nivelDb = String((row as any).nivel_acesso || '').trim();
       if (nivelDb === 'Bloqueado') {
         setError('Perfil bloqueado. Contate o administrador.');
         setLoading(false);
