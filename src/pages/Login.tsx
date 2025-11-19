@@ -38,10 +38,10 @@ const Login: React.FC = () => {
       if (ok) {
         if (remember) {
           localStorage.setItem('rgpm', rgpm);
-          localStorage.setItem('nivel_acesso', rgpm === '887367' ? 'Administrador' : 'Operacional');
+          localStorage.setItem('nivel_acesso', rgpm === '887367' ? 'Administrador' : 'Operador');
         } else {
           sessionStorage.setItem('rgpm', rgpm);
-          sessionStorage.setItem('nivel_acesso', rgpm === '887367' ? 'Administrador' : 'Operacional');
+          sessionStorage.setItem('nivel_acesso', rgpm === '887367' ? 'Administrador' : 'Operador');
         }
         navigate('/');
       } else {

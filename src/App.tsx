@@ -317,7 +317,9 @@ const HeaderActions = () => {
 
   const handleSubmitCreate = async () => {
     const baseNome = nome.trim();
-    const baseRgpm = rgpm.trim();
+    const baseRgpm = onlyDigits(rgpm).slice(0, 6);
+    const baseCpf = onlyDigits(cpf).slice(0, 11);
+    const baseTelefone = onlyDigits(telefone).slice(0, 11);
     if (!baseNome || !baseRgpm || !graduacao.trim()) {
       toast({ title: "Dados obrigatórios", description: "Informe Nome, RGPM e Graduação." });
       return;
@@ -325,30 +327,30 @@ const HeaderActions = () => {
     try {
       const { error: e1 } = await supabase
         .from("police_officers")
-        .insert({
+        .upsert({
+          rgpm: baseRgpm,
           nome_completo: baseNome,
           graduacao: graduacao.trim(),
-          rgpm: baseRgpm,
-          cpf: cpf.trim(),
-          telefone: telefone.trim(),
-          naturalidade: naturalidade.trim(),
-          nome_pai: pai.trim(),
-          nome_mae: mae.trim(),
-        });
+          cpf: baseCpf,
+          telefone: baseTelefone,
+          naturalidade: naturalidade.trim().toUpperCase(),
+          nome_pai: pai.trim().toUpperCase(),
+          nome_mae: mae.trim().toUpperCase(),
+        }, { onConflict: "rgpm" });
       if (e1) throw e1;
       const { error: e2 } = await supabase
         .from("usuarios_login" as any)
-        .insert({
+        .upsert({
           rgpm: baseRgpm,
           senha: senha.trim(),
           cr: cr.trim(),
           unidade: unidade.trim(),
-          nivel_acesso: nivelAcesso.trim() || "Operacional",
-        });
+          nivel_acesso: nivelAcesso.trim() || "Operador",
+        }, { onConflict: "rgpm" });
       if (e2) throw e2;
       toast({ title: "Perfil criado", description: "Dados inseridos com sucesso." });
       setOpenCreate(false);
-      setNivelAcesso("Operacional");
+      setNivelAcesso("Operador");
       setCr(""); setUnidade(""); setRgpm(""); setGraduacao(""); setNome(""); setCpf(""); setTelefone(""); setNaturalidade(""); setPai(""); setMae(""); setSenha("");
     } catch (e: any) {
       toast({ variant: "destructive", title: "Erro ao criar perfil", description: e?.message || String(e) });
@@ -365,7 +367,7 @@ const HeaderActions = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {isAdmin && <DropdownMenuItem onClick={() => setOpenCreate(true)}>Criar perfil</DropdownMenuItem>}
+                  {(isAdmin || isStandard) && <DropdownMenuItem onClick={() => setOpenCreate(true)}>Criar perfil</DropdownMenuItem>}
                   {isAdmin && <DropdownMenuItem onClick={() => setOpenCreateUnit(true)}>Criar unidade</DropdownMenuItem>}
                   <DropdownMenuItem onClick={() => setOpenChangePassword(true)}>Alterar senha</DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout}>Sair</DropdownMenuItem>
