@@ -51,7 +51,7 @@ const Login: React.FC = () => {
         setLoading(false);
         return;
       }
-      const nivelClient = (nivelDb === 'Administrador') ? 'Administrador' : 'Operador';
+      const nivelClient = (nivelDb === 'Administrador') ? 'Administrador' : (nivelDb === 'Padrão' ? 'Padrão' : 'Operador');
       if (remember) {
         localStorage.setItem('rgpm', rg);
         localStorage.setItem('nivel_acesso', nivelClient);

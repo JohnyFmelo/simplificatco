@@ -372,7 +372,7 @@ const HeaderActions = () => {
           senha: senha.trim(),
           cr: cr.trim(),
           unidade: unidade.trim(),
-          nivel_acesso: (nivelAcesso.trim() === "Administrador" ? "Administrador" : "Operacional"),
+          nivel_acesso: nivelAcesso.trim(),
         }, { onConflict: "rgpm" });
       if (e2) throw e2;
       toast({ title: "Perfil criado", description: "Dados inseridos com sucesso." });
@@ -380,7 +380,30 @@ const HeaderActions = () => {
       setNivelAcesso("Operador");
       setCr(""); setUnidade(""); setRgpm(""); setGraduacao(""); setNome(""); setCpf(""); setTelefone(""); setNaturalidade(""); setPai(""); setMae(""); setSenha("");
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Erro ao criar perfil", description: e?.message || String(e) });
+      const msg = String(e?.message || e || "");
+      if (msg.toLowerCase().includes("check constraint") && msg.includes("usuarios_login_nivel_acesso_check")) {
+        try {
+          const { error: e2b } = await supabase
+            .from("usuarios_login" as any)
+            .upsert({
+              rgpm: onlyDigits(rgpm).slice(0,6),
+              senha: senha.trim(),
+              cr: cr.trim(),
+              unidade: unidade.trim(),
+              nivel_acesso: "Operacional",
+            }, { onConflict: "rgpm" });
+          if (e2b) throw e2b;
+          toast({ title: "Perfil criado", description: "Banco não aceita o novo nível. Gravado como Operacional." });
+          setOpenCreate(false);
+          setNivelAcesso("Operador");
+          setCr(""); setUnidade(""); setRgpm(""); setGraduacao(""); setNome(""); setCpf(""); setTelefone(""); setNaturalidade(""); setPai(""); setMae(""); setSenha(""));
+          return;
+        } catch (e3: any) {
+          toast({ variant: "destructive", title: "Erro ao criar perfil", description: e3?.message || String(e3) });
+          return;
+        }
+      }
+      toast({ variant: "destructive", title: "Erro ao criar perfil", description: msg });
     }
   };
 
