@@ -499,7 +499,8 @@ const TCOForm: React.FC = () => {
     const isDrugCaseLocal = Array.isArray(drogasAdicionadas) && drogasAdicionadas.length > 0;
     const anexosList: string[] = [];
     if (autores && autores.length > 0) anexosList.push("TERMO DE COMPROMISSO DE COMPARECIMENTO");
-    if (!isDrugCaseLocal && vitimas && vitimas.length > 0) anexosList.push("TERMO DE MANIFESTAÇÃO DA VÍTIMA");
+    const hasVitimas = Array.isArray(vitimas) && vitimas.some(v => (v?.nome || "").trim());
+    if (!isDrugCaseLocal && hasVitimas) anexosList.push("TERMO DE MANIFESTAÇÃO DA VÍTIMA");
     if (isDrugCaseLocal || (apreensoes && apreensoes.trim() !== '')) anexosList.push("TERMO DE APREENSÃO");
     if (isDrugCaseLocal) anexosList.push("TERMO DE CONSTATAÇÃO PRELIMINAR DE DROGA");
     if (nomearFielDepositario.trim().toLowerCase() === 'sim' && fielDepositarioSelecionado.trim() !== '') anexosList.push("TERMO DE DEPÓSITO");
@@ -585,6 +586,9 @@ const TCOForm: React.FC = () => {
           <p>{userSubtitle}</p>
           {(accessLevel && accessLevel.toLowerCase().startsWith("admin")) && (
             <span className="tag">Administrador</span>
+          )}
+          {(accessLevel && (accessLevel.toLowerCase().startsWith("padr") || accessLevel.toLowerCase() === "padrao")) && (
+            <span className="tag">Padrão</span>
           )}
         </div>
       </div>

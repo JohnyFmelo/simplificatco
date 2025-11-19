@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { createPortal } from "react-dom";
 
 const queryClient = new QueryClient();
@@ -47,7 +48,7 @@ const HeaderActions = () => {
   const { toast } = useToast();
   const [openCreate, setOpenCreate] = React.useState(false);
   const [openCreateUnit, setOpenCreateUnit] = React.useState(false);
-  const [openViewProfiles, setOpenViewProfiles] = React.useState(false);
+  
   const [nivelAcesso, setNivelAcesso] = React.useState("Operacional");
   const [cr, setCr] = React.useState("");
   const [unidade, setUnidade] = React.useState("");
@@ -417,156 +418,159 @@ const HeaderActions = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {(isAdmin || isStandard) && <DropdownMenuItem onClick={() => setOpenCreate(true)}>Criar perfil</DropdownMenuItem>}
-                  {(isAdmin || isStandard) && <DropdownMenuItem onClick={() => { setOpenViewProfiles(true); loadProfiles(); }}>Ver perfis</DropdownMenuItem>}
+                  {(isAdmin || isStandard) && <DropdownMenuItem onClick={() => { setProfilesTab("create"); setOpenCreate(true); }}>Criar perfil</DropdownMenuItem>}
                   {isAdmin && <DropdownMenuItem onClick={() => setOpenCreateUnit(true)}>Criar unidade</DropdownMenuItem>}
                   <DropdownMenuItem onClick={() => setOpenChangePassword(true)}>Alterar senha</DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout}>Sair</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-                <DialogContent className="sm:max-w-[700px]">
-                  <DialogHeader>
-                    <DialogTitle>Criar perfil</DialogTitle>
-                    <DialogDescription>Preencha os dados do policial e acesso.</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 max-h-[70vh] overflow-y-auto">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Nível de acesso</Label>
-                        <select value={nivelAcesso} onChange={e => setNivelAcesso(e.target.value)} className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none">
-                          <option value="Administrador">Administrador</option>
-                          <option value="Padrão">Padrão</option>
-                          <option value="Operador">Operador</option>
-                        </select>
-                      </div>
-                      <div>
-                        <Label>CR</Label>
-                        <Select value={cr || undefined} onValueChange={(val) => setCr(val)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder={crLoading ? "Carregando..." : "Selecione o CR"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {crList.map((c) => (
-                              <SelectItem key={c} value={c}>{c}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Unidade</Label>
-                        <Select value={unidade || undefined} onValueChange={(val) => setUnidade(val)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder={crLoading ? "Carregando..." : "Selecione a Unidade"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {(unitOptions.filter(u => !cr || u.cr === cr)).map((opt) => (
-                              <SelectItem key={opt.id} value={opt.unidade}>
-                                {opt.unidade}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>RGPM</Label>
-                        <Input value={rgpm} onChange={e => setRgpm(e.target.value)} onBlur={e => { const d = onlyDigits(e.target.value); if (d.length === 6) fetchOfficerByRgpm(d); }} />
-                      </div>
-                      <div>
-                        <Label>Graduação</Label>
-                        <Select value={graduacao || undefined} onValueChange={(val) => setGraduacao(val)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a graduação" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {graduacoes.map((g) => (
-                              <SelectItem key={g} value={g}>{g}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-2">
-                        <Label>Nome</Label>
-                        <Input className="uppercase" value={nome} onChange={e => setNome(e.target.value.toUpperCase())} />
-                      </div>
-                      <div>
-                        <Label>CPF</Label>
-                        <Input value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} placeholder="000.000.000-00" inputMode="numeric" maxLength={14} />
-                      </div>
-                      <div>
-                        <Label>Telefone (DDD)</Label>
-                        <Input value={telefone} onChange={e => setTelefone(formatTelefone(e.target.value))} placeholder="(00) 00000-0000" inputMode="tel" maxLength={15} />
-                      </div>
-                      <div>
-                        <Label>Naturalidade (Cidade/UF)</Label>
-                        <Input className="uppercase" value={naturalidade} onChange={e => setNaturalidade(e.target.value.toUpperCase())} />
-                      </div>
-                      <div>
-                        <Label>Nome do Pai</Label>
-                        <Input className="uppercase" value={pai} onChange={e => setPai(e.target.value.toUpperCase())} />
-                      </div>
-                      <div>
-                        <Label>Nome da Mãe</Label>
-                        <Input className="uppercase" value={mae} onChange={e => setMae(e.target.value.toUpperCase())} />
-                      </div>
-                      <div>
-                        <Label>Senha de acesso</Label>
-                        <Input type="password" value={senha} onChange={e => setSenha(e.target.value)} />
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleSubmitCreate}>Salvar</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-              <Dialog open={openViewProfiles} onOpenChange={setOpenViewProfiles}>
-                <DialogContent className="sm:max-w-[800px]">
+                <DialogContent className="sm:max-w-[900px]">
                   <DialogHeader>
                     <DialogTitle>Perfis</DialogTitle>
-                    <DialogDescription>Lista de perfis cadastrados.</DialogDescription>
+                    <DialogDescription>Gerencie perfis e acessos.</DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <Input placeholder="Buscar por nome ou RGPM" value={profilesSearch} onChange={e => setProfilesSearch(e.target.value)} />
-                      <Button variant="outline" onClick={loadProfiles} disabled={profilesLoading}>Atualizar</Button>
-                    </div>
-                    <div className="overflow-auto max-h-[50vh]">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr>
-                            <th className="text-left p-2">RGPM</th>
-                            <th className="text-left p-2">Nome</th>
-                            <th className="text-left p-2">Graduação</th>
-                            <th className="text-left p-2">Unidade</th>
-                            <th className="text-left p-2">Nível</th>
-                            <th className="text-left p-2">Ações</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(profiles.filter(p => {
-                            const q = profilesSearch.trim().toLowerCase();
-                            if (!q) return true;
-                            return p.rgpm.toLowerCase().includes(q) || p.nome.toLowerCase().includes(q);
-                          })).map(p => (
-                            <tr key={p.rgpm} className="border-t">
-                              <td className="p-2">{p.rgpm}</td>
-                              <td className="p-2">{p.nome}</td>
-                              <td className="p-2">{p.graduacao || '-'}</td>
-                              <td className="p-2">{p.unidade || '-'}</td>
-                              <td className="p-2">{p.nivel || '-'}</td>
-                              <td className="p-2 flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleEditProfile(p)} disabled={!isAdmin}>Editar</Button>
-                                <Button size="sm" variant="destructive" onClick={() => handleBlockProfile(p.rgpm)} disabled={!isAdmin}>Bloquear</Button>
-                                <Button size="sm" variant="destructive" onClick={() => handleDeleteProfile(p.rgpm)} disabled={!isAdmin}>Excluir</Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {profilesLoading && <div className="p-3 text-center text-muted-foreground">Carregando...</div>}
-                    </div>
-                  </div>
+                  <Tabs value={profilesTab} onValueChange={(v) => { setProfilesTab(v); if (v === "list") loadProfiles(); }}>
+                    <TabsList>
+                      <TabsTrigger value="create">Criar Perfil</TabsTrigger>
+                      <TabsTrigger value="list">Ver Perfis</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="create">
+                      <div className="grid gap-4 max-h-[60vh] overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Nível de acesso</Label>
+                            <select value={nivelAcesso} onChange={e => setNivelAcesso(e.target.value)} className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none">
+                              <option value="Administrador">Administrador</option>
+                              <option value="Padrão">Padrão</option>
+                              <option value="Operador">Operador</option>
+                            </select>
+                          </div>
+                          <div>
+                            <Label>CR</Label>
+                            <Select value={cr || undefined} onValueChange={(val) => setCr(val)}>
+                              <SelectTrigger>
+                                <SelectValue placeholder={crLoading ? "Carregando..." : "Selecione o CR"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {crList.map((c) => (
+                                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>Unidade</Label>
+                            <Select value={unidade || undefined} onValueChange={(val) => setUnidade(val)}>
+                              <SelectTrigger>
+                                <SelectValue placeholder={crLoading ? "Carregando..." : "Selecione a Unidade"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(unitOptions.filter(u => !cr || u.cr === cr)).map((opt) => (
+                                  <SelectItem key={opt.id} value={opt.unidade}>
+                                    {opt.unidade}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>RGPM</Label>
+                            <Input value={rgpm} onChange={e => setRgpm(e.target.value)} onBlur={e => { const d = onlyDigits(e.target.value); if (d.length === 6) fetchOfficerByRgpm(d); }} />
+                          </div>
+                          <div>
+                            <Label>Graduação</Label>
+                            <Select value={graduacao || undefined} onValueChange={(val) => setGraduacao(val)}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione a graduação" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {graduacoes.map((g) => (
+                                  <SelectItem key={g} value={g}>{g}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="col-span-2">
+                            <Label>Nome</Label>
+                            <Input className="uppercase" value={nome} onChange={e => setNome(e.target.value.toUpperCase())} />
+                          </div>
+                          <div>
+                            <Label>CPF</Label>
+                            <Input value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} placeholder="000.000.000-00" inputMode="numeric" maxLength={14} />
+                          </div>
+                          <div>
+                            <Label>Telefone (DDD)</Label>
+                            <Input value={telefone} onChange={e => setTelefone(formatTelefone(e.target.value))} placeholder="(00) 00000-0000" inputMode="tel" maxLength={15} />
+                          </div>
+                          <div>
+                            <Label>Naturalidade (Cidade/UF)</Label>
+                            <Input className="uppercase" value={naturalidade} onChange={e => setNaturalidade(e.target.value.toUpperCase())} />
+                          </div>
+                          <div>
+                            <Label>Nome do Pai</Label>
+                            <Input className="uppercase" value={pai} onChange={e => setPai(e.target.value.toUpperCase())} />
+                          </div>
+                          <div>
+                            <Label>Nome da Mãe</Label>
+                            <Input className="uppercase" value={mae} onChange={e => setMae(e.target.value.toUpperCase())} />
+                          </div>
+                          <div>
+                            <Label>Senha de acesso</Label>
+                            <Input type="password" value={senha} onChange={e => setSenha(e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="list">
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <Input placeholder="Buscar por nome ou RGPM" value={profilesSearch} onChange={e => setProfilesSearch(e.target.value)} />
+                          <Button variant="outline" onClick={loadProfiles} disabled={profilesLoading}>Atualizar</Button>
+                        </div>
+                        <div className="overflow-auto max-h-[50vh]">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr>
+                                <th className="text-left p-2">RGPM</th>
+                                <th className="text-left p-2">Nome</th>
+                                <th className="text-left p-2">Graduação</th>
+                                <th className="text-left p-2">Unidade</th>
+                                <th className="text-left p-2">Nível</th>
+                                <th className="text-left p-2">Ações</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(profiles.filter(p => {
+                                const q = profilesSearch.trim().toLowerCase();
+                                if (!q) return true;
+                                return p.rgpm.toLowerCase().includes(q) || p.nome.toLowerCase().includes(q);
+                              })).map(p => (
+                                <tr key={p.rgpm} className="border-t">
+                                  <td className="p-2">{p.rgpm}</td>
+                                  <td className="p-2">{p.nome}</td>
+                                  <td className="p-2">{p.graduacao || '-'}</td>
+                                  <td className="p-2">{p.unidade || '-'}</td>
+                                  <td className="p-2">{p.nivel || '-'}</td>
+                                  <td className="p-2 flex gap-2">
+                                    <Button size="sm" variant="outline" onClick={() => handleEditProfile(p)} disabled={!isAdmin}>Editar</Button>
+                                    <Button size="sm" variant="destructive" onClick={() => handleBlockProfile(p.rgpm)} disabled={!isAdmin}>Bloquear</Button>
+                                    <Button size="sm" variant="destructive" onClick={() => handleDeleteProfile(p.rgpm)} disabled={!isAdmin}>Excluir</Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {profilesLoading && <div className="p-3 text-center text-muted-foreground">Carregando...</div>}
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                  {profilesTab === "create" && (
+                    <DialogFooter>
+                      <Button onClick={handleSubmitCreate}>Salvar</Button>
+                    </DialogFooter>
+                  )}
                 </DialogContent>
               </Dialog>
               <Dialog open={openChangePassword} onOpenChange={setOpenChangePassword}>
@@ -791,5 +795,6 @@ const InactivityGuard = () => {
     setGraduacao(p.graduacao || "");
     setUnidade(p.unidade || "");
     setNivelAcesso(p.nivel || "Operador");
-    setOpenCreate(true);
+    setProfilesTab("create");
   };
+  const [profilesTab, setProfilesTab] = React.useState("create");

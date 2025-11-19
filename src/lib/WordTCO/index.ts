@@ -306,6 +306,7 @@ export async function downloadTcoDocx(opts: {
   const { Document, Packer, Paragraph, TextRun, AlignmentType, Header, Footer, ImageRun, PageBreak, BorderStyle, convertMillimetersToTwip, Table, TableRow, TableCell, WidthType, HeightRule, VerticalAlign } = await import('docx');
 
   const { unidade, cr, tcoNumber, natureza, autoresNomes, relatoPolicial, conclusaoPolicial, autoresDetalhados, condutor, localRegistro, municipio, tipificacao, dataFato, horaFato, dataInicioRegistro, horaInicioRegistro, dataTerminoRegistro, horaTerminoRegistro, localFato, endereco, comunicante, testemunhas, vitimas, autores, audienciaData, audienciaHora, apreensoes, drogas, lacreNumero, numeroRequisicao, nomearFielDepositario, fielDepositarioSelecionado } = opts;
+  const vitimasValidas = Array.isArray(vitimas) ? vitimas.filter(v => String((v as any)?.nome || '').trim()) : [];
 
   // Buscar dados da unidade no banco de dados
   let unidadeAbr = '***';
@@ -606,37 +607,30 @@ export async function downloadTcoDocx(opts: {
     : ((autoresNomes && autoresNomes.length > 0) ? autoresNomes.filter(n => n && n.trim()).length : 0);
   let proximoNumero = totalAutores > 0 ? totalAutores + 1 : 1;
   
-  if (vitimas && vitimas.length > 0) {
-    vitimas.forEach((vitima, index) => {
+  if (vitimasValidas.length > 0) {
+    vitimasValidas.forEach((vitima, index) => {
       const numeroVitima = `2.${proximoNumero + index}`;
       const nome = vitima?.nome?.trim();
-      if (!nome) {
-        segundaPaginaChildren.push(
-          new Paragraph({ children: [ new TextRun({ text: `${numeroVitima} Vítima não informada`, bold: true }) ] }),
-           new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-        );
-      } else {
-        segundaPaginaChildren.push(
-          new Paragraph({ children: [ new TextRun({ text: `${numeroVitima} VÍTIMA ${nome.toUpperCase()}`, bold: true }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `NOME: ${toDisplay(vitima.nome)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `SEXO: ${toDisplay(vitima.sexo)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `ESTADO CIVIL: ${toDisplay(vitima.estadoCivil)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `PROFISSÃO: ${toDisplay(vitima.profissao)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `ENDEREÇO: ${toDisplay(vitima.endereco)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `DATA DE NASCIMENTO: ${toDisplay(vitima.dataNascimento)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `NATURALIDADE: ${toDisplay(vitima.naturalidade)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - MÃE: ${toDisplay(vitima.filiacaoMae)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - PAI: ${toDisplay(vitima.filiacaoPai)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `RG: ${toDisplay(vitima.rg)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `${(String(vitima?.semCpf || '').toLowerCase() === 'true') ? 'CPF: Não possui CPF' : `CPF: ${toDisplay(vitima?.cpf)}`}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `CELULAR: ${toDisplay(vitima.celular)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: `E-MAIL: ${toDisplay(vitima.email)}`, bold: false }) ] }),
-          new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-        );
-      }
+      segundaPaginaChildren.push(
+        new Paragraph({ children: [ new TextRun({ text: `${numeroVitima} VÍTIMA ${nome.toUpperCase()}`, bold: true }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `NOME: ${toDisplay(vitima.nome)}`, bold: false }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `SEXO: ${toDisplay(vitima.sexo)}`, bold: false }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `ESTADO CIVIL: ${toDisplay(vitima.estadoCivil)}`, bold: false }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `PROFISSÃO: ${toDisplay(vitima.profissao)}`, bold: false }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `ENDEREÇO: ${toDisplay(vitima.endereco)}`, bold: false }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `DATA DE NASCIMENTO: ${toDisplay(vitima.dataNascimento)}`, bold: false }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `NATURALIDADE: ${toDisplay(vitima.naturalidade)}`, bold: false }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - MÃE: ${toDisplay(vitima.filiacaoMae)}`, bold: false }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `FILIAÇÃO - PAI: ${toDisplay(vitima.filiacaoPai)}`, bold: false }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `RG: ${toDisplay(vitima.rg)}`, bold: false }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `${(String(vitima?.semCpf || '').toLowerCase() === 'true') ? 'CPF: Não possui CPF' : `CPF: ${toDisplay(vitima?.cpf)}`}`, bold: false }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `CELULAR: ${toDisplay(vitima.celular)}`, bold: false }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: `E-MAIL: ${toDisplay(vitima.email)}`, bold: false }) ] }),
+        new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      );
     });
-    proximoNumero += vitimas.length;
+    proximoNumero += vitimasValidas.length;
   }
 
   // ===== Seção de Testemunhas =====
@@ -707,8 +701,8 @@ export async function downloadTcoDocx(opts: {
     });
   }
 
-  if (vitimas && vitimas.length > 0) {
-    vitimas.forEach((vit) => {
+  if (vitimasValidas.length > 0) {
+    vitimasValidas.forEach((vit) => {
       const nomeV = (vit?.nome || '').trim();
       if (!nomeV) return;
       const textoV = (vit?.relato && vit.relato.trim().length > 0) ? vit.relato.toUpperCase() : 'NÃO INFORMADO';
@@ -1137,12 +1131,12 @@ export async function downloadTcoDocx(opts: {
     return children;
   };
 
-  if (vitimas && vitimas.length > 0) {
-    vitimas.forEach((v, idx) => {
+  if (vitimasValidas.length > 0) {
+    vitimasValidas.forEach((v, idx) => {
       const manifestoChildren = buildVictimManifesto(v?.nome || '', v?.representacao);
       manifestoChildren.forEach((p) => segundaPaginaChildren.push(p));
       // Nova página para próxima vítima, se houver
-      if (idx < vitimas.length - 1) {
+      if (idx < vitimasValidas.length - 1) {
         segundaPaginaChildren.push(new Paragraph({ children: [ new PageBreak() ] }));
       }
     });
