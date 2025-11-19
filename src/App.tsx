@@ -87,6 +87,7 @@ const HeaderActions = () => {
   const [profiles, setProfiles] = React.useState<{ rgpm: string; nome: string; graduacao?: string; unidade?: string; nivel?: string }[]>([]);
   const [profilesLoading, setProfilesLoading] = React.useState(false);
   const [profilesSearch, setProfilesSearch] = React.useState("");
+  const [profilesTab, setProfilesTab] = React.useState("create");
   const graduacoes = [
     "SD PM",
     "CB PM",
@@ -220,6 +221,70 @@ const HeaderActions = () => {
     }
   };
 
+  const loadProfiles = async () => {
+    try {
+      setProfilesLoading(true);
+      const [officers, logins] = await Promise.all([
+        supabase.from("police_officers").select("rgpm,nome_completo,graduacao"),
+        supabase.from("usuarios_login" as any).select("rgpm,unidade,nivel_acesso"),
+      ]);
+      const mapLogin = new Map<string, { unidade?: string; nivel?: string }>();
+      if (logins.data) {
+        logins.data.forEach((r: any) => {
+          mapLogin.set(String(r.rgpm), { unidade: r.unidade, nivel: r.nivel_acesso });
+        });
+      }
+      const rows: { rgpm: string; nome: string; graduacao?: string; unidade?: string; nivel?: string }[] = (officers.data || []).map((o: any) => {
+        const l = mapLogin.get(String(o.rgpm));
+        return { rgpm: String(o.rgpm), nome: String(o.nome_completo || ""), graduacao: o.graduacao, unidade: l?.unidade, nivel: l?.nivel };
+      });
+      setProfiles(rows);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao carregar perfis", description: e?.message || String(e) });
+    } finally {
+      setProfilesLoading(false);
+    }
+  };
+
+  const handleBlockProfile = async (targetRgpm: string) => {
+    try {
+      const { error } = await supabase
+        .from("usuarios_login" as any)
+        .update({ nivel_acesso: "Bloqueado" })
+        .eq("rgpm", targetRgpm);
+      if (error) throw error;
+      if (storedRgpm === targetRgpm) handleLogout();
+      toast({ title: "Perfil bloqueado" });
+      await loadProfiles();
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao bloquear", description: e?.message || String(e) });
+    }
+  };
+
+  const handleDeleteProfile = async (targetRgpm: string) => {
+    try {
+      const [{ error: e1 }, { error: e2 }] = await Promise.all([
+        supabase.from("usuarios_login" as any).delete().eq("rgpm", targetRgpm),
+        supabase.from("police_officers").delete().eq("rgpm", targetRgpm),
+      ]);
+      if (e1) throw e1; if (e2) throw e2;
+      if (storedRgpm === targetRgpm) handleLogout();
+      toast({ title: "Perfil excluído" });
+      await loadProfiles();
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao excluir", description: e?.message || String(e) });
+    }
+  };
+
+  const handleEditProfile = (p: { rgpm: string; nome: string; graduacao?: string; unidade?: string; nivel?: string }) => {
+    setRgpm(p.rgpm);
+    setNome(p.nome);
+    setGraduacao(p.graduacao || "");
+    setUnidade(p.unidade || "");
+    setNivelAcesso(p.nivel || "Operador");
+    setProfilesTab("create");
+  };
+
   const handleAddCr = async () => {
     const val = newCr.trim();
     if (!val) {
@@ -286,7 +351,7 @@ const HeaderActions = () => {
           .eq("rgpm", current)
           .limit(1);
         const row = data && data[0];
-        if (!row || String(row.nivel_acesso).trim() === "Bloqueado") {
+        if (!row || String((row as any).nivel_acesso).trim() === "Bloqueado") {
           handleLogout();
         }
       } catch {}
@@ -397,7 +462,7 @@ const HeaderActions = () => {
           toast({ title: "Perfil criado", description: "Banco não aceita o novo nível. Gravado como Operacional." });
           setOpenCreate(false);
           setNivelAcesso("Operador");
-          setCr(""); setUnidade(""); setRgpm(""); setGraduacao(""); setNome(""); setCpf(""); setTelefone(""); setNaturalidade(""); setPai(""); setMae(""); setSenha(""));
+          setCr(""); setUnidade(""); setRgpm(""); setGraduacao(""); setNome(""); setCpf(""); setTelefone(""); setNaturalidade(""); setPai(""); setMae(""); setSenha("");
           return;
         } catch (e3: any) {
           toast({ variant: "destructive", title: "Erro ao criar perfil", description: e3?.message || String(e3) });
@@ -734,67 +799,3 @@ const InactivityGuard = () => {
 
   return null;
 };
-  const loadProfiles = async () => {
-    try {
-      setProfilesLoading(true);
-      const [officers, logins] = await Promise.all([
-        supabase.from("police_officers").select("rgpm,nome_completo,graduacao"),
-        supabase.from("usuarios_login" as any).select("rgpm,unidade,nivel_acesso"),
-      ]);
-      const mapLogin = new Map<string, { unidade?: string; nivel?: string }>();
-      if (logins.data) {
-        logins.data.forEach((r: any) => {
-          mapLogin.set(String(r.rgpm), { unidade: r.unidade, nivel: r.nivel_acesso });
-        });
-      }
-      const rows: { rgpm: string; nome: string; graduacao?: string; unidade?: string; nivel?: string }[] = (officers.data || []).map((o: any) => {
-        const l = mapLogin.get(String(o.rgpm));
-        return { rgpm: String(o.rgpm), nome: String(o.nome_completo || ""), graduacao: o.graduacao, unidade: l?.unidade, nivel: l?.nivel };
-      });
-      setProfiles(rows);
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Erro ao carregar perfis", description: e?.message || String(e) });
-    } finally {
-      setProfilesLoading(false);
-    }
-  };
-
-  const handleBlockProfile = async (targetRgpm: string) => {
-    try {
-      const { error } = await supabase
-        .from("usuarios_login" as any)
-        .update({ nivel_acesso: "Bloqueado" })
-        .eq("rgpm", targetRgpm);
-      if (error) throw error;
-      if (storedRgpm === targetRgpm) handleLogout();
-      toast({ title: "Perfil bloqueado" });
-      await loadProfiles();
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Erro ao bloquear", description: e?.message || String(e) });
-    }
-  };
-
-  const handleDeleteProfile = async (targetRgpm: string) => {
-    try {
-      const [{ error: e1 }, { error: e2 }] = await Promise.all([
-        supabase.from("usuarios_login" as any).delete().eq("rgpm", targetRgpm),
-        supabase.from("police_officers").delete().eq("rgpm", targetRgpm),
-      ]);
-      if (e1) throw e1; if (e2) throw e2;
-      if (storedRgpm === targetRgpm) handleLogout();
-      toast({ title: "Perfil excluído" });
-      await loadProfiles();
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Erro ao excluir", description: e?.message || String(e) });
-    }
-  };
-
-  const handleEditProfile = (p: { rgpm: string; nome: string; graduacao?: string; unidade?: string; nivel?: string }) => {
-    setRgpm(p.rgpm);
-    setNome(p.nome);
-    setGraduacao(p.graduacao || "");
-    setUnidade(p.unidade || "");
-    setNivelAcesso(p.nivel || "Operador");
-    setProfilesTab("create");
-  };
-  const [profilesTab, setProfilesTab] = React.useState("create");
