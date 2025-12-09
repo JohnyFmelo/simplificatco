@@ -56,6 +56,24 @@ export type Database = {
         }
         Relationships: []
       }
+      system_heartbeat: {
+        Row: {
+          id: number
+          last_ping: string
+          ping_count: number
+        }
+        Insert: {
+          id?: number
+          last_ping?: string
+          ping_count?: number
+        }
+        Update: {
+          id?: number
+          last_ping?: string
+          ping_count?: number
+        }
+        Relationships: []
+      }
       unidades: {
         Row: {
           abreviacao: string | null
