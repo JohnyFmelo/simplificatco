@@ -335,7 +335,7 @@ const HeaderActions = () => {
       localStorage.removeItem("nivel_acesso");
       sessionStorage.removeItem("nivel_acesso");
     } finally {
-      navigate("/login");
+      navigate("/");
     }
   };
 
@@ -473,7 +473,7 @@ const HeaderActions = () => {
     }
   };
 
-          if (isLogin) return null;
+          if (isLogin || !(isAdmin || isStandard)) return null;
           return createPortal(
             <div className="fixed top-2 right-2 sm:top-3 sm:right-4 z-[100] pointer-events-auto">
               <DropdownMenu>
@@ -485,8 +485,6 @@ const HeaderActions = () => {
                 <DropdownMenuContent align="end">
                   {(isAdmin || isStandard) && <DropdownMenuItem onClick={() => { setProfilesTab("create"); setOpenCreate(true); }}>Criar perfil</DropdownMenuItem>}
                   {isAdmin && <DropdownMenuItem onClick={() => setOpenCreateUnit(true)}>Criar unidade</DropdownMenuItem>}
-                  <DropdownMenuItem onClick={() => setOpenChangePassword(true)}>Alterar senha</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout}>Sair</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Dialog open={openCreate} onOpenChange={setOpenCreate}>
@@ -781,7 +779,7 @@ const InactivityGuard = () => {
           localStorage.removeItem("nivel_acesso");
           sessionStorage.removeItem("nivel_acesso");
         } finally {
-          navigate("/login");
+          navigate("/");
         }
       }, timeoutMs);
     };

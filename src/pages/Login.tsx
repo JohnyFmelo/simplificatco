@@ -24,7 +24,7 @@ const Login: React.FC = () => {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const rg = onlyDigits(rgpm).slice(0, 6);
+    const rg = onlyDigits(rgpm).slice(0, 12);
     const pass = senha.trim();
     if (!rg || !pass) {
       setError('Preencha RGPM e senha.');
@@ -51,7 +51,7 @@ const Login: React.FC = () => {
         setLoading(false);
         return;
       }
-      const nivelClient = (nivelDb === 'Administrador') ? 'Administrador' : (nivelDb === 'Padrão' ? 'Padrão' : 'Operador');
+      const nivelClient = (nivelDb === 'Administrador') ? 'Administrador' : ((nivelDb === 'Padrão' || nivelDb === 'Operacional') ? 'Padrão' : 'Operador');
       if (remember) {
         localStorage.setItem('rgpm', rg);
         localStorage.setItem('nivel_acesso', nivelClient);
