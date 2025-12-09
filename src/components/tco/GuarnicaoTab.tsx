@@ -249,9 +249,13 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
         .from("police_officers")
         .select("nome_completo, graduacao, nome_pai, nome_mae, naturalidade, cpf, telefone")
         .eq("rgpm", rgpmToSearch)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code === 'PGRST116') {
+      if (error) {
+        throw error;
+      }
+      
+      if (!data) {
         toast({
           variant: "default",
           title: "RGPM Não Cadastrado",
@@ -262,9 +266,7 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
           ...initialOfficerFormData,
           rgpm: prev.rgpm,
         }));
-      } else if (error) {
-        throw error;
-      } else if (data) {
+      } else {
         const officerData = data as any;
         setNewOfficerFormData({
           rgpm: rgpmToSearch,
@@ -283,12 +285,13 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
       }
     } catch (error: any) {
       console.error("[GuarnicaoTab Dialog] Erro ao buscar detalhes do policial:", error);
+      // Não mostrar erro de rede como fatal, apenas avisar
       toast({
-        variant: "destructive",
-        title: "Erro na Busca de Detalhes",
-        description: `Falha ao buscar dados: ${error.message || 'Erro desconhecido'}`,
+        variant: "default",
+        title: "Busca não concluída",
+        description: "Não foi possível verificar o RGPM. Preencha os dados manualmente.",
       });
-       // Mantém o RGPM digitado, limpa o resto em caso de erro
+      // Mantém o RGPM digitado
       setNewOfficerFormData(prev => ({
         ...initialOfficerFormData,
         rgpm: prev.rgpm,
