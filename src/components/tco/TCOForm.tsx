@@ -581,8 +581,8 @@ const TCOForm: React.FC = () => {
   };
   return <>
       <div className="header">
-        <div className="absolute bottom-2 left-4 text-[10px] text-blue-200/50 font-light select-none">
-          Créditos: @johny.f.melo
+        <div className="absolute bottom-2 right-4 text-[10px] text-blue-200/50 font-light select-none">
+          @johny.f.melo
         </div>
         <h1><i className="fas fa-file-alt"></i> Termo Circunstanciado de Ocorrência</h1>
         <div className="flex items-center gap-2 justify-center">
