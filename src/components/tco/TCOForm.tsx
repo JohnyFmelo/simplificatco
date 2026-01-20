@@ -12,7 +12,11 @@ import TermoCompromissoTab from "./TermoCompromissoTab";
 import PessoasEnvolvidasTab from "./PessoasEnvolvidasTab";
 import ArquivosTab from "./ArquivosTab";
 import AudienciaTab from "./AudienciaTab";
+import AvaliacoesTab, { Review } from "./AvaliacoesTab";
 import { uploadPhoto, listPhotos, deletePhoto, getUserIdOrAnon } from "@/lib/supabasePhotos";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 
 // Tipos mínimos para composição
@@ -440,12 +444,81 @@ const TCOForm: React.FC = () => {
   const [audienciaHora, setAudienciaHora] = useState("");
   const [photoCaptions, setPhotoCaptions] = useState<Record<string, string>>({});
 
+  // Estado para Avaliações e Feedback
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState("");
+
+  const fetchReviews = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('avaliacoes')
+        .select('*')
+        .order('date', { ascending: false });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setReviews(data as Review[]);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar avaliações", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchReviews();
+  }, []);
+
+  const handleSaveFeedback = async () => {
+    if (feedbackRating === 0) {
+      toast({
+        variant: "destructive",
+        title: "Avaliação necessária",
+        description: "Por favor, selecione uma nota de 1 a 5 estrelas.",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('avaliacoes')
+        .insert([
+          {
+            stars: feedbackRating,
+            text: feedbackText,
+          }
+        ]);
+
+      if (error) throw error;
+
+      setIsFeedbackDialogOpen(false);
+      setFeedbackRating(0);
+      setFeedbackText("");
+      
+      toast({
+        title: "Avaliação enviada!",
+        description: "Obrigado pelo seu feedback.",
+      });
+
+      fetchReviews();
+    } catch (error) {
+      console.error("Erro ao salvar avaliação", error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível enviar sua avaliação.",
+      });
+    }
+  };
+
   // Navegação controlada por etapas
   const {
     toast
   } = useToast();
   const [activeTab, setActiveTab] = useState("basico");
-  const tabOrder = useMemo(() => isDrugCase ? ["basico", "geral", "drogas", "pessoas", "guarnicao", "historico", "arquivos", "audiencia"] : ["basico", "geral", "pessoas", "guarnicao", "historico", "arquivos", "audiencia"], [isDrugCase]);
+  const tabOrder = useMemo(() => isDrugCase ? ["basico", "geral", "drogas", "pessoas", "guarnicao", "historico", "arquivos", "audiencia", "feedback"] : ["basico", "geral", "pessoas", "guarnicao", "historico", "arquivos", "audiencia", "feedback"], [isDrugCase]);
   const goToNextTab = () => {
     const idx = tabOrder.indexOf(activeTab as (typeof tabOrder)[number]);
     if (idx >= 0 && idx < tabOrder.length - 1) setActiveTab(tabOrder[idx + 1]);
@@ -573,6 +646,8 @@ const TCOForm: React.FC = () => {
         nomearFielDepositario,
         fielDepositarioSelecionado
       });
+      // Abrir modal de avaliação após download
+      setIsFeedbackDialogOpen(true);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Erro ao gerar DOCX", description: e?.message || String(e) });
     } finally {
@@ -606,6 +681,7 @@ const TCOForm: React.FC = () => {
             <TabsTrigger className={activeTab === "historico" ? "tab active" : "tab"} value="historico"><i className="fas fa-history"></i> Histórico</TabsTrigger>
             <TabsTrigger className={activeTab === "arquivos" ? "tab active" : "tab"} value="arquivos"><i className="fas fa-camera"></i> Fotos</TabsTrigger>
             <TabsTrigger className={activeTab === "audiencia" ? "tab active" : "tab"} value="audiencia"><i className="fas fa-gavel"></i> Audiência</TabsTrigger>
+            <TabsTrigger className={activeTab === "feedback" ? "tab active" : "tab"} value="feedback"><i className="fas fa-star"></i> Feedback</TabsTrigger>
           </TabsList>
 
           <div className="form-content">
@@ -670,9 +746,14 @@ const TCOForm: React.FC = () => {
         <TabsContent value="audiencia">
           <AudienciaTab audienciaData={audienciaData} setAudienciaData={setAudienciaData} audienciaHora={audienciaHora} setAudienciaHora={setAudienciaHora} />
         </TabsContent>
+
+        <TabsContent value="feedback">
+          <AvaliacoesTab reviews={reviews} onOpenFeedback={() => setIsFeedbackDialogOpen(true)} />
+        </TabsContent>
           </div>
           <div className="footer">
-            {activeTab !== "audiencia" ? <button className="btn-primary" onClick={goToNextTab}>Próximo <i className="fas fa-arrow-right"></i></button> : <>
+            {activeTab === "audiencia" ? (
+              <div className="flex gap-2 w-full justify-end">
                 <button
                   className={`btn-primary ${isDownloadingDocx ? 'loading' : ''}`}
                   onClick={handleDownloadWord}
@@ -681,8 +762,55 @@ const TCOForm: React.FC = () => {
                 >
                   {isDownloadingDocx ? 'Baixando TCO...' : 'Baixar TCO'} {isDownloadingDocx ? <i className="fas fa-spinner" /> : <i className="fas fa-download" />}
                 </button>
-              </>}
+              </div>
+            ) : activeTab === "feedback" ? (
+               <></>
+            ) : (
+              <button className="btn-primary" onClick={goToNextTab}>Próximo <i className="fas fa-arrow-right"></i></button>
+            )}
           </div>
+          
+      <Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Deixe uma avaliação ou sugestão.</DialogTitle>
+            <DialogDescription></DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex justify-center gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setFeedbackRating(star)}
+                  className={`text-2xl transition-colors ${
+                    star <= feedbackRating ? "text-yellow-500" : "text-gray-300"
+                  }`}
+                >
+                  <i className="fas fa-star"></i>
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="feedback-text">Comentário (opcional)</Label>
+              <Textarea
+                id="feedback-text"
+                placeholder="O que você achou? Sugestões?"
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <button className="btn-secondary" onClick={() => setIsFeedbackDialogOpen(false)}>
+              Cancelar
+            </button>
+            <button className="btn-primary" onClick={handleSaveFeedback}>
+              Enviar Avaliação
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </Tabs>
     </>;
 };
