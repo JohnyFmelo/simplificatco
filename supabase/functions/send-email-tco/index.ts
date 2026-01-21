@@ -26,7 +26,7 @@ serve(async (req) => {
 
     // A URL do seu Google Apps Script (Web App)
     // Recomendo mover para variável de ambiente: Deno.env.get("GAS_WEBAPP_URL")
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwLN_mMLX0Od6I8AMEunw1svXWisq29-J7O88pxX8pk08k3KMrCEdvC_qdA4Qiyvsrv/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbz_f1wlgKg54CMqU7fCXyxuvp7GpdXf_09gKHqkxB4Pl_Oj19dSa6uFbEOk0Gq6yqP1/exec";
 
     // Payload para o GAS
     const payload = {
