@@ -398,6 +398,24 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
 
   return (
     <div>
+      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <Info className="h-5 w-5 text-yellow-400" />
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-yellow-800">Orientação para Cadastro da Guarnição</h3>
+            <div className="mt-2 text-sm text-yellow-700">
+              <p>
+                1. O <strong>condutor</strong> deve ser o primeiro a ser cadastrado.
+              </p>
+              <p>
+                2. A lista deve seguir a ordem de antiguidade (do maior para o menor grau hierárquico).
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="form-grid">
         <div className="form-group" style={{alignItems:'flex-end'}}>
@@ -435,14 +453,14 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
               {currentGuarnicaoList.map((componente, index) => {
                 const initials = String(componente.nome || '').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
                 return (
-                  <div key={`${componente.rg}-${index}`} className="member-item">
+                  <div key={`${componente.rg}-${index}`} className={`member-item ${index === 0 ? "!border-l-4 !border-blue-500 !bg-blue-50" : ""}`}>
                     <div className="member-info">
-                      <div className="member-avatar">{initials || 'PM'}</div>
+                      <div className={`member-avatar ${index === 0 ? "!bg-blue-600 !text-white" : ""}`}>{initials || 'PM'}</div>
                       <div className="member-details">
-                        <h4>{componente.nome || 'Sem Nome'}</h4>
+                        <h4 className={index === 0 ? "!text-blue-900 !font-bold" : ""}>{componente.nome || 'Sem Nome'}</h4>
                         <p>{componente.posto || 'Sem Posto'} • RGPM: {componente.rg || 'Não informado'}</p>
                         {index === 0 && (
-                          <small className="field-hint"><i className="fas fa-shield-alt"></i> Condutor da ocorrência</small>
+                          <small className="field-hint !text-blue-700 !font-medium"><i className="fas fa-shield-alt mr-1"></i> Condutor da ocorrência</small>
                         )}
                       </div>
                     </div>

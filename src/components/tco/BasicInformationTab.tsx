@@ -33,6 +33,7 @@ interface BasicInformationTabProps {
   localRegistro: string;
   setLocalRegistro: (value: string) => void;
   onTipificacaoChange?: (value: string) => void;
+  setStartTimestamp?: () => void;
 }
 
 
@@ -152,6 +153,7 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
   localRegistro,
   setLocalRegistro,
   onTipificacaoChange,
+  setStartTimestamp,
 }) => {
   const { toast } = useToast();
   const [isChecking, setIsChecking] = useState(false);
@@ -272,6 +274,10 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
     const value = e.target.value;
     const numericValue = value.replace(/[^0-9]/g, '');
     setTcoNumber(numericValue);
+    // Definir data/hora de início se ainda não definida e o número for válido (ex: começou a digitar)
+    if (numericValue.length > 0 && setStartTimestamp) {
+      setStartTimestamp();
+    }
   };
   useEffect(() => {
     if (tcoNumber && tcoNumber.length >= 3) {

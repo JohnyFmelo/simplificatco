@@ -535,13 +535,31 @@ const TCOForm: React.FC = () => {
     if (!cr.trim()) errors.push("CR");
     if (!unidade.trim()) errors.push("Unidade");
     if (!localRegistro.trim()) errors.push("Local do Registro");
-    // Pessoas: CPF do Autor Principal
+    
+    // Dados da Ocorrência
+    if (!dataFato.trim()) errors.push("Data do Fato");
+    if (!horaFato.trim()) errors.push("Hora do Fato");
+    if (!localFato.trim()) errors.push("Local do Fato");
+    if (!municipio.trim()) errors.push("Município");
+
+    // Pessoas: CPF do Autor Principal e existência de autor
     if (autores.length === 0) {
       errors.push("Ao menos um Autor");
     } else {
-      const cpfAutor = (autores[0].cpf || "").replace(/\D/g, "");
-      if (cpfAutor.length !== 11) errors.push("CPF do Autor Principal");
+      autores.forEach((autor, idx) => {
+        const cpf = (autor.cpf || "").replace(/\D/g, "");
+        if (cpf.length !== 11) errors.push(`CPF do Autor ${autor.nome || (idx + 1)}`);
+      });
     }
+
+    // Guarnição
+    if (componentesGuarnicao.length === 0) {
+      errors.push("Ao menos um Policial na Guarnição");
+    }
+
+    // Histórico
+    if (!relatoPolicial.trim()) errors.push("Relato Policial");
+
     if (errors.length) {
       toast({
         variant: "destructive",
@@ -550,10 +568,6 @@ const TCOForm: React.FC = () => {
       });
       return false;
     }
-    toast({
-      title: "Validação concluída",
-      description: "Tudo certo para finalizar."
-    });
     return true;
   };
   const handleFinish = () => {
@@ -568,6 +582,22 @@ const TCOForm: React.FC = () => {
 
   // Download do TCO em DOCX na aba "Audiência" (parte final)
   const handleDownloadWord = async () => {
+    if (!validateForm()) return;
+
+    // Auto-calculate end date/time
+    const now = new Date();
+    const pad2 = (n: number) => n.toString().padStart(2, '0');
+    const currentData = `${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()}`;
+    const currentHora = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+    
+    // Always update end time on download as per user request
+    setDataTerminoRegistro(currentData);
+    setHoraTerminoRegistro(currentHora);
+
+    // Use current/calculated values for document
+    const finalDataTermino = currentData;
+    const finalHoraTermino = currentHora;
+
     const flagSim = (val: any) => typeof val === 'string' && val.trim().toLowerCase() === 'sim';
     const isDrugCaseLocal = Array.isArray(drogasAdicionadas) && drogasAdicionadas.length > 0;
     const anexosList: string[] = [];
@@ -623,8 +653,8 @@ const TCOForm: React.FC = () => {
         horaFato,
         dataInicioRegistro,
         horaInicioRegistro,
-        dataTerminoRegistro,
-        horaTerminoRegistro,
+        dataTerminoRegistro: finalDataTermino,
+        horaTerminoRegistro: finalHoraTermino,
         localFato,
         endereco,
         comunicante,
@@ -688,10 +718,6 @@ const TCOForm: React.FC = () => {
         <TabsContent value="basico">
           <BasicInformationTab tcoNumber={tcoNumber} setTcoNumber={setTcoNumber} natureza={natureza} setNatureza={setNatureza} autor={autor} setAutor={setAutor} penaDescricao={penaDescricao} naturezaOptions={naturezaOptions} customNatureza={customNatureza} setCustomNatureza={setCustomNatureza} startTime={startTime} isTimerRunning={isTimerRunning} cr={cr} setCr={setCr} unidade={unidade} setUnidade={value => {
           setUnidade(value);
-          const now = new Date();
-          const pad2 = (n: number) => n.toString().padStart(2, '0');
-          setDataInicioRegistro(`${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()}`);
-          setHoraInicioRegistro(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
           const MAPA: Record<string, string> = {
             "2º Comando Regional - Sede": "",
             "4º Batalhão de Polícia Militar": "Várzea Grande",
@@ -707,7 +733,14 @@ const TCOForm: React.FC = () => {
               setLocalRegistro("BASE DA 25ª CIPM");
             }
           }
-        }} localRegistro={localRegistro} setLocalRegistro={setLocalRegistro} onTipificacaoChange={setTipificacao} />
+        }} localRegistro={localRegistro} setLocalRegistro={setLocalRegistro} onTipificacaoChange={setTipificacao} setStartTimestamp={() => {
+          if (!dataInicioRegistro) {
+             const now = new Date();
+             const pad2 = (n: number) => n.toString().padStart(2, '0');
+             setDataInicioRegistro(`${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()}`);
+             setHoraInicioRegistro(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
+          }
+        }} />
         </TabsContent>
 
         <TabsContent value="geral">
