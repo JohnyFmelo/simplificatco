@@ -715,13 +715,13 @@ const TCOForm: React.FC = () => {
         ]
       };
 
-      // Envio via Banco de Dados (Tabela de Fila + Trigger pg_net)
-      // Isso evita problemas de CORS e não requer deploy de Edge Function
-      const { error } = await supabase
-        .from('email_queue')
-        .insert({ payload: payload });
+      // Envio via Edge Function diretamente
+      const { data, error } = await supabase.functions.invoke('send-email-tco', {
+        body: payload
+      });
 
-      if (error) throw new Error(error.message || "Erro ao enfileirar e-mail no banco de dados");
+      if (error) throw new Error(error.message || "Erro ao enviar e-mail");
+      if (data?.error) throw new Error(data.error);
       
       toast({ title: "Enviado!", description: `O TCO foi enviado para ${emailTo}.` });
       setShowEmailDialog(false);
