@@ -258,7 +258,7 @@ function formatCidadeDataExtenso(cidade?: string | null, dataStr?: string | null
   return `${cidadeMt}, ${dia} de ${mesNome} de ${ano}`;
 }
 
-export async function downloadTcoDocx(opts: {
+export interface TcoDocOptions {
   unidade?: string | null;
   cr?: string | null;
   tcoNumber?: string;
@@ -302,7 +302,9 @@ export async function downloadTcoDocx(opts: {
   periciasLesao?: string[];
   nomearFielDepositario?: string;
   fielDepositarioSelecionado?: string;
-}) {
+}
+
+export async function generateTcoDocObject(opts: TcoDocOptions) {
   const { Document, Packer, Paragraph, TextRun, AlignmentType, Header, Footer, ImageRun, PageBreak, BorderStyle, convertMillimetersToTwip, Table, TableRow, TableCell, WidthType, HeightRule, VerticalAlign } = await import('docx');
 
   const { unidade, cr, tcoNumber, natureza, autoresNomes, relatoPolicial, conclusaoPolicial, autoresDetalhados, condutor, localRegistro, municipio, tipificacao, dataFato, horaFato, dataInicioRegistro, horaInicioRegistro, dataTerminoRegistro, horaTerminoRegistro, localFato, endereco, comunicante, testemunhas, vitimas, autores, audienciaData, audienciaHora, apreensoes, drogas, lacreNumero, numeroRequisicao, nomearFielDepositario, fielDepositarioSelecionado } = opts;
@@ -1406,13 +1408,26 @@ export async function downloadTcoDocx(opts: {
     ]
   });
 
+  return { doc, filename: `TCO_${(tcoNumber || '').trim() || 'DOCUMENTO'}.docx` };
+}
+
+export async function downloadTcoDocx(opts: TcoDocOptions) {
+  const { Packer } = await import('docx');
+  const { doc, filename } = await generateTcoDocObject(opts);
   const blob = await Packer.toBlob(doc);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `TCO_${(tcoNumber || '').trim() || 'DOCUMENTO'}.docx`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+export async function generateTcoBase64(opts: TcoDocOptions) {
+  const { Packer } = await import('docx');
+  const { doc, filename } = await generateTcoDocObject(opts);
+  const base64 = await Packer.toBase64String(doc);
+  return { base64, filename };
 }

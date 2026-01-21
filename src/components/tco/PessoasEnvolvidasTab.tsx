@@ -21,6 +21,7 @@ interface PersonalInfo {
   laudoPericial: string;
   relato?: string; // Added for victim and witness testimony
   representacao?: string; // Added for victim representation
+  semCpf?: string;
 }
 
 interface PessoasEnvolvidasTabProps {

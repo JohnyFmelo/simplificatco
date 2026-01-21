@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { downloadTcoDocx } from "@/lib/WordTCO";
+import { downloadTcoDocx, generateTcoBase64 } from "@/lib/WordTCO";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import BasicInformationTab from "./BasicInformationTab";
@@ -16,6 +16,7 @@ import AvaliacoesTab, { Review } from "./AvaliacoesTab";
 import { uploadPhoto, listPhotos, deletePhoto, getUserIdOrAnon } from "@/lib/supabasePhotos";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -519,12 +520,48 @@ const TCOForm: React.FC = () => {
   } = useToast();
   const [activeTab, setActiveTab] = useState("basico");
   const tabOrder = useMemo(() => isDrugCase ? ["basico", "geral", "drogas", "pessoas", "guarnicao", "historico", "arquivos", "audiencia", "feedback"] : ["basico", "geral", "pessoas", "guarnicao", "historico", "arquivos", "audiencia", "feedback"], [isDrugCase]);
+  const validateBasico = () => !!tcoNumber.trim() && !!natureza.trim() && !!cr.trim() && !!unidade.trim() && !!localRegistro.trim() && (natureza !== "Outros" || !!customNatureza.trim());
+  const validateGeral = () => !!dataFato.trim() && !!horaFato.trim() && !!localFato.trim() && !!municipio.trim();
+  const validatePessoas = () => autores.length > 0 && autores.every(a => !!a.nome?.trim() && (a.semCpf === 'true' || (a.cpf && a.cpf.replace(/\D/g, "").length === 11)));
+  const validateGuarnicao = () => componentesGuarnicao.length > 0;
+  const validateHistorico = () => !!relatoPolicial.trim();
+  const validateAudiencia = () => !!audienciaData.trim() && !!audienciaHora.trim();
+
+  const checkTabValidity = (tab: string) => {
+    switch (tab) {
+      case 'basico': return validateBasico();
+      case 'geral': return validateGeral();
+      case 'pessoas': return validatePessoas();
+      case 'guarnicao': return validateGuarnicao();
+      case 'historico': return validateHistorico();
+      case 'audiencia': return validateAudiencia();
+      default: return true;
+    }
+  };
+
+  const canNavigateToTab = (targetTab: string) => {
+      const targetIdx = tabOrder.indexOf(targetTab);
+      if (targetIdx === -1) return false;
+      if (targetIdx === 0) return true;
+      for (let i = 0; i < targetIdx; i++) {
+          if (!checkTabValidity(tabOrder[i])) return false;
+      }
+      return true;
+  };
+
   const goToNextTab = () => {
+    if (!checkTabValidity(activeTab)) {
+       toast({ variant: "destructive", title: "Campos obrigatórios", description: "Preencha todos os campos obrigatórios (*) desta aba antes de prosseguir." });
+       return;
+    }
     const idx = tabOrder.indexOf(activeTab as (typeof tabOrder)[number]);
     if (idx >= 0 && idx < tabOrder.length - 1) setActiveTab(tabOrder[idx + 1]);
   };
   const isLastTab = activeTab === tabOrder[tabOrder.length - 1];
   const [isDownloadingDocx, setIsDownloadingDocx] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
   const validateForm = (): boolean => {
     const errors: string[] = [];
     // Básico
@@ -547,6 +584,7 @@ const TCOForm: React.FC = () => {
       errors.push("Ao menos um Autor");
     } else {
       autores.forEach((autor, idx) => {
+        if (autor.semCpf === 'true') return;
         const cpf = (autor.cpf || "").replace(/\D/g, "");
         if (cpf.length !== 11) errors.push(`CPF do Autor ${autor.nome || (idx + 1)}`);
       });
@@ -560,6 +598,10 @@ const TCOForm: React.FC = () => {
     // Histórico
     if (!relatoPolicial.trim()) errors.push("Relato Policial");
 
+    // Audiência
+    if (!audienciaData.trim()) errors.push("Data da Audiência");
+    if (!audienciaHora.trim()) errors.push("Hora da Audiência");
+
     if (errors.length) {
       toast({
         variant: "destructive",
@@ -572,11 +614,122 @@ const TCOForm: React.FC = () => {
   };
   const handleFinish = () => {
     if (!validateForm()) return;
-    // TODO: integrar submissão/geração ao backend/PDF
-    toast({
-      title: "Formulário finalizado",
-      description: "Você pode prosseguir com o envio/geração."
-    });
+    setShowEmailDialog(true);
+  };
+
+  const confirmSendEmail = async () => {
+    if (!emailTo || !emailTo.includes('@')) {
+      toast({ variant: "destructive", title: "E-mail inválido", description: "Por favor, insira um e-mail válido." });
+      return;
+    }
+    
+    setIsSendingEmail(true);
+    try {
+      const now = new Date();
+      const pad2 = (n: number) => n.toString().padStart(2, '0');
+      const finalDataTermino = dataTerminoRegistro && dataTerminoRegistro.trim() 
+        ? dataTerminoRegistro 
+        : `${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()}`;
+      const finalHoraTermino = horaTerminoRegistro && horaTerminoRegistro.trim() 
+        ? horaTerminoRegistro 
+        : `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+      
+      const pessoasComLaudo = [...vitimas, ...autores].filter(p => p.solicitarLaudoLesao);
+
+      const opts = {
+        unidade,
+        cr,
+        tcoNumber,
+        natureza,
+        autoresNomes: autores.map(a => a.nome).filter(Boolean),
+        relatoPolicial,
+        conclusaoPolicial,
+        providencias,
+        documentosAnexos,
+        guarnicaoLista: componentesGuarnicao.map(g => ({
+          nome: g.nome,
+          posto: g.posto,
+          rg: g.rg
+        })),
+        autoresDetalhados: autores.map(a => ({
+          nome: a.nome,
+          relato: a.relato
+        })),
+        condutor: componentesGuarnicao[0] ? {
+          nome: componentesGuarnicao[0].nome,
+          posto: componentesGuarnicao[0].posto,
+          rg: componentesGuarnicao[0].rg,
+          pai: componentesGuarnicao[0].pai,
+          mae: componentesGuarnicao[0].mae,
+          naturalidade: componentesGuarnicao[0].naturalidade,
+          cpf: componentesGuarnicao[0].cpf,
+          telefone: componentesGuarnicao[0].telefone,
+          nome_completo: componentesGuarnicao[0].nome,
+          graduacao: componentesGuarnicao[0].posto,
+          rgpm: componentesGuarnicao[0].rg,
+          nome_pai: componentesGuarnicao[0].pai,
+          nome_mae: componentesGuarnicao[0].mae
+        } : undefined,
+        localRegistro,
+        municipio,
+        tipificacao,
+        dataFato,
+        horaFato,
+        dataInicioRegistro,
+        horaInicioRegistro,
+        dataTerminoRegistro: finalDataTermino,
+        horaTerminoRegistro: finalHoraTermino,
+        localFato,
+        endereco,
+        comunicante,
+        testemunhas,
+        vitimas,
+        autores,
+        imageUrls: fotosArquivos.map(f => f.url),
+        imageCaptions: fotosArquivos.map(f => (photoCaptions[f.id] || "")),
+        audienciaData,
+        audienciaHora,
+        apreensoes,
+        drogas: drogasAdicionadas,
+        lacreNumero,
+        numeroRequisicao,
+        periciasLesao: pessoasComLaudo.map(p => p.nome),
+        nomearFielDepositario,
+        fielDepositarioSelecionado
+      };
+
+      const { base64, filename } = await generateTcoBase64(opts);
+
+      const payload = {
+        api_key: "STCO_PRO_SECURE_KEY_BPM25_V2",
+        to: emailTo,
+        subject: `TCO ${tcoNumber} - ${natureza}`,
+        htmlBody: `<h1>SimplificaTCO</h1><p>Segue o documento em anexo referente ao TCO ${tcoNumber}.</p><hr><small>Enviado automaticamente pelo SimplificaTCO.</small>`,
+        attachments: [
+          {
+            filename: filename,
+            content: base64,
+            type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          }
+        ]
+      };
+
+      // Envio via Banco de Dados (Tabela de Fila + Trigger pg_net)
+      // Isso evita problemas de CORS e não requer deploy de Edge Function
+      const { error } = await supabase
+        .from('email_queue')
+        .insert({ payload: payload });
+
+      if (error) throw new Error(error.message || "Erro ao enfileirar e-mail no banco de dados");
+      
+      toast({ title: "Enviado!", description: `O TCO foi enviado para ${emailTo}.` });
+      setShowEmailDialog(false);
+    } catch (error) {
+      console.error(error);
+      toast({ variant: "destructive", title: "Erro no envio", description: "Falha ao enviar o documento por e-mail." });
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
 
@@ -703,15 +856,15 @@ const TCOForm: React.FC = () => {
 
       <Tabs value={activeTab} onValueChange={val => setActiveTab(val)}>
           <TabsList className="flex w-full">
-            <TabsTrigger className={activeTab === "basico" ? "tab active" : "tab"} value="basico"><i className="fas fa-info-circle"></i> Informações Básicas</TabsTrigger>
-            <TabsTrigger className={activeTab === "geral" ? "tab active" : "tab"} value="geral"><i className="fas fa-calendar-alt"></i> Dados da Ocorrência</TabsTrigger>
-            {isDrugCase && <TabsTrigger className={activeTab === "drogas" ? "tab active" : "tab"} value="drogas"><i className="fas fa-flask"></i> Drogas</TabsTrigger>}
-            <TabsTrigger className={activeTab === "pessoas" ? "tab active" : "tab"} value="pessoas"><i className="fas fa-users"></i> Pessoas Envolvidas</TabsTrigger>
-            <TabsTrigger className={activeTab === "guarnicao" ? "tab active" : "tab"} value="guarnicao"><i className="fas fa-shield-alt"></i> Guarnição</TabsTrigger>
-            <TabsTrigger className={activeTab === "historico" ? "tab active" : "tab"} value="historico"><i className="fas fa-history"></i> Histórico</TabsTrigger>
-            <TabsTrigger className={activeTab === "arquivos" ? "tab active" : "tab"} value="arquivos"><i className="fas fa-camera"></i> Fotos</TabsTrigger>
-            <TabsTrigger className={activeTab === "audiencia" ? "tab active" : "tab"} value="audiencia"><i className="fas fa-gavel"></i> Audiência</TabsTrigger>
-            <TabsTrigger className={activeTab === "feedback" ? "tab active" : "tab"} value="feedback"><i className="fas fa-star"></i> Feedback</TabsTrigger>
+            <TabsTrigger className={activeTab === "basico" ? "tab active" : "tab"} value="basico" disabled={!canNavigateToTab("basico")}><i className="fas fa-info-circle"></i> Informações Básicas</TabsTrigger>
+            <TabsTrigger className={activeTab === "geral" ? "tab active" : "tab"} value="geral" disabled={!canNavigateToTab("geral")}><i className="fas fa-calendar-alt"></i> Dados da Ocorrência</TabsTrigger>
+            {isDrugCase && <TabsTrigger className={activeTab === "drogas" ? "tab active" : "tab"} value="drogas" disabled={!canNavigateToTab("drogas")}><i className="fas fa-flask"></i> Drogas</TabsTrigger>}
+            <TabsTrigger className={activeTab === "pessoas" ? "tab active" : "tab"} value="pessoas" disabled={!canNavigateToTab("pessoas")}><i className="fas fa-users"></i> Pessoas Envolvidas</TabsTrigger>
+            <TabsTrigger className={activeTab === "guarnicao" ? "tab active" : "tab"} value="guarnicao" disabled={!canNavigateToTab("guarnicao")}><i className="fas fa-shield-alt"></i> Guarnição</TabsTrigger>
+            <TabsTrigger className={activeTab === "historico" ? "tab active" : "tab"} value="historico" disabled={!canNavigateToTab("historico")}><i className="fas fa-history"></i> Histórico</TabsTrigger>
+            <TabsTrigger className={activeTab === "arquivos" ? "tab active" : "tab"} value="arquivos" disabled={!canNavigateToTab("arquivos")}><i className="fas fa-camera"></i> Fotos</TabsTrigger>
+            <TabsTrigger className={activeTab === "audiencia" ? "tab active" : "tab"} value="audiencia" disabled={!canNavigateToTab("audiencia")}><i className="fas fa-gavel"></i> Audiência</TabsTrigger>
+            <TabsTrigger className={activeTab === "feedback" ? "tab active" : "tab"} value="feedback" disabled={!canNavigateToTab("feedback")}><i className="fas fa-star"></i> Feedback</TabsTrigger>
           </TabsList>
 
           <div className="form-content">
@@ -786,15 +939,23 @@ const TCOForm: React.FC = () => {
           </div>
           <div className="footer">
             {activeTab === "audiencia" ? (
-              <div className="flex gap-2 w-full justify-end">
-                <button
-                  className={`btn-primary ${isDownloadingDocx ? 'loading' : ''}`}
-                  onClick={handleDownloadWord}
-                  disabled={isDownloadingDocx}
-                  aria-disabled={isDownloadingDocx}
-                >
-                  {isDownloadingDocx ? 'Baixando TCO...' : 'Baixar TCO'} {isDownloadingDocx ? <i className="fas fa-spinner" /> : <i className="fas fa-download" />}
-                </button>
+              <div className="flex w-full justify-end">
+                <div className="flex flex-col gap-2">
+                  <button
+                    className={`btn-primary w-full justify-center ${isDownloadingDocx ? 'loading' : ''}`}
+                    onClick={handleDownloadWord}
+                    disabled={isDownloadingDocx}
+                    aria-disabled={isDownloadingDocx}
+                  >
+                    {isDownloadingDocx ? 'Baixando TCO...' : 'Baixar TCO'} {isDownloadingDocx ? <i className="fas fa-spinner" /> : <i className="fas fa-download" />}
+                  </button>
+                  <button
+                    className="btn-primary w-full justify-center"
+                    onClick={handleFinish}
+                  >
+                    Enviar <i className="fas fa-paper-plane" />
+                  </button>
+                </div>
               </div>
             ) : activeTab === "feedback" ? (
                <></>
@@ -803,6 +964,41 @@ const TCOForm: React.FC = () => {
             )}
           </div>
           
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Enviar TCO por E-mail</DialogTitle>
+            <DialogDescription>
+              Informe o endereço de e-mail para receber o documento DOCX gerado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email-to">E-mail de Destino</Label>
+              <Input
+                id="email-to"
+                placeholder="exemplo@email.com"
+                type="email"
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <button className="btn-secondary" onClick={() => setShowEmailDialog(false)}>
+              Cancelar
+            </button>
+            <button 
+              className="btn-primary" 
+              onClick={confirmSendEmail} 
+              disabled={isSendingEmail}
+            >
+              {isSendingEmail ? <><i className="fas fa-spinner fa-spin mr-2"></i> Enviando...</> : <><i className="fas fa-paper-plane mr-2"></i> Enviar</>}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

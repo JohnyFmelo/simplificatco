@@ -65,7 +65,7 @@ const AudienciaTab: React.FC<AudienciaTabProps> = ({ audienciaData, setAudiencia
           </div>
         </div>
         <div className="form-group">
-          <label htmlFor="audienciaHora">Hora</label>
+          <label htmlFor="audienciaHora">Hora <span className="text-red-500">*</span></label>
           <Input
             id="audienciaHora"
             type="text"
