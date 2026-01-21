@@ -181,6 +181,7 @@ const TCOForm: React.FC = () => {
     laudoPericial: string;
     relato?: string;
     representacao?: string;
+    semCpf?: string;
   };
   const initialPersonalInfo: PersonalInfo = {
     nome: "",
@@ -634,7 +635,7 @@ const TCOForm: React.FC = () => {
         ? horaTerminoRegistro 
         : `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
       
-      const pessoasComLaudo = [...vitimas, ...autores].filter(p => p.solicitarLaudoLesao);
+      const pessoasComLaudo = [...vitimas, ...autores].filter(p => p.laudoPericial === "Sim");
 
       const opts = {
         unidade,

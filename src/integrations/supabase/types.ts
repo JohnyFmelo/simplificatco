@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      avaliacoes: {
+        Row: {
+          date: string
+          id: string
+          stars: number
+          text: string | null
+        }
+        Insert: {
+          date?: string
+          id?: string
+          stars: number
+          text?: string | null
+        }
+        Update: {
+          date?: string
+          id?: string
+          stars?: number
+          text?: string | null
+        }
+        Relationships: []
+      }
+      email_queue: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
+      photo_captions: {
+        Row: {
+          caption: string | null
+          storage_path: string
+          updated_at: string | null
+        }
+        Insert: {
+          caption?: string | null
+          storage_path: string
+          updated_at?: string | null
+        }
+        Update: {
+          caption?: string | null
+          storage_path?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       police_officers: {
         Row: {
           cpf: string
