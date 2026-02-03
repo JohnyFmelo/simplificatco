@@ -65,12 +65,18 @@ REVOKE DELETE ON storage.objects FROM public, anon, authenticated;
 -- Attempt to remove any scheduled cron jobs that delete from police_officers
 -- This handles the case where a pg_cron job was set up to delete old records
 DO $$
+DECLARE
+    job_record RECORD;
 BEGIN
     -- Check if pg_cron extension exists
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
-        -- Delete jobs that contain deletion logic for police_officers
-        DELETE FROM cron.job 
-        WHERE command ILIKE '%DELETE FROM%police_officers%';
+        -- Loop through jobs that contain deletion logic for police_officers
+        -- We use cron.unschedule() instead of direct DELETE to avoid permission errors
+        FOR job_record IN 
+            SELECT jobid FROM cron.job WHERE command ILIKE '%DELETE FROM%police_officers%'
+        LOOP
+            PERFORM cron.unschedule(job_record.jobid);
+        END LOOP;
     END IF;
 END
 $$;
