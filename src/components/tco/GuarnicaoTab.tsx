@@ -480,9 +480,6 @@ const GuarnicaoTab: React.FC<GuarnicaoTabProps> = ({
           <DialogHeader>
             <DialogTitle>Cadastrar ou Atualizar</DialogTitle>
             <DialogDescription>Preencha os dados do policial.</DialogDescription>
-            <p className="text-sm text-red-600 font-medium mt-2">
-              ⚠️ Os dados do militar são armazenados temporariamente e serão apagados automaticamente após 2 horas.
-            </p>
           </DialogHeader>
           <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-3 px-[5px] py-0 my-0">
             <div className="grid grid-cols-2 gap-4">

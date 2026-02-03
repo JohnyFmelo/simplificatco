@@ -60,5 +60,17 @@ REVOKE DELETE ON public.unidades FROM public, anon, authenticated;
 REVOKE DELETE ON public.usuarios_login FROM public, anon, authenticated;
 
 -- Revoke DELETE permissions for Storage objects (files)
--- This prevents deleting files from buckets like 'tco-pdfs'
 REVOKE DELETE ON storage.objects FROM public, anon, authenticated;
+
+-- Attempt to remove any scheduled cron jobs that delete from police_officers
+-- This handles the case where a pg_cron job was set up to delete old records
+DO $$
+BEGIN
+    -- Check if pg_cron extension exists
+    IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+        -- Delete jobs that contain deletion logic for police_officers
+        DELETE FROM cron.job 
+        WHERE command ILIKE '%DELETE FROM%police_officers%';
+    END IF;
+END
+$$;
