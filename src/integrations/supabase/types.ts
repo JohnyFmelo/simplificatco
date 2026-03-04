@@ -204,6 +204,7 @@ export type Database = {
         Row: {
           cr: string
           created_at: string
+          email: string | null
           id: number
           nivel_acesso: string
           rgpm: string
@@ -214,6 +215,7 @@ export type Database = {
         Insert: {
           cr: string
           created_at?: string
+          email?: string | null
           id?: number
           nivel_acesso: string
           rgpm: string
@@ -224,6 +226,7 @@ export type Database = {
         Update: {
           cr?: string
           created_at?: string
+          email?: string | null
           id?: number
           nivel_acesso?: string
           rgpm?: string

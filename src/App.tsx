@@ -3,13 +3,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { HashRouter as BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Settings, Plus } from "lucide-react";
+import { Settings, Plus, LogOut } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,8 @@ const App = () => (
         <InactivityGuard />
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/home" element={<Index />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
@@ -335,7 +336,7 @@ const HeaderActions = () => {
       localStorage.removeItem("nivel_acesso");
       sessionStorage.removeItem("nivel_acesso");
     } finally {
-      navigate("/");
+      navigate("/login");
     }
   };
 
@@ -473,20 +474,31 @@ const HeaderActions = () => {
     }
   };
 
-          if (isLogin || !(isAdmin || isStandard)) return null;
+          if (isLogin) return null;
           return createPortal(
-            <div className="fixed top-2 right-2 sm:top-3 sm:right-4 z-[100] pointer-events-auto">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Configurações" className="h-9 w-9 rounded-xl border border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white/90 backdrop-blur-sm shadow-lg">
-                    <Settings className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {(isAdmin || isStandard) && <DropdownMenuItem onClick={() => { setProfilesTab("create"); setOpenCreate(true); }}>Criar perfil</DropdownMenuItem>}
-                  {isAdmin && <DropdownMenuItem onClick={() => setOpenCreateUnit(true)}>Criar unidade</DropdownMenuItem>}
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <div className="fixed top-2 right-2 sm:top-3 sm:right-4 z-[100] pointer-events-auto flex gap-2">
+              {(isAdmin || isStandard) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" aria-label="Configurações" className="h-9 w-9 rounded-xl border border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white/90 backdrop-blur-sm shadow-lg">
+                      <Settings className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {(isAdmin || isStandard) && <DropdownMenuItem onClick={() => { setProfilesTab("create"); setOpenCreate(true); }}>Criar perfil</DropdownMenuItem>}
+                    {isAdmin && <DropdownMenuItem onClick={() => setOpenCreateUnit(true)}>Criar unidade</DropdownMenuItem>}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleLogout} 
+                aria-label="Sair"
+                className="h-9 w-9 rounded-xl border border-white/30 bg-white/10 text-white hover:bg-red-500/40 hover:text-white backdrop-blur-sm shadow-lg"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
               <Dialog open={openCreate} onOpenChange={setOpenCreate}>
                 <DialogContent className="sm:max-w-[900px]">
                   <DialogHeader>
@@ -779,7 +791,7 @@ const InactivityGuard = () => {
           localStorage.removeItem("nivel_acesso");
           sessionStorage.removeItem("nivel_acesso");
         } finally {
-          navigate("/");
+          navigate("/login");
         }
       }, timeoutMs);
     };
