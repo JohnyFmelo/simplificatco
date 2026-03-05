@@ -102,7 +102,7 @@ const Login: React.FC = () => {
                 <Input 
                   id="email" 
                   type="email"
-                  placeholder="seu.email@policiamilitar.sp.gov.br" 
+                  placeholder="seu.email@gmail.com" 
                   value={email} 
                   onChange={e => setEmail(e.target.value.toLowerCase())}
                   className="pl-10 border-slate-300 focus:border-blue-600 focus:ring-blue-600"
