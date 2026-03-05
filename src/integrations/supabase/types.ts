@@ -53,6 +53,33 @@ export type Database = {
         }
         Relationships: []
       }
+      militares: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          nome_completo: string
+          rgpm: string
+          senha: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          nome_completo: string
+          rgpm: string
+          senha?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          nome_completo?: string
+          rgpm?: string
+          senha?: string
+        }
+        Relationships: []
+      }
       photo_captions: {
         Row: {
           caption: string | null
@@ -204,7 +231,6 @@ export type Database = {
         Row: {
           cr: string
           created_at: string
-          email: string | null
           id: number
           nivel_acesso: string
           rgpm: string
@@ -215,7 +241,6 @@ export type Database = {
         Insert: {
           cr: string
           created_at?: string
-          email?: string | null
           id?: number
           nivel_acesso: string
           rgpm: string
@@ -226,7 +251,6 @@ export type Database = {
         Update: {
           cr?: string
           created_at?: string
-          email?: string | null
           id?: number
           nivel_acesso?: string
           rgpm?: string
