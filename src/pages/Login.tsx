@@ -52,22 +52,21 @@ const Login: React.FC = () => {
         .from('militares' as any)
         .select('rgpm, email, senha')
         .eq('email', emailInput.trim())
-        .eq('senha', passInput.trim()) // Trim password just in case
+        .eq('senha', passInput.trim())
         .limit(1);
 
       if (error) throw error;
 
-      const row = data && data[0];
+      const rows = data as any[];
+      const row = rows && rows[0];
       if (!row) {
         toast.error('Senha incorreta.');
         setLoading(false);
         return;
       }
 
-      // Default access level since 'militares' table doesn't have it yet
       const nivelClient = 'Padrão';
 
-      // Use sessionStorage for public computer security
       sessionStorage.setItem('rgpm', row.rgpm);
       sessionStorage.setItem('nivel_acesso', nivelClient);
       sessionStorage.setItem('email', row.email);
