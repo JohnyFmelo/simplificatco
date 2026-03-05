@@ -50,7 +50,7 @@ const Login: React.FC = () => {
       // If email exists, check password
       const { data, error } = await supabase
         .from('militares' as any)
-        .select('rgpm, email, senha')
+        .select('rgpm, email, senha, nome_completo')
         .eq('email', emailInput.trim())
         .eq('senha', passInput.trim())
         .limit(1);
@@ -82,6 +82,7 @@ const Login: React.FC = () => {
       sessionStorage.setItem('rgpm', row.rgpm);
       sessionStorage.setItem('nivel_acesso', nivelClient);
       sessionStorage.setItem('email', row.email);
+      sessionStorage.setItem('nome_completo', row.nome_completo || '');
       
       toast.success('Login realizado com sucesso!');
       navigate('/home');

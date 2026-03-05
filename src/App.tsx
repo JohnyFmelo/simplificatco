@@ -69,6 +69,7 @@ const HeaderActions = () => {
   const isAdmin = storedNivel === "Administrador";
   const isStandard = storedNivel === "Padrão";
   const storedRgpm = (localStorage.getItem("rgpm") || sessionStorage.getItem("rgpm") || "").trim();
+  const storedNome = (sessionStorage.getItem("nome_completo") || "").trim();
   const [crList, setCrList] = React.useState<string[]>([]);
   const [unitOptions, setUnitOptions] = React.useState<{ id: string; cr: string; unidade: string }[]>([]);
   const [crLoading, setCrLoading] = React.useState(false);
@@ -476,7 +477,12 @@ const HeaderActions = () => {
 
           if (isLogin) return null;
           return createPortal(
-            <div className="fixed top-2 right-2 sm:top-3 sm:right-4 z-[100] pointer-events-auto flex gap-2">
+            <div className="fixed top-2 right-2 sm:top-3 sm:right-4 z-[100] pointer-events-auto flex items-center gap-2">
+              {storedNome && (
+                <span className="hidden sm:inline-block text-white/90 text-xs font-medium backdrop-blur-sm bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 shadow-lg max-w-[200px] truncate">
+                  {storedNome}
+                </span>
+              )}
               {(isAdmin || isStandard) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
