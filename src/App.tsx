@@ -485,7 +485,7 @@ const HeaderActions = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {(isAdmin || isStandard) && <DropdownMenuItem onClick={() => { setProfilesTab("create"); setOpenCreate(true); }}>Criar perfil</DropdownMenuItem>}
+                    {isAdmin && <DropdownMenuItem onClick={() => { setProfilesTab("create"); setOpenCreate(true); }}>Criar perfil</DropdownMenuItem>}
                     {isAdmin && <DropdownMenuItem onClick={() => setOpenCreateUnit(true)}>Criar unidade</DropdownMenuItem>}
                   </DropdownMenuContent>
                 </DropdownMenu>
