@@ -65,7 +65,19 @@ const Login: React.FC = () => {
         return;
       }
 
-      const nivelClient = 'Padrão';
+      // Buscar nivel_acesso real da tabela usuarios_login
+      let nivelClient = 'Padrão';
+      try {
+        const { data: loginData } = await supabase
+          .from('usuarios_login' as any)
+          .select('nivel_acesso')
+          .eq('rgpm', row.rgpm)
+          .limit(1);
+        const loginRow = loginData && (loginData as any[])[0];
+        if (loginRow?.nivel_acesso) {
+          nivelClient = loginRow.nivel_acesso;
+        }
+      } catch {}
 
       sessionStorage.setItem('rgpm', row.rgpm);
       sessionStorage.setItem('nivel_acesso', nivelClient);
