@@ -28,7 +28,6 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <HeaderActions />
-        <InactivityGuard />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Navigate to="/login" replace />} />
@@ -780,40 +779,5 @@ const HeaderActions = () => {
           );
 };
 
-const InactivityGuard = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isLogin = location.pathname === "/login";
 
-  React.useEffect(() => {
-    let timer: number | undefined;
-    const timeoutMs = 2 * 60 * 60 * 1000; // 2 hours
-    const events = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "visibilitychange"];
 
-    const reset = () => {
-      if (timer) window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        try {
-          localStorage.removeItem("rgpm");
-          sessionStorage.removeItem("rgpm");
-          localStorage.removeItem("nivel_acesso");
-          sessionStorage.removeItem("nivel_acesso");
-        } finally {
-          navigate("/login");
-        }
-      }, timeoutMs);
-    };
-
-    if (!isLogin) {
-      events.forEach((e) => window.addEventListener(e, reset));
-      reset();
-    }
-
-    return () => {
-      if (timer) window.clearTimeout(timer);
-      events.forEach((e) => window.removeEventListener(e, reset));
-    };
-  }, [navigate, isLogin]);
-
-  return null;
-};
