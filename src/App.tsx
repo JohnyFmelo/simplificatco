@@ -9,7 +9,8 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Settings, Plus, LogOut } from "lucide-react";
+import { Settings, Plus, LogOut, Folder } from "lucide-react";
+import TCOmeus, { TcoData } from "@/components/tco/TCOmeus";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +47,8 @@ const HeaderActions = () => {
   const navigate = useNavigate();
   const isLogin = location.pathname === "/login";
   const { toast } = useToast();
+  const [openMeusTcos, setOpenMeusTcos] = React.useState(false);
+  const [selectedTcoForMeus, setSelectedTcoForMeus] = React.useState<TcoData | null>(null);
   const [openCreate, setOpenCreate] = React.useState(false);
   const [openCreateUnit, setOpenCreateUnit] = React.useState(false);
   
@@ -477,7 +480,48 @@ const HeaderActions = () => {
   };
 
           if (isLogin) return null;
-          return createPortal(
+
+          const leftPortal = createPortal(
+            <div className="fixed top-2 left-2 sm:top-3 sm:left-4 z-[100] pointer-events-auto flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setOpenMeusTcos(true)}
+                className="h-9 gap-2 rounded-xl border border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white/90 backdrop-blur-sm shadow-lg px-3 font-medium"
+              >
+                <Folder className="h-4 w-4" />
+                <span className="hidden sm:inline">Meus TCO's</span>
+              </Button>
+            </div>,
+            document.body
+          );
+
+          const tcoModal = (
+            <Dialog open={openMeusTcos} onOpenChange={setOpenMeusTcos}>
+              <DialogContent className="max-w-[95vw] w-[1200px] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-50 border-none shadow-2xl">
+                <div className="p-4 border-b bg-white flex justify-between items-center sticky top-0 z-10 shadow-sm">
+                  <DialogTitle className="text-lg font-semibold flex items-center gap-2 text-slate-800">
+                    <Folder className="h-5 w-5 text-blue-600" />
+                    Meus TCO's
+                  </DialogTitle>
+                </div>
+                <div className="flex-1 overflow-auto p-4 bg-slate-50/50">
+                  <TCOmeus
+                    user={{
+                      id: storedRgpm,
+                      registration: storedRgpm,
+                      userType: storedNivel
+                    }}
+                    toast={toast}
+                    selectedTco={selectedTcoForMeus}
+                    setSelectedTco={setSelectedTcoForMeus}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+          );
+
+          const rightPortal = createPortal(
             <div className="fixed top-2 right-2 sm:top-3 sm:right-4 z-[100] pointer-events-auto flex items-center gap-2">
               {storedNome && (
                 <span className="hidden sm:inline-block text-white/90 text-xs font-medium backdrop-blur-sm bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 shadow-lg max-w-[200px] truncate">
@@ -777,6 +821,14 @@ const HeaderActions = () => {
             </div>,
             document.body
           );
+
+  return (
+    <>
+      {leftPortal}
+      {tcoModal}
+      {rightPortal}
+    </>
+  );
 };
 
 
