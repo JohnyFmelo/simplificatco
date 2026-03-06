@@ -785,7 +785,7 @@ const InactivityGuard = () => {
 
   React.useEffect(() => {
     let timer: number | undefined;
-    const timeoutMs = 10 * 60 * 1000;
+    const timeoutMs = 2 * 60 * 60 * 1000; // 2 hours
     const events = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "visibilitychange"];
 
     const reset = () => {
