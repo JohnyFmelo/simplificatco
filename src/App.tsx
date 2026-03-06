@@ -353,7 +353,9 @@ const HeaderActions = () => {
           .eq("rgpm", current)
           .limit(1);
         const row = data && data[0];
-        if (!row || String((row as any).nivel_acesso).trim() === "Bloqueado") {
+        // Only logout if user explicitly has "Bloqueado" status
+        // If no record found, allow access (user may not have usuarios_login entry)
+        if (row && String((row as any).nivel_acesso).trim() === "Bloqueado") {
           handleLogout();
         }
       } catch {}
