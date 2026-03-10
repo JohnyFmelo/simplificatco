@@ -855,6 +855,11 @@ const TCOForm: React.FC = () => {
         await r2UploadFile(jsonBlob, r2JsonKey, "application/json");
       } catch (uploadErr) {
         console.error("Erro ao salvar no R2:", uploadErr);
+        toast({
+          variant: "destructive",
+          title: "Erro no Backup Automático",
+          description: "O arquivo foi baixado, mas não foi possível salvar o backup na nuvem. Verifique sua conexão ou configurações.",
+        });
         // Non-blocking: download already happened
       }
 
