@@ -82,7 +82,16 @@ export const handler = async (event: NetlifyEvent) => {
       headers: corsHeaders,
       body: JSON.stringify({ uploadUrl: signedUrl }),
     };
-  } catch {
-    return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: "Erro ao gerar URL" }) };
+  } catch (error: any) {
+    console.error("Erro no R2:", error);
+    return {
+      statusCode: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "Erro ao gerar URL",
+        details: error?.message,
+        stack: error?.stack,
+      }),
+    };
   }
 };
