@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { downloadTcoDocx, generateTcoBase64 } from "@/lib/WordTCO";
+import { r2UploadFile } from "@/lib/r2Storage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import BasicInformationTab from "./BasicInformationTab";
@@ -769,7 +770,7 @@ const TCOForm: React.FC = () => {
     anexosList.push("TERMO DE ENCERRAMENTO E REMESSA");
     try {
       setIsDownloadingDocx(true);
-      await downloadTcoDocx({
+      const { blob, filename } = await downloadTcoDocx({
         unidade,
         cr,
         tcoNumber,
@@ -830,6 +831,33 @@ const TCOForm: React.FC = () => {
         nomearFielDepositario,
         fielDepositarioSelecionado
       });
+
+      // Upload DOCX to R2
+      try {
+        const userId = localStorage.getItem("user_id") || sessionStorage.getItem("user_id") || "anon";
+        const r2DocxKey = `tcos/${userId}/${filename}`;
+        const r2JsonKey = r2DocxKey.replace(/\.docx$/i, ".json");
+
+        await r2UploadFile(blob, r2DocxKey, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+
+        const metadata = {
+          tcoNumber,
+          natureza: natureza === "Outros" ? customNatureza : natureza,
+          savedAt: new Date().toISOString(),
+          docxKey: r2DocxKey,
+          condutor: componentesGuarnicao[0] ? {
+            nome: componentesGuarnicao[0].nome,
+            graduacao: componentesGuarnicao[0].posto,
+            rgpm: componentesGuarnicao[0].rg,
+          } : undefined,
+        };
+        const jsonBlob = new Blob([JSON.stringify(metadata)], { type: "application/json" });
+        await r2UploadFile(jsonBlob, r2JsonKey, "application/json");
+      } catch (uploadErr) {
+        console.error("Erro ao salvar no R2:", uploadErr);
+        // Non-blocking: download already happened
+      }
+
       // Abrir modal de avaliação após download
       setIsFeedbackDialogOpen(true);
     } catch (e: any) {
