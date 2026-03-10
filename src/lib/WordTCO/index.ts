@@ -1411,7 +1411,7 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
   return { doc, filename: `TCO_${(tcoNumber || '').trim() || 'DOCUMENTO'}.docx` };
 }
 
-export async function downloadTcoDocx(opts: TcoDocOptions) {
+export async function downloadTcoDocx(opts: TcoDocOptions): Promise<{ blob: Blob; filename: string }> {
   const { Packer } = await import('docx');
   const { doc, filename } = await generateTcoDocObject(opts);
   const blob = await Packer.toBlob(doc);
@@ -1423,6 +1423,7 @@ export async function downloadTcoDocx(opts: TcoDocOptions) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  return { blob, filename };
 }
 
 export async function generateTcoBase64(opts: TcoDocOptions) {

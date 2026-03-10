@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { downloadTcoDocx, generateTcoBase64 } from "@/lib/WordTCO";
+import { r2UploadFile } from "@/lib/r2Storage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import BasicInformationTab from "./BasicInformationTab";
