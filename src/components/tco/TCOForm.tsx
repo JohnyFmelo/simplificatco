@@ -770,7 +770,7 @@ const TCOForm: React.FC = () => {
     anexosList.push("TERMO DE ENCERRAMENTO E REMESSA");
     try {
       setIsDownloadingDocx(true);
-      await downloadTcoDocx({
+      const { blob, filename } = await downloadTcoDocx({
         unidade,
         cr,
         tcoNumber,
@@ -831,7 +831,6 @@ const TCOForm: React.FC = () => {
         nomearFielDepositario,
         fielDepositarioSelecionado
       });
-      const { blob, filename } = result;
 
       // Upload DOCX to R2
       try {
