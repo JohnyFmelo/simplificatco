@@ -1,18 +1,12 @@
 // TCOmeus (7).tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Trash2, Download, Eye, MoreHorizontal, RefreshCw, Users, FileText, Info, X, FileEdit } from "lucide-react";
-import { format } from "date-fns";
-import { useToast as useShadcnToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { supabase } from "@/lib/supabaseClient";
-import { Skeleton } from "@/components/ui/skeleton";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { deleteTCO } from "@/lib/supabaseStorage";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import PdfToWordConversionDialog from "./PdfToWordConversionDialog";
+import { Download, Eye, FileText, MoreHorizontal } from "lucide-react";
+import { format } from "date-fns";
+import { useToast as useShadcnToast } from "@/hooks/use-toast";
 
 // Interfaces e Constantes exportadas para serem usadas por outros componentes
 export interface TCOmeusProps {
@@ -25,36 +19,22 @@ export interface TCOmeusProps {
   setSelectedTco: (tco: TcoData | null) => void;
   selectedTco: TcoData | null;
 }
-export interface ExtractedRgpms {
-  main: string[];
-  support: string[];
-}
-export interface OfficerInfo {
-  rgpm: string;
-  graduacao: string;
+export interface OfficerSummary {
   nome: string;
-}
-export interface StructuredGupm {
-  conductor?: OfficerInfo;
-  mainTeam: OfficerInfo[];
-  supportTeam: OfficerInfo[];
+  graduacao?: string;
+  rgpm?: string;
 }
 export interface TcoData {
   id: string;
   tcoNumber: string;
   createdAt: Date;
   natureza: string;
-  rgpmsExtracted: ExtractedRgpms;
-  pdfPath: string;
-  source: string;
+  fileKey: string;
   fileName: string;
   userId: string;
-  userInfo?: {
-    warName?: string;
-    rank?: string;
-  };
+  condutor?: OfficerSummary;
+  equipe?: OfficerSummary[];
 }
-export const BUCKET_NAME = 'tco-pdfs';
 
 // Funções de Utilidade Exportadas
 export const extractTcoDisplayNumber = (fullTcoNumber: string | undefined | null): string => {
@@ -69,57 +49,7 @@ export const extractTcoDisplayNumber = (fullTcoNumber: string | undefined | null
   }
   return "-";
 };
-export const extractTcoNatureFromFilename = (fileName: string | undefined | null): string => {
-  if (!fileName) return "Não especificada";
-  const parts = fileName.split('_');
-  if (parts.length < 4) return "Não especificada";
-  let naturezaParts: string[] = [];
-  const lastPart = parts[parts.length - 1];
-  const rgpmSegmentPotentially = lastPart.replace(/\.pdf$/i, "");
-  if (parts.length >= 5 && /^\d/.test(rgpmSegmentPotentially)) {
-    naturezaParts = parts.slice(3, parts.length - 1);
-  } else {
-    const lastNaturePart = parts[parts.length - 1].replace(/\.pdf$/i, "");
-    naturezaParts = parts.slice(3, parts.length - 1);
-    naturezaParts.push(lastNaturePart);
-  }
-  if (naturezaParts.length === 0) return "Não especificada";
-  return naturezaParts
-    .join('_')
-    .replace(/_/g, ' ')
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ')
-    || "Não especificada";
-};
-export const extractRGPMsFromFilename = (fileName: string | undefined | null): ExtractedRgpms => {
-  const emptyResult: ExtractedRgpms = {
-    main: [],
-    support: []
-  };
-  if (!fileName) return emptyResult;
-  const parts = fileName.split('_');
-  if (parts.length < 5) return emptyResult;
-  const rgpmSegmentWithExtension = parts[parts.length - 1];
-  const rgpmStringWithoutExtension = rgpmSegmentWithExtension.replace(/\.pdf$/i, "");
-  if (!rgpmStringWithoutExtension.match(/^\d/)) return emptyResult;
-  const [mainRgpmsStr, supportRgpmsStr] = rgpmStringWithoutExtension.split('.');
-  const parseRgpmsFromString = (rgpmStr: string | undefined): string[] => {
-    if (!rgpmStr) return [];
-    const rgpmsList: string[] = [];
-    for (let i = 0; i < rgpmStr.length; i += 6) {
-      const rgpm = rgpmStr.substring(i, i + 6);
-      if (rgpm.length === 6 && /^\d{6}$/.test(rgpm)) rgpmsList.push(rgpm);
-    }
-    return rgpmsList;
-  };
-  return {
-    main: parseRgpmsFromString(mainRgpmsStr),
-    support: parseRgpmsFromString(supportRgpmsStr)
-  };
-};
 
-// Componente React
 const TCOmeus: React.FC<TCOmeusProps> = ({
   user,
   toast,
