@@ -8,13 +8,22 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Eye, EyeOff, Lock, Loader2, ShieldCheck, Mail } from "lucide-react";
 import { toast } from "sonner";
 
-const isUsageExpired = (dateValue?: string | null) => {
+const getUsageDaysRemaining = (dateValue?: string | null) => {
   const raw = String(dateValue || "").trim();
-  if (!raw) return false;
-  const expiry = new Date(`${raw}T23:59:59`);
-  if (Number.isNaN(expiry.getTime())) return false;
-  return expiry.getTime() < Date.now();
+  if (!raw) return null;
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const deadline = new Date(`${raw}T00:00:00`);
+  if (Number.isNaN(deadline.getTime())) return null;
+  return Math.floor((deadline.getTime() - startOfToday.getTime()) / 86400000);
 };
+const isUsageExpired = (dateValue?: string | null) => {
+  const daysRemaining = getUsageDaysRemaining(dateValue);
+  if (daysRemaining === null) return false;
+  return daysRemaining <= 0;
+};
+const requiresUsageDeadline = (accessLevel?: string | null) =>
+  String(accessLevel || "").trim() !== 'Administrador';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -57,7 +66,7 @@ const Login: React.FC = () => {
       // If email exists, check password
       const { data, error } = await supabase
         .from('militares' as any)
-        .select('rgpm, email, senha, nome_completo')
+        .select('rgpm, email, senha, nome_completo, prazo_utilizacao_ate, prazo_utilizacao_definido_em')
         .eq('email', emailInput.trim())
         .eq('senha', passInput.trim())
         .limit(1);
@@ -77,27 +86,38 @@ const Login: React.FC = () => {
       try {
         const { data: loginData } = await supabase
           .from('usuarios_login' as any)
-          .select('nivel_acesso, prazo_utilizacao_ate')
+          .select('nivel_acesso')
           .eq('rgpm', row.rgpm)
           .limit(1);
         const loginRow = loginData && (loginData as any[])[0];
+        const accessLevel = String(loginRow?.nivel_acesso || '').trim();
         if (loginRow?.nivel_acesso === 'Bloqueado') {
           toast.error('Seu acesso está bloqueado. Contate o administrador.');
           setLoading(false);
           return;
         }
-        if (isUsageExpired(loginRow?.prazo_utilizacao_ate)) {
-          toast.error('Seu prazo de utilização expirou. Contate o administrador.');
+        if (requiresUsageDeadline(accessLevel) && !row?.prazo_utilizacao_ate) {
+          toast.error('Seu perfil está sem prazo de utilização. Contate o administrador.');
+          setLoading(false);
+          return;
+        }
+        if (isUsageExpired(row?.prazo_utilizacao_ate)) {
+          toast.error('Senha incorreta. Contate o administrador.');
           setLoading(false);
           return;
         }
         if (loginRow?.nivel_acesso) {
           nivelClient = loginRow.nivel_acesso;
         }
-        if (loginRow?.prazo_utilizacao_ate) {
-          sessionStorage.setItem('prazo_utilizacao_ate', loginRow.prazo_utilizacao_ate);
+        if (row?.prazo_utilizacao_ate) {
+          sessionStorage.setItem('prazo_utilizacao_ate', row.prazo_utilizacao_ate);
         } else {
           sessionStorage.removeItem('prazo_utilizacao_ate');
+        }
+        if (row?.prazo_utilizacao_definido_em) {
+          sessionStorage.setItem('prazo_utilizacao_definido_em', row.prazo_utilizacao_definido_em);
+        } else {
+          sessionStorage.removeItem('prazo_utilizacao_definido_em');
         }
       } catch {}
 

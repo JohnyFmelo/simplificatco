@@ -59,6 +59,8 @@ export type Database = {
           email: string
           id: string
           nome_completo: string
+          prazo_utilizacao_ate: string | null
+          prazo_utilizacao_definido_em: string | null
           rgpm: string
           senha: string
         }
@@ -67,6 +69,8 @@ export type Database = {
           email: string
           id?: string
           nome_completo: string
+          prazo_utilizacao_ate?: string | null
+          prazo_utilizacao_definido_em?: string | null
           rgpm: string
           senha?: string
         }
@@ -75,6 +79,8 @@ export type Database = {
           email?: string
           id?: string
           nome_completo?: string
+          prazo_utilizacao_ate?: string | null
+          prazo_utilizacao_definido_em?: string | null
           rgpm?: string
           senha?: string
         }

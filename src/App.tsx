@@ -77,6 +77,8 @@ const HeaderActions = () => {
   const [openChangePassword, setOpenChangePassword] = React.useState(false);
   const [oldPassword, setOldPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
+  const [isCheckingCurrentPassword, setIsCheckingCurrentPassword] = React.useState(false);
+  const [isCurrentPasswordValid, setIsCurrentPasswordValid] = React.useState(false);
   const [openUsageDeadline, setOpenUsageDeadline] = React.useState(false);
   const [usageDeadlineRgpm, setUsageDeadlineRgpm] = React.useState("");
   const [usageDeadlineName, setUsageDeadlineName] = React.useState("");
@@ -87,6 +89,12 @@ const HeaderActions = () => {
   const isStandard = storedNivel === "Padrão";
   const storedRgpm = (localStorage.getItem("rgpm") || sessionStorage.getItem("rgpm") || "").trim();
   const storedNome = (sessionStorage.getItem("nome_completo") || "").trim();
+  const [currentUsageDeadline, setCurrentUsageDeadline] = React.useState(
+    () => (sessionStorage.getItem("prazo_utilizacao_ate") || "").trim()
+  );
+  const [currentUsageDefinedAt, setCurrentUsageDefinedAt] = React.useState(
+    () => (sessionStorage.getItem("prazo_utilizacao_definido_em") || "").trim()
+  );
   const [crList, setCrList] = React.useState<string[]>([]);
   const [unitOptions, setUnitOptions] = React.useState<{ id: string; cr: string; unidade: string }[]>([]);
   const [crLoading, setCrLoading] = React.useState(false);
@@ -107,6 +115,7 @@ const HeaderActions = () => {
   const [profilesLoading, setProfilesLoading] = React.useState(false);
   const [profilesSearch, setProfilesSearch] = React.useState("");
   const [profilesTab, setProfilesTab] = React.useState("create");
+  const passwordCheckRequestRef = React.useRef(0);
   const graduacoes = [
     "SD PM",
     "CB PM",
@@ -154,13 +163,22 @@ const HeaderActions = () => {
     const p2 = d.slice(5);
     return p2 ? `${p1}-${p2}` : p1;
   };
-  const isUsageExpired = (dateValue?: string | null) => {
+  const getUsageDaysRemaining = (dateValue?: string | null) => {
     const raw = String(dateValue || "").trim();
-    if (!raw) return false;
-    const expiry = new Date(`${raw}T23:59:59`);
-    if (Number.isNaN(expiry.getTime())) return false;
-    return expiry.getTime() < Date.now();
+    if (!raw) return null;
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const deadline = new Date(`${raw}T00:00:00`);
+    if (Number.isNaN(deadline.getTime())) return null;
+    return Math.floor((deadline.getTime() - startOfToday.getTime()) / 86400000);
   };
+  const isUsageExpired = (dateValue?: string | null) => {
+    const daysRemaining = getUsageDaysRemaining(dateValue);
+    if (daysRemaining === null) return false;
+    return daysRemaining <= 0;
+  };
+  const requiresUsageDeadline = (accessLevel?: string | null) =>
+    String(accessLevel || "").trim() !== "Administrador";
   const formatUsageDate = (dateValue?: string | null) => {
     const raw = String(dateValue || "").trim();
     if (!raw) return "-";
@@ -168,6 +186,39 @@ const HeaderActions = () => {
     if (parts.length !== 3) return raw;
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
   };
+  const getRenewalDays = (deadlineValue?: string | null, definedAtValue?: string | null) => {
+    const rawDeadline = String(deadlineValue || "").trim();
+    const rawDefinedAt = String(definedAtValue || "").trim();
+    if (!rawDeadline || !rawDefinedAt) return null;
+    const deadline = new Date(`${rawDeadline}T00:00:00`);
+    const definedAt = new Date(rawDefinedAt);
+    if (Number.isNaN(deadline.getTime()) || Number.isNaN(definedAt.getTime())) return null;
+    const definedAtDay = new Date(definedAt.getFullYear(), definedAt.getMonth(), definedAt.getDate());
+    return Math.max(0, Math.floor((deadline.getTime() - definedAtDay.getTime()) / 86400000));
+  };
+  const getUsageRenewalAlertKey = (rgpmValue?: string | null, deadlineValue?: string | null, definedAtValue?: string | null) => {
+    const rg = String(rgpmValue || "").trim();
+    const deadline = String(deadlineValue || "").trim();
+    const definedAt = String(definedAtValue || "").trim();
+    if (!rg || !deadline || !definedAt) return "";
+    return `usage-renewal-alert:${rg}:${deadline}:${definedAt}`;
+  };
+  const emitUsageRenewalAlert = React.useCallback((deadlineValue?: string | null, definedAtValue?: string | null, rgpmValue?: string | null) => {
+    const alertKey = getUsageRenewalAlertKey(rgpmValue, deadlineValue, definedAtValue);
+    if (!alertKey) return;
+    if (localStorage.getItem("last_usage_renewal_alert") === alertKey) return;
+    const renewalDays = getRenewalDays(deadlineValue, definedAtValue);
+    if (renewalDays === null) return;
+    toast({
+      title: "Renovação realizada",
+      description: `O provedor e o banco foram renovados por ${renewalDays} ${renewalDays === 1 ? "dia" : "dias"}.`,
+    });
+    localStorage.setItem("last_usage_renewal_alert", alertKey);
+  }, [toast]);
+  React.useEffect(() => {
+    if (!storedRgpm || !requiresUsageDeadline(storedNivel) || !currentUsageDeadline || !currentUsageDefinedAt) return;
+    emitUsageRenewalAlert(currentUsageDeadline, currentUsageDefinedAt, storedRgpm);
+  }, [currentUsageDeadline, currentUsageDefinedAt, emitUsageRenewalAlert, storedNivel, storedRgpm]);
   const fetchOfficerByRgpm = async (rg: string) => {
     try {
       const { data, error } = await supabase
@@ -258,12 +309,12 @@ const HeaderActions = () => {
     try {
       setProfilesLoading(true);
       const [militares, officers, logins] = await Promise.all([
-        supabase.from("militares" as any).select("rgpm,email,nome_completo"),
+        supabase.from("militares" as any).select("rgpm,email,nome_completo,prazo_utilizacao_ate"),
         supabase.from("police_officers").select("rgpm,nome_completo,graduacao"),
-        supabase.from("usuarios_login" as any).select("rgpm,unidade,nivel_acesso,email,prazo_utilizacao_ate"),
+        supabase.from("usuarios_login" as any).select("rgpm,unidade,nivel_acesso,email"),
       ]);
 
-      const mapMilitares = new Map<string, { nome?: string; email?: string }>();
+      const mapMilitares = new Map<string, { nome?: string; email?: string; prazoUtilizacaoAte?: string }>();
       if (militares.data) {
         militares.data.forEach((r: any) => {
           const key = String(r.rgpm || "").trim();
@@ -271,6 +322,7 @@ const HeaderActions = () => {
           mapMilitares.set(key, {
             nome: String(r.nome_completo || "").trim(),
             email: String(r.email || "").trim(),
+            prazoUtilizacaoAte: String(r.prazo_utilizacao_ate || "").trim(),
           });
         });
       }
@@ -287,7 +339,7 @@ const HeaderActions = () => {
         });
       }
 
-      const mapLogin = new Map<string, { unidade?: string; nivel?: string; email?: string; prazoUtilizacaoAte?: string }>();
+      const mapLogin = new Map<string, { unidade?: string; nivel?: string; email?: string }>();
       if (logins.data) {
         logins.data.forEach((r: any) => {
           const key = String(r.rgpm || "").trim();
@@ -296,7 +348,6 @@ const HeaderActions = () => {
             unidade: String(r.unidade || "").trim(),
             nivel: String(r.nivel_acesso || "").trim(),
             email: String(r.email || "").trim(),
-            prazoUtilizacaoAte: String(r.prazo_utilizacao_ate || "").trim(),
           });
         });
       }
@@ -317,7 +368,7 @@ const HeaderActions = () => {
           graduacao: officer?.graduacao || "",
           unidade: login?.unidade || "",
           nivel: login?.nivel || "Sem nível definido",
-          prazoUtilizacaoAte: login?.prazoUtilizacaoAte || "",
+          prazoUtilizacaoAte: militar?.prazoUtilizacaoAte || "",
         };
       }).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
@@ -380,17 +431,51 @@ const HeaderActions = () => {
     if (!usageDeadlineRgpm) return;
     try {
       setSavingUsageDeadline(true);
-      const { error } = await supabase
-        .from("usuarios_login" as any)
-        .update({ prazo_utilizacao_ate: usageDeadlineDate || null })
-        .eq("rgpm", usageDeadlineRgpm);
+      const definedAtNow = new Date().toISOString();
+      const { data, error } = await supabase
+        .from("militares" as any)
+        .update({
+          prazo_utilizacao_ate: usageDeadlineDate || null,
+          prazo_utilizacao_definido_em: usageDeadlineDate ? definedAtNow : null,
+        })
+        .eq("rgpm", usageDeadlineRgpm)
+        .select("prazo_utilizacao_ate,prazo_utilizacao_definido_em")
+        .single();
       if (error) throw error;
-      toast({
-        title: usageDeadlineDate ? "Prazo definido" : "Prazo removido",
-        description: usageDeadlineDate
-          ? "O prazo de utilização foi atualizado com sucesso."
-          : "O perfil voltou a ter acesso sem data limite.",
-      });
+      const latestDeadline = String((data as any)?.prazo_utilizacao_ate || usageDeadlineDate || "").trim();
+      const latestDefinedAt = String((data as any)?.prazo_utilizacao_definido_em || (usageDeadlineDate ? definedAtNow : "")).trim();
+      if (usageDeadlineRgpm === storedRgpm) {
+        if (latestDeadline) {
+          sessionStorage.setItem("prazo_utilizacao_ate", latestDeadline);
+        } else {
+          sessionStorage.removeItem("prazo_utilizacao_ate");
+        }
+        if (latestDefinedAt) {
+          sessionStorage.setItem("prazo_utilizacao_definido_em", latestDefinedAt);
+        } else {
+          sessionStorage.removeItem("prazo_utilizacao_definido_em");
+        }
+        setCurrentUsageDeadline(latestDeadline);
+        setCurrentUsageDefinedAt(latestDefinedAt);
+        if (latestDeadline && latestDefinedAt) {
+          localStorage.setItem(
+            "last_usage_renewal_alert",
+            getUsageRenewalAlertKey(usageDeadlineRgpm, latestDeadline, latestDefinedAt)
+          );
+        }
+      }
+      if (latestDeadline && latestDefinedAt) {
+        const renewalDays = getRenewalDays(latestDeadline, latestDefinedAt);
+        toast({
+          title: "Renovação realizada",
+          description: `O provedor e o banco foram renovados por ${renewalDays ?? 0} ${(renewalDays ?? 0) === 1 ? "dia" : "dias"}.`,
+        });
+      } else {
+        toast({
+          title: "Prazo removido",
+          description: "O perfil voltou a ter acesso sem data limite.",
+        });
+      }
       setOpenUsageDeadline(false);
       await loadProfiles();
     } catch (e: any) {
@@ -467,6 +552,10 @@ const HeaderActions = () => {
       sessionStorage.removeItem("rgpm");
       localStorage.removeItem("nivel_acesso");
       sessionStorage.removeItem("nivel_acesso");
+      sessionStorage.removeItem("prazo_utilizacao_ate");
+      sessionStorage.removeItem("prazo_utilizacao_definido_em");
+      setCurrentUsageDeadline("");
+      setCurrentUsageDefinedAt("");
     } finally {
       navigate("/login");
     }
@@ -478,19 +567,53 @@ const HeaderActions = () => {
       const current = (localStorage.getItem("rgpm") || sessionStorage.getItem("rgpm") || "").trim();
       if (!current) return;
       try {
-        const { data } = await supabase
-          .from("usuarios_login" as any)
-          .select("nivel_acesso,prazo_utilizacao_ate")
-          .eq("rgpm", current)
-          .limit(1);
-        const row = data && data[0];
+        const [{ data: loginData }, { data: militaryData }] = await Promise.all([
+          supabase
+            .from("usuarios_login" as any)
+            .select("nivel_acesso")
+            .eq("rgpm", current)
+            .limit(1),
+          supabase
+            .from("militares" as any)
+            .select("prazo_utilizacao_ate,prazo_utilizacao_definido_em")
+            .eq("rgpm", current)
+            .limit(1),
+        ]);
+        const loginRow = loginData && loginData[0];
+        const militaryRow = militaryData && militaryData[0];
+        const currentAccessLevel = String((loginRow as any)?.nivel_acesso || "").trim();
+        const latestDeadline = String((militaryRow as any)?.prazo_utilizacao_ate || "").trim();
+        const latestDefinedAt = String((militaryRow as any)?.prazo_utilizacao_definido_em || "").trim();
+        setCurrentUsageDeadline(latestDeadline);
+        setCurrentUsageDefinedAt(latestDefinedAt);
+        if (latestDeadline) {
+          sessionStorage.setItem("prazo_utilizacao_ate", latestDeadline);
+        } else {
+          sessionStorage.removeItem("prazo_utilizacao_ate");
+        }
+        if (latestDefinedAt) {
+          sessionStorage.setItem("prazo_utilizacao_definido_em", latestDefinedAt);
+        } else {
+          sessionStorage.removeItem("prazo_utilizacao_definido_em");
+        }
+        if (requiresUsageDeadline(currentAccessLevel) && latestDeadline && latestDefinedAt) {
+          emitUsageRenewalAlert(latestDeadline, latestDefinedAt, current);
+        }
         if (
-          row &&
+          loginRow &&
           (
-            String((row as any).nivel_acesso).trim() === "Bloqueado" ||
-            isUsageExpired(String((row as any).prazo_utilizacao_ate || "").trim())
+            currentAccessLevel === "Bloqueado" ||
+            (requiresUsageDeadline(currentAccessLevel) && !latestDeadline) ||
+            isUsageExpired(latestDeadline)
           )
         ) {
+          if (currentAccessLevel === "Bloqueado") {
+            toast({ variant: "destructive", title: "Acesso bloqueado", description: "Contate o administrador." });
+          } else if (requiresUsageDeadline(currentAccessLevel) && !latestDeadline) {
+            toast({ variant: "destructive", title: "Acesso sem prazo", description: "Contate o administrador." });
+          } else if (isUsageExpired(latestDeadline)) {
+            toast({ variant: "destructive", title: "Senha incorreta", description: "Contate o administrador." });
+          }
           handleLogout();
         }
       } catch {}
@@ -499,6 +622,92 @@ const HeaderActions = () => {
     timer = setInterval(checkAccess, 10000);
     return () => { if (timer) clearInterval(timer); };
   }, []);
+
+  const resetChangePasswordForm = React.useCallback(() => {
+    passwordCheckRequestRef.current += 1;
+    setOldPassword("");
+    setNewPassword("");
+    setIsCheckingCurrentPassword(false);
+    setIsCurrentPasswordValid(false);
+  }, []);
+
+  const verifyCurrentPassword = React.useCallback(async (passwordValue: string) => {
+    const candidate = passwordValue.trim();
+    if (!candidate || !storedRgpm) {
+      setIsCurrentPasswordValid(false);
+      return false;
+    }
+
+    const requestId = ++passwordCheckRequestRef.current;
+    setIsCheckingCurrentPassword(true);
+    try {
+      const [{ data: militaryUser, error: militaryError }, { data: loginUser, error: loginError }] = await Promise.all([
+        supabase
+          .from("militares" as any)
+          .select("senha")
+          .eq("rgpm", storedRgpm)
+          .maybeSingle(),
+        supabase
+          .from("usuarios_login" as any)
+          .select("senha")
+          .eq("rgpm", storedRgpm)
+          .maybeSingle(),
+      ]);
+
+      if (militaryError) throw militaryError;
+      if (loginError) throw loginError;
+
+      const savedMilitaryPassword = String((militaryUser as any)?.senha || "").trim();
+      const savedLoginPassword = String((loginUser as any)?.senha || "").trim();
+      const referencePassword = savedMilitaryPassword || savedLoginPassword;
+      const isValid = !!referencePassword && referencePassword === candidate;
+
+      if (requestId === passwordCheckRequestRef.current) {
+        setIsCurrentPasswordValid(isValid);
+        if (!isValid) setNewPassword("");
+      }
+
+      return isValid;
+    } catch (e) {
+      if (requestId === passwordCheckRequestRef.current) {
+        setIsCurrentPasswordValid(false);
+        setNewPassword("");
+      }
+      throw e;
+    } finally {
+      if (requestId === passwordCheckRequestRef.current) {
+        setIsCheckingCurrentPassword(false);
+      }
+    }
+  }, [storedRgpm]);
+
+  React.useEffect(() => {
+    if (!openChangePassword) {
+      resetChangePasswordForm();
+      return;
+    }
+
+    const candidate = oldPassword.trim();
+    setNewPassword("");
+    setIsCurrentPasswordValid(false);
+
+    if (!candidate || !storedRgpm) {
+      setIsCheckingCurrentPassword(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void verifyCurrentPassword(candidate).catch(() => {
+        toast({
+          variant: "destructive",
+          title: "Erro ao validar senha",
+          description: "Nao foi possivel validar a senha atual.",
+        });
+      });
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [oldPassword, openChangePassword, resetChangePasswordForm, storedRgpm, toast, verifyCurrentPassword]);
 
   const handleSubmitChangePassword = async () => {
     const baseOld = oldPassword.trim();
@@ -516,32 +725,29 @@ const HeaderActions = () => {
       return;
     }
     try {
-      // First, verify the current password
-      const { data: currentUser, error: selectError } = await supabase
-        .from("usuarios_login" as any)
-        .select("senha, rgpm")
-        .eq("rgpm", storedRgpm)
-        .maybeSingle();
-      
-      if (selectError) throw selectError;
-      
-      if (!currentUser || (currentUser as any).senha?.trim() !== baseOld) {
+      const currentPasswordIsValid = await verifyCurrentPassword(baseOld);
+      if (!currentPasswordIsValid) {
         toast({ variant: "destructive", title: "Senha incorreta", description: "A senha atual está incorreta." });
         return;
       }
-      
-      // Now update the password
-      const { error: updateError } = await supabase
-        .from("usuarios_login" as any)
-        .update({ senha: baseNew })
-        .eq("rgpm", storedRgpm);
-        
-      if (updateError) throw updateError;
-      
+
+      const [{ error: loginUpdateError }, { error: militaryUpdateError }] = await Promise.all([
+        supabase
+          .from("usuarios_login" as any)
+          .update({ senha: baseNew })
+          .eq("rgpm", storedRgpm),
+        supabase
+          .from("militares" as any)
+          .update({ senha: baseNew })
+          .eq("rgpm", storedRgpm),
+      ]);
+
+      if (loginUpdateError) throw loginUpdateError;
+      if (militaryUpdateError) throw militaryUpdateError;
+
       toast({ title: "Senha alterada", description: "Sua senha foi atualizada com sucesso." });
       setOpenChangePassword(false);
-      setOldPassword("");
-      setNewPassword("");
+      resetChangePasswordForm();
     } catch (e: any) {
       toast({ variant: "destructive", title: "Erro ao alterar senha", description: e?.message || String(e) });
     }
@@ -615,7 +821,7 @@ const HeaderActions = () => {
           if (isLogin) return null;
 
           const leftPortal = createPortal(
-            <div className="fixed top-2 left-2 sm:top-3 sm:left-4 z-[100] pointer-events-auto flex items-center gap-2">
+            <div className="fixed top-2 left-2 sm:top-3 sm:left-4 z-[100] pointer-events-auto flex flex-col items-start gap-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -661,7 +867,7 @@ const HeaderActions = () => {
                   {storedNome}
                 </span>
               )}
-              {(isAdmin || isStandard) && (
+              {storedRgpm && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" aria-label="Configurações" className="h-9 w-9 rounded-xl border border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white/90 backdrop-blur-sm shadow-lg">
@@ -669,6 +875,13 @@ const HeaderActions = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => {
+                      resetChangePasswordForm();
+                      setOpenChangePassword(true);
+                    }}>
+                      Alterar senha
+                    </DropdownMenuItem>
+                    {isAdmin && <DropdownMenuSeparator />}
                     {isAdmin && <DropdownMenuItem onClick={() => void openProfilesDialog("list")}>Ver perfis do sistema</DropdownMenuItem>}
                     {isAdmin && <DropdownMenuItem onClick={() => void openProfilesDialog("create")}>Criar perfil</DropdownMenuItem>}
                     {isAdmin && <DropdownMenuItem onClick={() => setOpenCreateUnit(true)}>Criar unidade</DropdownMenuItem>}
@@ -873,7 +1086,10 @@ const HeaderActions = () => {
                   )}
                 </DialogContent>
               </Dialog>
-              <Dialog open={openChangePassword} onOpenChange={setOpenChangePassword}>
+              <Dialog open={openChangePassword} onOpenChange={(open) => {
+                setOpenChangePassword(open);
+                if (!open) resetChangePasswordForm();
+              }}>
                 <DialogContent className="sm:max-w-[420px]">
                   <DialogHeader>
                     <DialogTitle>Alterar senha</DialogTitle>
@@ -883,14 +1099,33 @@ const HeaderActions = () => {
                     <div>
                       <Label>Senha atual</Label>
                       <Input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} />
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {isCheckingCurrentPassword
+                          ? "Validando senha atual..."
+                          : oldPassword.trim()
+                            ? (isCurrentPasswordValid
+                                ? "Senha atual confirmada."
+                                : "Digite a senha atual corretamente para liberar a nova senha.")
+                            : "Informe a senha atual para liberar a nova senha."}
+                      </div>
                     </div>
                     <div>
                       <Label>Nova senha</Label>
-                      <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                      <Input
+                        type="password"
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        disabled={!isCurrentPasswordValid || isCheckingCurrentPassword}
+                      />
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button onClick={handleSubmitChangePassword}>Salvar</Button>
+                    <Button
+                      onClick={handleSubmitChangePassword}
+                      disabled={isCheckingCurrentPassword || !isCurrentPasswordValid || !newPassword.trim()}
+                    >
+                      Salvar
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
