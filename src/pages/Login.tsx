@@ -5,9 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, Lock, Loader2, ShieldCheck, Mail } from "lucide-react";
 import { toast } from "sonner";
+
+const isUsageExpired = (dateValue?: string | null) => {
+  const raw = String(dateValue || "").trim();
+  if (!raw) return false;
+  const expiry = new Date(`${raw}T23:59:59`);
+  if (Number.isNaN(expiry.getTime())) return false;
+  return expiry.getTime() < Date.now();
+};
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -70,12 +77,27 @@ const Login: React.FC = () => {
       try {
         const { data: loginData } = await supabase
           .from('usuarios_login' as any)
-          .select('nivel_acesso')
+          .select('nivel_acesso, prazo_utilizacao_ate')
           .eq('rgpm', row.rgpm)
           .limit(1);
         const loginRow = loginData && (loginData as any[])[0];
+        if (loginRow?.nivel_acesso === 'Bloqueado') {
+          toast.error('Seu acesso está bloqueado. Contate o administrador.');
+          setLoading(false);
+          return;
+        }
+        if (isUsageExpired(loginRow?.prazo_utilizacao_ate)) {
+          toast.error('Seu prazo de utilização expirou. Contate o administrador.');
+          setLoading(false);
+          return;
+        }
         if (loginRow?.nivel_acesso) {
           nivelClient = loginRow.nivel_acesso;
+        }
+        if (loginRow?.prazo_utilizacao_ate) {
+          sessionStorage.setItem('prazo_utilizacao_ate', loginRow.prazo_utilizacao_ate);
+        } else {
+          sessionStorage.removeItem('prazo_utilizacao_ate');
         }
       } catch {}
 

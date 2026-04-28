@@ -7,9 +7,9 @@ import { HashRouter as BrowserRouter, Routes, Route, useLocation, useNavigate, N
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Settings, Plus, LogOut, Folder } from "lucide-react";
+import { Settings, Plus, LogOut, Folder, MoreHorizontal } from "lucide-react";
 import TCOmeus, { TcoData } from "@/components/tco/TCOmeus";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,16 @@ const App = () => (
 
 export default App;
 
+type ManagedProfile = {
+  rgpm: string;
+  nome: string;
+  email?: string;
+  graduacao?: string;
+  unidade?: string;
+  nivel?: string;
+  prazoUtilizacaoAte?: string;
+};
+
 const HeaderActions = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -67,6 +77,11 @@ const HeaderActions = () => {
   const [openChangePassword, setOpenChangePassword] = React.useState(false);
   const [oldPassword, setOldPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
+  const [openUsageDeadline, setOpenUsageDeadline] = React.useState(false);
+  const [usageDeadlineRgpm, setUsageDeadlineRgpm] = React.useState("");
+  const [usageDeadlineName, setUsageDeadlineName] = React.useState("");
+  const [usageDeadlineDate, setUsageDeadlineDate] = React.useState("");
+  const [savingUsageDeadline, setSavingUsageDeadline] = React.useState(false);
   const storedNivel = (localStorage.getItem("nivel_acesso") || sessionStorage.getItem("nivel_acesso") || "").trim();
   const isAdmin = storedNivel === "Administrador";
   const isStandard = storedNivel === "Padrão";
@@ -88,7 +103,7 @@ const HeaderActions = () => {
   const [addingCr, setAddingCr] = React.useState(false);
   const [newCr, setNewCr] = React.useState("");
   const [isAddingCr, setIsAddingCr] = React.useState(false);
-  const [profiles, setProfiles] = React.useState<{ rgpm: string; nome: string; graduacao?: string; unidade?: string; nivel?: string }[]>([]);
+  const [profiles, setProfiles] = React.useState<ManagedProfile[]>([]);
   const [profilesLoading, setProfilesLoading] = React.useState(false);
   const [profilesSearch, setProfilesSearch] = React.useState("");
   const [profilesTab, setProfilesTab] = React.useState("create");
@@ -138,6 +153,20 @@ const HeaderActions = () => {
     const p1 = d.slice(0, 5);
     const p2 = d.slice(5);
     return p2 ? `${p1}-${p2}` : p1;
+  };
+  const isUsageExpired = (dateValue?: string | null) => {
+    const raw = String(dateValue || "").trim();
+    if (!raw) return false;
+    const expiry = new Date(`${raw}T23:59:59`);
+    if (Number.isNaN(expiry.getTime())) return false;
+    return expiry.getTime() < Date.now();
+  };
+  const formatUsageDate = (dateValue?: string | null) => {
+    const raw = String(dateValue || "").trim();
+    if (!raw) return "-";
+    const parts = raw.split("-");
+    if (parts.length !== 3) return raw;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
   };
   const fetchOfficerByRgpm = async (rg: string) => {
     try {
@@ -228,20 +257,70 @@ const HeaderActions = () => {
   const loadProfiles = async () => {
     try {
       setProfilesLoading(true);
-      const [officers, logins] = await Promise.all([
+      const [militares, officers, logins] = await Promise.all([
+        supabase.from("militares" as any).select("rgpm,email,nome_completo"),
         supabase.from("police_officers").select("rgpm,nome_completo,graduacao"),
-        supabase.from("usuarios_login" as any).select("rgpm,unidade,nivel_acesso"),
+        supabase.from("usuarios_login" as any).select("rgpm,unidade,nivel_acesso,email,prazo_utilizacao_ate"),
       ]);
-      const mapLogin = new Map<string, { unidade?: string; nivel?: string }>();
-      if (logins.data) {
-        logins.data.forEach((r: any) => {
-          mapLogin.set(String(r.rgpm), { unidade: r.unidade, nivel: r.nivel_acesso });
+
+      const mapMilitares = new Map<string, { nome?: string; email?: string }>();
+      if (militares.data) {
+        militares.data.forEach((r: any) => {
+          const key = String(r.rgpm || "").trim();
+          if (!key) return;
+          mapMilitares.set(key, {
+            nome: String(r.nome_completo || "").trim(),
+            email: String(r.email || "").trim(),
+          });
         });
       }
-      const rows: { rgpm: string; nome: string; graduacao?: string; unidade?: string; nivel?: string }[] = (officers.data || []).map((o: any) => {
-        const l = mapLogin.get(String(o.rgpm));
-        return { rgpm: String(o.rgpm), nome: String(o.nome_completo || ""), graduacao: o.graduacao, unidade: l?.unidade, nivel: l?.nivel };
-      });
+
+      const mapOfficers = new Map<string, { nome?: string; graduacao?: string }>();
+      if (officers.data) {
+        officers.data.forEach((r: any) => {
+          const key = String(r.rgpm || "").trim();
+          if (!key) return;
+          mapOfficers.set(key, {
+            nome: String(r.nome_completo || "").trim(),
+            graduacao: String(r.graduacao || "").trim(),
+          });
+        });
+      }
+
+      const mapLogin = new Map<string, { unidade?: string; nivel?: string; email?: string; prazoUtilizacaoAte?: string }>();
+      if (logins.data) {
+        logins.data.forEach((r: any) => {
+          const key = String(r.rgpm || "").trim();
+          if (!key) return;
+          mapLogin.set(key, {
+            unidade: String(r.unidade || "").trim(),
+            nivel: String(r.nivel_acesso || "").trim(),
+            email: String(r.email || "").trim(),
+            prazoUtilizacaoAte: String(r.prazo_utilizacao_ate || "").trim(),
+          });
+        });
+      }
+
+      const keys = Array.from(new Set([
+        ...mapMilitares.keys(),
+        ...mapLogin.keys(),
+      ]));
+
+      const rows: ManagedProfile[] = keys.map((rg) => {
+        const militar = mapMilitares.get(rg);
+        const officer = mapOfficers.get(rg);
+        const login = mapLogin.get(rg);
+        return {
+          rgpm: rg,
+          nome: militar?.nome || officer?.nome || "Sem nome cadastrado",
+          email: militar?.email || login?.email || "",
+          graduacao: officer?.graduacao || "",
+          unidade: login?.unidade || "",
+          nivel: login?.nivel || "Sem nível definido",
+          prazoUtilizacaoAte: login?.prazoUtilizacaoAte || "",
+        };
+      }).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+
       setProfiles(rows);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Erro ao carregar perfis", description: e?.message || String(e) });
@@ -267,11 +346,12 @@ const HeaderActions = () => {
 
   const handleDeleteProfile = async (targetRgpm: string) => {
     try {
-      const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      const [{ error: loginError }, { error: militarError }] = await Promise.all([
         supabase.from("usuarios_login" as any).delete().eq("rgpm", targetRgpm),
-        supabase.from("police_officers").delete().eq("rgpm", targetRgpm),
+        supabase.from("militares" as any).delete().eq("rgpm", targetRgpm),
       ]);
-      if (e1) throw e1; if (e2) throw e2;
+      if (loginError) throw loginError;
+      if (militarError) throw militarError;
       if (storedRgpm === targetRgpm) handleLogout();
       toast({ title: "Perfil excluído" });
       await loadProfiles();
@@ -280,7 +360,7 @@ const HeaderActions = () => {
     }
   };
 
-  const handleEditProfile = (p: { rgpm: string; nome: string; graduacao?: string; unidade?: string; nivel?: string }) => {
+  const handleEditProfile = (p: ManagedProfile) => {
     setRgpm(p.rgpm);
     setNome(p.nome);
     setGraduacao(p.graduacao || "");
@@ -288,6 +368,55 @@ const HeaderActions = () => {
     setNivelAcesso(p.nivel || "Operador");
     setProfilesTab("create");
   };
+
+  const handleOpenUsageDeadline = (p: ManagedProfile) => {
+    setUsageDeadlineRgpm(p.rgpm);
+    setUsageDeadlineName(p.nome);
+    setUsageDeadlineDate(p.prazoUtilizacaoAte || "");
+    setOpenUsageDeadline(true);
+  };
+
+  const handleSaveUsageDeadline = async () => {
+    if (!usageDeadlineRgpm) return;
+    try {
+      setSavingUsageDeadline(true);
+      const { error } = await supabase
+        .from("usuarios_login" as any)
+        .update({ prazo_utilizacao_ate: usageDeadlineDate || null })
+        .eq("rgpm", usageDeadlineRgpm);
+      if (error) throw error;
+      toast({
+        title: usageDeadlineDate ? "Prazo definido" : "Prazo removido",
+        description: usageDeadlineDate
+          ? "O prazo de utilização foi atualizado com sucesso."
+          : "O perfil voltou a ter acesso sem data limite.",
+      });
+      setOpenUsageDeadline(false);
+      await loadProfiles();
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao salvar prazo", description: e?.message || String(e) });
+    } finally {
+      setSavingUsageDeadline(false);
+    }
+  };
+
+  const openProfilesDialog = async (tab: "create" | "list") => {
+    setProfilesTab(tab);
+    setOpenCreate(true);
+    if (tab === "list") {
+      await loadProfiles();
+    }
+  };
+
+  const filteredProfiles = React.useMemo(() => {
+    const q = profilesSearch.trim().toLowerCase();
+    if (!q) return profiles;
+    return profiles.filter((p) => (
+      p.rgpm.toLowerCase().includes(q) ||
+      p.nome.toLowerCase().includes(q) ||
+      (p.email || "").toLowerCase().includes(q)
+    ));
+  }, [profiles, profilesSearch]);
 
   const handleAddCr = async () => {
     const val = newCr.trim();
@@ -351,13 +480,17 @@ const HeaderActions = () => {
       try {
         const { data } = await supabase
           .from("usuarios_login" as any)
-          .select("nivel_acesso")
+          .select("nivel_acesso,prazo_utilizacao_ate")
           .eq("rgpm", current)
           .limit(1);
         const row = data && data[0];
-        // Only logout if user explicitly has "Bloqueado" status
-        // If no record found, allow access (user may not have usuarios_login entry)
-        if (row && String((row as any).nivel_acesso).trim() === "Bloqueado") {
+        if (
+          row &&
+          (
+            String((row as any).nivel_acesso).trim() === "Bloqueado" ||
+            isUsageExpired(String((row as any).prazo_utilizacao_ate || "").trim())
+          )
+        ) {
           handleLogout();
         }
       } catch {}
@@ -536,7 +669,8 @@ const HeaderActions = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {isAdmin && <DropdownMenuItem onClick={() => { setProfilesTab("create"); setOpenCreate(true); }}>Criar perfil</DropdownMenuItem>}
+                    {isAdmin && <DropdownMenuItem onClick={() => void openProfilesDialog("list")}>Ver perfis do sistema</DropdownMenuItem>}
+                    {isAdmin && <DropdownMenuItem onClick={() => void openProfilesDialog("create")}>Criar perfil</DropdownMenuItem>}
                     {isAdmin && <DropdownMenuItem onClick={() => setOpenCreateUnit(true)}>Criar unidade</DropdownMenuItem>}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -551,17 +685,21 @@ const HeaderActions = () => {
                 <LogOut className="h-5 w-5" />
               </Button>
               <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-                <DialogContent className="sm:max-w-[900px]">
+                <DialogContent className="w-[96vw] max-w-[1280px] h-[88vh] flex flex-col overflow-hidden">
                   <DialogHeader>
-                    <DialogTitle>Perfis</DialogTitle>
-                    <DialogDescription>Gerencie perfis e acessos.</DialogDescription>
+                    <DialogTitle>Perfis do sistema</DialogTitle>
+                    <DialogDescription>Consulte os perfis que acessam o sistema e gerencie os cadastros.</DialogDescription>
                   </DialogHeader>
-                  <Tabs value={profilesTab} onValueChange={(v) => { setProfilesTab(v); if (v === "list") loadProfiles(); }}>
-                    <TabsList>
+                  <Tabs
+                    value={profilesTab}
+                    onValueChange={(v) => { setProfilesTab(v); if (v === "list") loadProfiles(); }}
+                    className="flex min-h-0 flex-1 flex-col"
+                  >
+                    <TabsList className="w-fit">
                       <TabsTrigger value="create">Criar Perfil</TabsTrigger>
-                      <TabsTrigger value="list">Ver Perfis</TabsTrigger>
+                      <TabsTrigger value="list">Perfis com Acesso</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="create">
+                    <TabsContent value="create" className="min-h-0 flex-1 overflow-hidden">
                       <div className="grid gap-4 max-h-[60vh] overflow-y-auto">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
@@ -648,46 +786,82 @@ const HeaderActions = () => {
                         </div>
                       </div>
                     </TabsContent>
-                    <TabsContent value="list">
-                      <div className="space-y-3">
-                        <div className="flex gap-2">
-                          <Input placeholder="Buscar por nome ou RGPM" value={profilesSearch} onChange={e => setProfilesSearch(e.target.value)} />
-                          <Button variant="outline" onClick={loadProfiles} disabled={profilesLoading}>Atualizar</Button>
+                    <TabsContent value="list" className="min-h-0 flex-1 overflow-hidden">
+                      <div className="flex h-full min-h-0 flex-col gap-3">
+                        <div className="text-sm text-muted-foreground">
+                          {profilesLoading ? "Carregando perfis..." : `${filteredProfiles.length} perfil(is) localizado(s).`}
                         </div>
-                        <div className="overflow-auto max-h-[50vh]">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr>
-                                <th className="text-left p-2">RGPM</th>
-                                <th className="text-left p-2">Nome</th>
-                                <th className="text-left p-2">Graduação</th>
-                                <th className="text-left p-2">Unidade</th>
-                                <th className="text-left p-2">Nível</th>
-                                <th className="text-left p-2">Ações</th>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Input
+                            placeholder="Buscar por nome, email ou RGPM"
+                            value={profilesSearch}
+                            onChange={e => setProfilesSearch(e.target.value)}
+                            className="sm:flex-1"
+                          />
+                          <Button className="sm:self-start" variant="outline" onClick={loadProfiles} disabled={profilesLoading}>Atualizar</Button>
+                        </div>
+                        <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+                          <table className="min-w-[1080px] w-full text-sm">
+                            <thead className="sticky top-0 z-10 bg-background shadow-sm">
+                              <tr className="border-b">
+                                <th className="p-3 text-left font-semibold whitespace-nowrap">RGPM</th>
+                                <th className="p-3 text-left font-semibold whitespace-nowrap">Nome</th>
+                                <th className="p-3 text-left font-semibold whitespace-nowrap">Email</th>
+                                <th className="p-3 text-left font-semibold whitespace-nowrap">Graduação</th>
+                                <th className="p-3 text-left font-semibold whitespace-nowrap">Unidade</th>
+                                <th className="p-3 text-left font-semibold whitespace-nowrap">Nível</th>
+                                <th className="p-3 text-left font-semibold whitespace-nowrap">Prazo de uso</th>
+                                <th className="sticky right-0 bg-background p-3 text-left font-semibold whitespace-nowrap">Ações</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {(profiles.filter(p => {
-                                const q = profilesSearch.trim().toLowerCase();
-                                if (!q) return true;
-                                return p.rgpm.toLowerCase().includes(q) || p.nome.toLowerCase().includes(q);
-                              })).map(p => (
+                              {filteredProfiles.map(p => (
                                 <tr key={p.rgpm} className="border-t">
-                                  <td className="p-2">{p.rgpm}</td>
-                                  <td className="p-2">{p.nome}</td>
-                                  <td className="p-2">{p.graduacao || '-'}</td>
-                                  <td className="p-2">{p.unidade || '-'}</td>
-                                  <td className="p-2">{p.nivel || '-'}</td>
-                                  <td className="p-2 flex gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => handleEditProfile(p)} disabled={!isAdmin}>Editar</Button>
-                                    <Button size="sm" variant="destructive" onClick={() => handleBlockProfile(p.rgpm)} disabled={!isAdmin}>Bloquear</Button>
-                                    <Button size="sm" variant="destructive" onClick={() => handleDeleteProfile(p.rgpm)} disabled={!isAdmin}>Excluir</Button>
+                                  <td className="p-3 align-top whitespace-nowrap">{p.rgpm}</td>
+                                  <td className="p-3 align-top min-w-[220px] break-words">{p.nome}</td>
+                                  <td className="p-3 align-top min-w-[240px] break-all">{p.email || '-'}</td>
+                                  <td className="p-3 align-top whitespace-nowrap">{p.graduacao || '-'}</td>
+                                  <td className="p-3 align-top min-w-[180px] break-words">{p.unidade || '-'}</td>
+                                  <td className="p-3 align-top min-w-[140px] break-words">{p.nivel || '-'}</td>
+                                  <td className="p-3 align-top whitespace-nowrap">
+                                    <span className={isUsageExpired(p.prazoUtilizacaoAte) ? "font-medium text-red-600" : ""}>
+                                      {p.prazoUtilizacaoAte ? formatUsageDate(p.prazoUtilizacaoAte) : "-"}
+                                    </span>
+                                  </td>
+                                  <td className="sticky right-0 bg-background p-3 align-top">
+                                    <div className="flex min-w-[72px] justify-end">
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md" aria-label={`Ações do perfil ${p.nome}`}>
+                                            <MoreHorizontal className="h-4 w-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-48">
+                                          <DropdownMenuItem onClick={() => handleEditProfile(p)} disabled={!isAdmin}>Editar</DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleOpenUsageDeadline(p)} disabled={!isAdmin}>Definir prazo de uso</DropdownMenuItem>
+                                          {p.prazoUtilizacaoAte && (
+                                            <DropdownMenuItem onClick={() => {
+                                              setUsageDeadlineRgpm(p.rgpm);
+                                              setUsageDeadlineName(p.nome);
+                                              setUsageDeadlineDate("");
+                                              setOpenUsageDeadline(true);
+                                            }} disabled={!isAdmin}>
+                                              Remover prazo de uso
+                                            </DropdownMenuItem>
+                                          )}
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem onClick={() => handleBlockProfile(p.rgpm)} disabled={!isAdmin} className="text-red-600 focus:text-red-600">Bloquear</DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleDeleteProfile(p.rgpm)} disabled={!isAdmin} className="text-red-600 focus:text-red-600">Excluir</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </div>
                                   </td>
                                 </tr>
                               ))}
                             </tbody>
                           </table>
                           {profilesLoading && <div className="p-3 text-center text-muted-foreground">Carregando...</div>}
+                          {!profilesLoading && filteredProfiles.length === 0 && <div className="p-3 text-center text-muted-foreground">Nenhum perfil com acesso foi encontrado.</div>}
                         </div>
                       </div>
                     </TabsContent>
@@ -717,6 +891,35 @@ const HeaderActions = () => {
                   </div>
                   <DialogFooter>
                     <Button onClick={handleSubmitChangePassword}>Salvar</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Dialog open={openUsageDeadline} onOpenChange={setOpenUsageDeadline}>
+                <DialogContent className="sm:max-w-[420px]">
+                  <DialogHeader>
+                    <DialogTitle>Prazo de utilização</DialogTitle>
+                    <DialogDescription>
+                      Defina até quando o perfil de {usageDeadlineName || "usuário"} poderá acessar o sistema.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4">
+                    <div>
+                      <Label>RGPM</Label>
+                      <Input value={usageDeadlineRgpm} readOnly />
+                    </div>
+                    <div>
+                      <Label>Data limite</Label>
+                      <Input type="date" value={usageDeadlineDate} onChange={e => setUsageDeadlineDate(e.target.value)} />
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Deixe em branco para remover o prazo e manter o acesso contínuo.
+                      </p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setUsageDeadlineDate("")}>Limpar</Button>
+                    <Button onClick={handleSaveUsageDeadline} disabled={savingUsageDeadline}>
+                      {savingUsageDeadline ? "Salvando..." : "Salvar prazo"}
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

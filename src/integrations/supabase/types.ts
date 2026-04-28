@@ -233,6 +233,7 @@ export type Database = {
           created_at: string
           id: number
           nivel_acesso: string
+          prazo_utilizacao_ate: string | null
           rgpm: string
           senha: string
           unidade: string
@@ -243,6 +244,7 @@ export type Database = {
           created_at?: string
           id?: number
           nivel_acesso: string
+          prazo_utilizacao_ate?: string | null
           rgpm: string
           senha: string
           unidade: string
@@ -253,6 +255,7 @@ export type Database = {
           created_at?: string
           id?: number
           nivel_acesso?: string
+          prazo_utilizacao_ate?: string | null
           rgpm?: string
           senha?: string
           unidade?: string
