@@ -95,6 +95,11 @@ const HeaderActions = () => {
   const [currentUsageDefinedAt, setCurrentUsageDefinedAt] = React.useState(
     () => (sessionStorage.getItem("prazo_utilizacao_definido_em") || "").trim()
   );
+  const [openUsageValidityNotice, setOpenUsageValidityNotice] = React.useState(false);
+  const [usageValidityNotice, setUsageValidityNotice] = React.useState<{
+    deadline: string;
+    renewalDays: number | null;
+  }>({ deadline: "", renewalDays: null });
   const [crList, setCrList] = React.useState<string[]>([]);
   const [unitOptions, setUnitOptions] = React.useState<{ id: string; cr: string; unidade: string }[]>([]);
   const [crLoading, setCrLoading] = React.useState(false);
@@ -200,23 +205,60 @@ const HeaderActions = () => {
     const rg = String(rgpmValue || "").trim();
     const deadline = String(deadlineValue || "").trim();
     const definedAt = String(definedAtValue || "").trim();
-    if (!rg || !deadline || !definedAt) return "";
-    return `usage-renewal-alert:${rg}:${deadline}:${definedAt}`;
+    if (!rg || !deadline) return "";
+    return definedAt
+      ? `usage-validity-notice:v2:${rg}:${deadline}:${definedAt}`
+      : `usage-validity-notice:v2:${rg}:${deadline}`;
   };
-  const emitUsageRenewalAlert = React.useCallback((deadlineValue?: string | null, definedAtValue?: string | null, rgpmValue?: string | null) => {
+  const isMissingUsageDefinedAtColumnError = (error: any) => {
+    const message = String(error?.message || "");
+    return message.includes("prazo_utilizacao_definido_em") && message.includes("does not exist");
+  };
+  const emitUsageRenewalAlert = React.useCallback((
+    deadlineValue?: string | null,
+    definedAtValue?: string | null,
+    rgpmValue?: string | null,
+    options?: { force?: boolean }
+  ) => {
     const alertKey = getUsageRenewalAlertKey(rgpmValue, deadlineValue, definedAtValue);
     if (!alertKey) return;
-    if (localStorage.getItem("last_usage_renewal_alert") === alertKey) return;
+    if (!options?.force && localStorage.getItem("last_usage_renewal_alert") === alertKey) return;
     const renewalDays = getRenewalDays(deadlineValue, definedAtValue);
-    if (renewalDays === null) return;
-    toast({
-      title: "Renovação realizada",
-      description: `O provedor e o banco foram renovados por ${renewalDays} ${renewalDays === 1 ? "dia" : "dias"}.`,
+    const deadline = String(deadlineValue || "").trim();
+    if (!deadline) return;
+    setUsageValidityNotice({
+      deadline,
+      renewalDays,
     });
+    setOpenUsageValidityNotice(true);
     localStorage.setItem("last_usage_renewal_alert", alertKey);
-  }, [toast]);
+  }, []);
+  const fetchMilitaryUsageInfo = React.useCallback(async (rgpmValue: string) => {
+    const preferred = await supabase
+      .from("militares" as any)
+      .select("prazo_utilizacao_ate,prazo_utilizacao_definido_em")
+      .eq("rgpm", rgpmValue)
+      .limit(1);
+    if (!preferred.error) {
+      return {
+        row: preferred.data && preferred.data[0],
+        supportsDefinedAt: true,
+      };
+    }
+    if (!isMissingUsageDefinedAtColumnError(preferred.error)) throw preferred.error;
+    const fallback = await supabase
+      .from("militares" as any)
+      .select("prazo_utilizacao_ate")
+      .eq("rgpm", rgpmValue)
+      .limit(1);
+    if (fallback.error) throw fallback.error;
+    return {
+      row: fallback.data && fallback.data[0],
+      supportsDefinedAt: false,
+    };
+  }, []);
   React.useEffect(() => {
-    if (!storedRgpm || !requiresUsageDeadline(storedNivel) || !currentUsageDeadline || !currentUsageDefinedAt) return;
+    if (!storedRgpm || !requiresUsageDeadline(storedNivel) || !currentUsageDeadline) return;
     emitUsageRenewalAlert(currentUsageDeadline, currentUsageDefinedAt, storedRgpm);
   }, [currentUsageDeadline, currentUsageDefinedAt, emitUsageRenewalAlert, storedNivel, storedRgpm]);
   const fetchOfficerByRgpm = async (rg: string) => {
@@ -432,7 +474,9 @@ const HeaderActions = () => {
     try {
       setSavingUsageDeadline(true);
       const definedAtNow = new Date().toISOString();
-      const { data, error } = await supabase
+      let latestDeadline = String(usageDeadlineDate || "").trim();
+      let latestDefinedAt = usageDeadlineDate ? definedAtNow : "";
+      const preferred = await supabase
         .from("militares" as any)
         .update({
           prazo_utilizacao_ate: usageDeadlineDate || null,
@@ -441,9 +485,22 @@ const HeaderActions = () => {
         .eq("rgpm", usageDeadlineRgpm)
         .select("prazo_utilizacao_ate,prazo_utilizacao_definido_em")
         .single();
-      if (error) throw error;
-      const latestDeadline = String((data as any)?.prazo_utilizacao_ate || usageDeadlineDate || "").trim();
-      const latestDefinedAt = String((data as any)?.prazo_utilizacao_definido_em || (usageDeadlineDate ? definedAtNow : "")).trim();
+      if (preferred.error) {
+        if (!isMissingUsageDefinedAtColumnError(preferred.error)) throw preferred.error;
+        const fallback = await supabase
+          .from("militares" as any)
+          .update({
+            prazo_utilizacao_ate: usageDeadlineDate || null,
+          })
+          .eq("rgpm", usageDeadlineRgpm)
+          .select("prazo_utilizacao_ate")
+          .single();
+        if (fallback.error) throw fallback.error;
+        latestDeadline = String((fallback.data as any)?.prazo_utilizacao_ate || usageDeadlineDate || "").trim();
+      } else {
+        latestDeadline = String((preferred.data as any)?.prazo_utilizacao_ate || usageDeadlineDate || "").trim();
+        latestDefinedAt = String((preferred.data as any)?.prazo_utilizacao_definido_em || (usageDeadlineDate ? definedAtNow : "")).trim();
+      }
       if (usageDeadlineRgpm === storedRgpm) {
         if (latestDeadline) {
           sessionStorage.setItem("prazo_utilizacao_ate", latestDeadline);
@@ -464,12 +521,8 @@ const HeaderActions = () => {
           );
         }
       }
-      if (latestDeadline && latestDefinedAt) {
-        const renewalDays = getRenewalDays(latestDeadline, latestDefinedAt);
-        toast({
-          title: "Renovação realizada",
-          description: `O provedor e o banco foram renovados por ${renewalDays ?? 0} ${(renewalDays ?? 0) === 1 ? "dia" : "dias"}.`,
-        });
+      if (latestDeadline) {
+        emitUsageRenewalAlert(latestDeadline, latestDefinedAt, usageDeadlineRgpm, { force: true });
       } else {
         toast({
           title: "Prazo removido",
@@ -567,23 +620,21 @@ const HeaderActions = () => {
       const current = (localStorage.getItem("rgpm") || sessionStorage.getItem("rgpm") || "").trim();
       if (!current) return;
       try {
-        const [{ data: loginData }, { data: militaryData }] = await Promise.all([
+        const [{ data: loginData }, militaryInfo] = await Promise.all([
           supabase
             .from("usuarios_login" as any)
             .select("nivel_acesso")
             .eq("rgpm", current)
             .limit(1),
-          supabase
-            .from("militares" as any)
-            .select("prazo_utilizacao_ate,prazo_utilizacao_definido_em")
-            .eq("rgpm", current)
-            .limit(1),
+          fetchMilitaryUsageInfo(current),
         ]);
         const loginRow = loginData && loginData[0];
-        const militaryRow = militaryData && militaryData[0];
+        const militaryRow = militaryInfo.row;
         const currentAccessLevel = String((loginRow as any)?.nivel_acesso || "").trim();
         const latestDeadline = String((militaryRow as any)?.prazo_utilizacao_ate || "").trim();
-        const latestDefinedAt = String((militaryRow as any)?.prazo_utilizacao_definido_em || "").trim();
+        const latestDefinedAt = militaryInfo.supportsDefinedAt
+          ? String((militaryRow as any)?.prazo_utilizacao_definido_em || "").trim()
+          : "";
         setCurrentUsageDeadline(latestDeadline);
         setCurrentUsageDefinedAt(latestDefinedAt);
         if (latestDeadline) {
@@ -596,7 +647,7 @@ const HeaderActions = () => {
         } else {
           sessionStorage.removeItem("prazo_utilizacao_definido_em");
         }
-        if (requiresUsageDeadline(currentAccessLevel) && latestDeadline && latestDefinedAt) {
+        if (requiresUsageDeadline(currentAccessLevel) && latestDeadline) {
           emitUsageRenewalAlert(latestDeadline, latestDefinedAt, current);
         }
         if (
@@ -621,7 +672,7 @@ const HeaderActions = () => {
     checkAccess();
     timer = setInterval(checkAccess, 10000);
     return () => { if (timer) clearInterval(timer); };
-  }, []);
+  }, [emitUsageRenewalAlert, fetchMilitaryUsageInfo]);
 
   const resetChangePasswordForm = React.useCallback(() => {
     passwordCheckRequestRef.current += 1;
@@ -1155,6 +1206,21 @@ const HeaderActions = () => {
                     <Button onClick={handleSaveUsageDeadline} disabled={savingUsageDeadline}>
                       {savingUsageDeadline ? "Salvando..." : "Salvar prazo"}
                     </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Dialog open={openUsageValidityNotice} onOpenChange={setOpenUsageValidityNotice}>
+                <DialogContent className="sm:max-w-[420px]">
+                  <DialogHeader>
+                    <DialogTitle>Validade do acesso</DialogTitle>
+                    <DialogDescription>
+                      {usageValidityNotice.renewalDays === null
+                        ? `Seu acesso está válido até ${formatUsageDate(usageValidityNotice.deadline)}.`
+                        : `O provedor e o banco foram renovados por ${usageValidityNotice.renewalDays} ${usageValidityNotice.renewalDays === 1 ? "dia" : "dias"}.`}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button onClick={() => setOpenUsageValidityNotice(false)}>Ok</Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

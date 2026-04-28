@@ -24,6 +24,10 @@ const isUsageExpired = (dateValue?: string | null) => {
 };
 const requiresUsageDeadline = (accessLevel?: string | null) =>
   String(accessLevel || "").trim() !== 'Administrador';
+const isMissingUsageDefinedAtColumnError = (error: any) => {
+  const message = String(error?.message || '');
+  return message.includes('prazo_utilizacao_definido_em') && message.includes('does not exist');
+};
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -64,12 +68,23 @@ const Login: React.FC = () => {
       }
 
       // If email exists, check password
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('militares' as any)
         .select('rgpm, email, senha, nome_completo, prazo_utilizacao_ate, prazo_utilizacao_definido_em')
         .eq('email', emailInput.trim())
         .eq('senha', passInput.trim())
         .limit(1);
+
+      if (error && isMissingUsageDefinedAtColumnError(error)) {
+        const fallback = await supabase
+          .from('militares' as any)
+          .select('rgpm, email, senha, nome_completo, prazo_utilizacao_ate')
+          .eq('email', emailInput.trim())
+          .eq('senha', passInput.trim())
+          .limit(1);
+        data = fallback.data;
+        error = fallback.error;
+      }
 
       if (error) throw error;
 
