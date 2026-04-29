@@ -763,7 +763,7 @@ const TCOForm: React.FC = () => {
 
       // Upload DOCX to R2
       try {
-        const userId = localStorage.getItem("user_id") || sessionStorage.getItem("user_id") || "anon";
+        const userId = sessionStorage.getItem("rgpm") || localStorage.getItem("rgpm") || "anon";
         const r2DocxKey = `tcos/${userId}/${filename}`;
         const r2JsonKey = r2DocxKey.replace(/\.docx$/i, ".json");
 
