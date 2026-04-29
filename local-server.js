@@ -79,10 +79,7 @@ app.post("/.netlify/functions/download-url", async (req, res) => {
 // List TCOs
 app.get("/.netlify/functions/list-tcos", async (req, res) => {
   try {
-    const userId = req.query.userId;
-    if (!userId) return res.status(400).json({ error: "userId required" });
-    
-    const prefix = `tcos/${sanitizeKey(userId)}/`;
+    const prefix = "tcos/";
     const command = new ListObjectsV2Command({
       Bucket: bucketName,
       Prefix: prefix,

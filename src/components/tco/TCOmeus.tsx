@@ -73,7 +73,7 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
         fileKey: item.docxKey || "",
         docxKey: item.docxKey || "",
         fileName: (item.docxKey || "").split("/").pop() || "arquivo.docx",
-        userId: user.id,
+        userId: String(item.ownerRgpm || user.id || "").trim(),
         condutor: item.condutor || undefined,
         equipe: item.equipe || undefined,
       }));

@@ -763,8 +763,11 @@ const TCOForm: React.FC = () => {
 
       // Upload DOCX to R2
       try {
-        const userId = sessionStorage.getItem("rgpm") || localStorage.getItem("rgpm") || "anon";
-        const r2DocxKey = `tcos/${userId}/${filename}`;
+        const ownerRgpm = (sessionStorage.getItem("rgpm") || localStorage.getItem("rgpm") || "anon").trim() || "anon";
+        const savedAt = new Date().toISOString();
+        const safeOwnerRgpm = ownerRgpm.replace(/\D+/g, "") || "anon";
+        const uniquePrefix = `${safeOwnerRgpm}_${savedAt.replace(/[:.]/g, "-")}`;
+        const r2DocxKey = `tcos/${uniquePrefix}_${filename}`;
         const r2JsonKey = r2DocxKey.replace(/\.docx$/i, ".json");
 
         await r2UploadFile(blob, r2DocxKey, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
@@ -772,8 +775,9 @@ const TCOForm: React.FC = () => {
         const metadata = {
           tcoNumber,
           natureza: natureza === "Outros" ? customNatureza : natureza,
-          savedAt: new Date().toISOString(),
+          savedAt,
           docxKey: r2DocxKey,
+          ownerRgpm,
           condutor: componentesGuarnicao[0] ? {
             nome: componentesGuarnicao[0].nome,
             graduacao: componentesGuarnicao[0].posto,

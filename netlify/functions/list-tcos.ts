@@ -41,14 +41,6 @@ export const handler = async (event: NetlifyEvent) => {
     return { statusCode: 405, headers: corsHeaders, body: "Method Not Allowed" };
   }
 
-  const userId = String(event.queryStringParameters?.userId || "").trim();
-  if (!userId) {
-    return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: "userId é obrigatório" }) };
-  }
-  if (userId.includes("..") || userId.includes("/") || userId.includes("\\")) {
-    return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: "userId inválido" }) };
-  }
-
   const endpoint = process.env.R2_ENDPOINT;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
@@ -65,7 +57,7 @@ export const handler = async (event: NetlifyEvent) => {
     credentials: { accessKeyId, secretAccessKey },
   });
 
-  const prefix = sanitizePrefix(`tcos/${userId}/`);
+  const prefix = sanitizePrefix("tcos/");
   const jsonKeys: string[] = [];
   let continuationToken: string | undefined = undefined;
 
