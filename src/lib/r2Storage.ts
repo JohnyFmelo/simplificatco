@@ -1,40 +1,30 @@
-const BASE = "/.netlify/functions";
+import { supabase } from "@/integrations/supabase/client";
+
+async function callR2(action: string, payload: Record<string, unknown> = {}) {
+  const { data, error } = await supabase.functions.invoke("r2-storage", {
+    body: { action, ...payload },
+  });
+  if (error) throw new Error(error.message || `Erro na ação ${action}`);
+  if (data && (data as any).error) throw new Error((data as any).error);
+  return data;
+}
 
 export async function r2ListTcos(userId: string): Promise<any[]> {
-  const res = await fetch(`${BASE}/list-tcos?userId=${encodeURIComponent(userId)}`);
-  if (!res.ok) throw new Error("Erro ao listar TCOs");
-  return res.json();
+  return (await callR2("list", { userId })) as any[];
 }
 
 export async function r2GetDownloadUrl(fileName: string): Promise<string> {
-  const res = await fetch(`${BASE}/download-url`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fileName }),
-  });
-  if (!res.ok) throw new Error("Erro ao gerar URL de download");
-  const data = await res.json();
-  return data.downloadUrl;
+  const data = await callR2("download-url", { fileName });
+  return (data as any).downloadUrl;
 }
 
 export async function r2GetUploadUrl(fileName: string, fileType: string): Promise<string> {
-  const res = await fetch(`${BASE}/upload-url`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fileName, fileType }),
-  });
-  if (!res.ok) throw new Error("Erro ao gerar URL de upload");
-  const data = await res.json();
-  return data.uploadUrl;
+  const data = await callR2("upload-url", { fileName, fileType });
+  return (data as any).uploadUrl;
 }
 
 export async function r2DeleteTco(fileName: string): Promise<void> {
-  const res = await fetch(`${BASE}/delete-tco`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fileName }),
-  });
-  if (!res.ok) throw new Error("Erro ao excluir TCO");
+  await callR2("delete", { fileName });
 }
 
 export async function r2UploadFile(file: Blob, r2Key: string, contentType: string): Promise<void> {
@@ -44,5 +34,8 @@ export async function r2UploadFile(file: Blob, r2Key: string, contentType: strin
     headers: { "Content-Type": contentType },
     body: file,
   });
-  if (!putRes.ok) throw new Error("Erro ao fazer upload do arquivo");
+  if (!putRes.ok) {
+    const txt = await putRes.text().catch(() => "");
+    throw new Error(`Erro ao fazer upload do arquivo (${putRes.status}): ${txt}`);
+  }
 }
