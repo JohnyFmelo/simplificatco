@@ -300,8 +300,40 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
           </div>
 
           <div className="form-group">
-            <label>Endereço Completo <span className="required">*</span></label>
-            <Input className="address-input" placeholder="Rua, número, bairro..." value={endereco} onChange={e => setEndereco(e.target.value)} />
+            <label>Logradouro <span className="required">*</span></label>
+            <Input
+              className="address-input"
+              placeholder="Rua, Avenida, Travessa..."
+              value={logradouro}
+              onChange={e => setLogradouro(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="two-columns">
+          <div className="form-group">
+            <label>Número <span className="required">*</span></label>
+            <Input
+              placeholder="Ex: 123 ou S/N"
+              value={numeroEnd}
+              onChange={e => setNumeroEnd(e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label>Bairro <span className="required">*</span></label>
+            <Input
+              placeholder="Informe o bairro"
+              value={bairro}
+              onChange={e => setBairro(e.target.value)}
+              required
+              aria-required="true"
+              style={!bairro ? { borderColor: '#dc2626' } : undefined}
+            />
+            {!bairro && (
+              <small className="field-hint" style={{ color: '#dc2626' }}>
+                Bairro é obrigatório.
+              </small>
+            )}
           </div>
         </div>
 
