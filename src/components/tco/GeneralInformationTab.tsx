@@ -128,6 +128,37 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
   const [cep, setCep] = useState<string>("");
   const [cepStatus, setCepStatus] = useState<string>("");
 
+  // Campos separados — bairro obrigatório para evitar omissões
+  const [logradouro, setLogradouro] = useState<string>("");
+  const [numeroEnd, setNumeroEnd] = useState<string>("");
+  const [bairro, setBairro] = useState<string>("");
+
+  // Hidrata os campos separados a partir de um endereço já salvo (edição)
+  useEffect(() => {
+    if (!endereco) return;
+    if (logradouro || numeroEnd || bairro) return;
+    // tenta extrair "Logradouro, Nº X, Bairro Y, CEP Z"
+    const partes = endereco.split(",").map(p => p.trim()).filter(Boolean);
+    if (partes.length) setLogradouro(partes[0] || "");
+    const nMatch = endereco.match(/n[ºo°]?\s*([\w\d-]+)/i);
+    if (nMatch) setNumeroEnd(nMatch[1]);
+    const bMatch = endereco.match(/bairro\s+([^,]+)/i);
+    if (bMatch) setBairro(bMatch[1].trim());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Recompõe e propaga o endereço unificado sempre que algum campo mudar
+  useEffect(() => {
+    const partes: string[] = [];
+    if (logradouro) partes.push(logradouro);
+    if (numeroEnd) partes.push(`Nº ${numeroEnd}`);
+    if (bairro) partes.push(`Bairro ${bairro}`);
+    const cepMask = cep && cep.replace(/\D/g, "").length === 8 ? `CEP ${cep}` : "";
+    if (cepMask) partes.push(cepMask);
+    const novo = partes.join(", ");
+    if (novo !== endereco) setEndereco(novo);
+  }, [logradouro, numeroEnd, bairro, cep]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const buscarEndereco = async () => {
     const nums = cep.replace(/\D/g, "");
     if (nums.length !== 8) {
@@ -142,11 +173,10 @@ const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
         setCepStatus("CEP não encontrado.");
         return;
       }
-      const enderecoCompleto = [data.logradouro, data.bairro].filter(Boolean).join(", ");
-      const cepMask = cep;
-      if (enderecoCompleto) setEndereco(`${enderecoCompleto}${cepMask ? `, CEP ${cepMask}` : ""}`);
+      if (data.logradouro) setLogradouro(data.logradouro);
+      if (data.bairro) setBairro(data.bairro);
       if (data.localidade) setMunicipio(data.localidade);
-      setCepStatus(`CEP: ${data.cep} • ${data.logradouro} • ${data.bairro}`);
+      setCepStatus(`CEP: ${data.cep} • ${data.logradouro || "-"} • ${data.bairro || "-"}`);
     } catch {
       setCepStatus("Erro ao buscar CEP.");
     }
