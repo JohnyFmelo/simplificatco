@@ -85,7 +85,7 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
     } finally {
       setIsLoading(false);
     }
-  }, [user.id, toast]);
+  }, [user.id, user.userType, toast]);
 
   useEffect(() => {
     fetchAllTcos();
