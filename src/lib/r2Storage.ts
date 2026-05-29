@@ -9,8 +9,8 @@ async function callR2(action: string, payload: Record<string, unknown> = {}) {
   return data;
 }
 
-export async function r2ListTcos(userId: string): Promise<any[]> {
-  return (await callR2("list", { userId })) as any[];
+export async function r2ListTcos(userId: string, userType?: string): Promise<any[]> {
+  return (await callR2("list", { userId, userType })) as any[];
 }
 
 export async function r2GetDownloadUrl(fileName: string): Promise<string> {
