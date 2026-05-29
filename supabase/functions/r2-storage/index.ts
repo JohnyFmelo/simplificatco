@@ -135,14 +135,20 @@ Deno.serve(async (req) => {
         if (!fileName) return json({ error: "fileName obrigatório" }, 400);
         if (!base64) return json({ error: "arquivo obrigatório" }, 400);
 
-        await s3.send(
-          new PutObjectCommand({
-            Bucket: R2_BUCKET_NAME,
-            Key: fileName,
-            ContentType: fileType,
-            Body: base64ToBytes(base64),
-          })
+        const uploadUrl = await getSignedUrl(
+          s3,
+          new PutObjectCommand({ Bucket: R2_BUCKET_NAME, Key: fileName, ContentType: fileType }),
+          { expiresIn: 600 }
         );
+        const putRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": fileType },
+          body: base64ToBytes(base64),
+        });
+        if (!putRes.ok) {
+          const text = await putRes.text().catch(() => "");
+          return json({ error: `Falha ao enviar para o R2 (${putRes.status}): ${text}` }, 500);
+        }
         return json({ ok: true });
       }
 
