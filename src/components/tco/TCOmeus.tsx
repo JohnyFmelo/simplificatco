@@ -123,10 +123,11 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
     }
   };
 
-  const handleOpenDocx = async (tco: TcoData) => {
+  const handleViewTco = async (tco: TcoData) => {
     try {
       const url = await r2GetDownloadUrl(tco.fileKey);
-      window.open(url, "_blank");
+      const viewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`;
+      window.open(viewerUrl, "_blank");
     } catch (error) {
       console.error("Erro ao abrir documento:", error);
       toast({ variant: "destructive", title: "Erro ao abrir documento", description: "Falha ao preparar o arquivo." });
@@ -147,17 +148,10 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
       a.click();
       window.URL.revokeObjectURL(blobUrl);
       a.remove();
-      setPendingTcoForConversion(tco);
-      setIsConversionDialogOpen(true);
     } catch (error) {
       console.error("Erro ao baixar documento:", error);
       toast({ variant: "destructive", title: "Erro", description: "Falha ao baixar o documento." });
     }
-  };
-
-  const handleConvertToWord = async (tco: TcoData) => {
-    window.open("https://www.ilovepdf.com/pt/pdf_para_word", "_blank");
-    toast({ title: "Redirecionamento", description: "Você foi redirecionado para o iLovePDF." });
   };
 
   const handleCloseConversionDialog = () => {
@@ -231,15 +225,11 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48 p-1" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenuItem onClick={() => handleOpenDocx(tco)} className="flex items-center gap-2 p-2 text-sm cursor-pointer hover:bg-slate-100 rounded-md">
-                              <Eye className="h-4 w-4 text-blue-500" /> Abrir DOCX
+                            <DropdownMenuItem onClick={() => handleViewTco(tco)} className="flex items-center gap-2 p-2 text-sm cursor-pointer hover:bg-slate-100 rounded-md">
+                              <Eye className="h-4 w-4 text-blue-500" /> Ver TCO
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDownloadDocx(tco)} className="flex items-center gap-2 p-2 text-sm cursor-pointer hover:bg-slate-100 rounded-md">
                               <Download className="h-4 w-4 text-green-500" /> Baixar DOCX
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleConvertToWord(tco)} disabled={isCurrentlyConverting} className="flex items-center gap-2 p-2 text-sm cursor-pointer hover:bg-slate-100 rounded-md">
-                              {isCurrentlyConverting ? <RefreshCw className="h-4 w-4 text-orange-500 animate-spin" /> : <FileEdit className="h-4 w-4 text-orange-500" />}
-                              {isCurrentlyConverting ? "Convertendo..." : "Converter p/ Word"}
                             </DropdownMenuItem>
                             {canDelete && (
                               <DropdownMenuItem onClick={() => confirmDelete(tco)} className="flex items-center gap-2 p-2 text-sm cursor-pointer text-red-600 hover:bg-red-50 rounded-md mt-1">
@@ -278,15 +268,11 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48 p-1" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenuItem onClick={() => handleOpenDocx(tco)} className="flex items-center gap-2 p-2 text-sm cursor-pointer">
-                          <Eye className="h-4 w-4 text-blue-500" /> Abrir DOCX
+                        <DropdownMenuItem onClick={() => handleViewTco(tco)} className="flex items-center gap-2 p-2 text-sm cursor-pointer">
+                          <Eye className="h-4 w-4 text-blue-500" /> Ver TCO
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDownloadDocx(tco)} className="flex items-center gap-2 p-2 text-sm cursor-pointer">
                           <Download className="h-4 w-4 text-green-500" /> Baixar DOCX
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleConvertToWord(tco)} disabled={isCurrentlyConverting} className="flex items-center gap-2 p-2 text-sm cursor-pointer">
-                          {isCurrentlyConverting ? <RefreshCw className="h-4 w-4 text-orange-500 animate-spin" /> : <FileEdit className="h-4 w-4 text-orange-500" />}
-                          {isCurrentlyConverting ? "Convertendo..." : "Converter p/ Word"}
                         </DropdownMenuItem>
                         {canDelete && (
                           <DropdownMenuItem onClick={() => confirmDelete(tco)} className="flex items-center gap-2 p-2 text-sm cursor-pointer text-red-600">
