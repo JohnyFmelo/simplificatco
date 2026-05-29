@@ -123,10 +123,11 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
     }
   };
 
-  const handleOpenDocx = async (tco: TcoData) => {
+  const handleViewTco = async (tco: TcoData) => {
     try {
       const url = await r2GetDownloadUrl(tco.fileKey);
-      window.open(url, "_blank");
+      const viewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`;
+      window.open(viewerUrl, "_blank");
     } catch (error) {
       console.error("Erro ao abrir documento:", error);
       toast({ variant: "destructive", title: "Erro ao abrir documento", description: "Falha ao preparar o arquivo." });
@@ -147,17 +148,10 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
       a.click();
       window.URL.revokeObjectURL(blobUrl);
       a.remove();
-      setPendingTcoForConversion(tco);
-      setIsConversionDialogOpen(true);
     } catch (error) {
       console.error("Erro ao baixar documento:", error);
       toast({ variant: "destructive", title: "Erro", description: "Falha ao baixar o documento." });
     }
-  };
-
-  const handleConvertToWord = async (tco: TcoData) => {
-    window.open("https://www.ilovepdf.com/pt/pdf_para_word", "_blank");
-    toast({ title: "Redirecionamento", description: "Você foi redirecionado para o iLovePDF." });
   };
 
   const handleCloseConversionDialog = () => {
