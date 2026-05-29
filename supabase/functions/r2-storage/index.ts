@@ -12,10 +12,22 @@ const corsHeaders = {
   "Access-Control-Max-Age": "86400",
 };
 
-const R2_ENDPOINT = Deno.env.get("R2_ENDPOINT")!;
-const R2_ACCESS_KEY_ID = Deno.env.get("R2_ACCESS_KEY_ID")!;
-const R2_SECRET_ACCESS_KEY = Deno.env.get("R2_SECRET_ACCESS_KEY")!;
-const R2_BUCKET_NAME = Deno.env.get("R2_BUCKET_NAME")!;
+// Sanitize URL: strip markdown link formatting like [url](url) or surrounding brackets/whitespace
+function cleanUrl(raw: string | undefined): string {
+  if (!raw) return "";
+  let v = raw.trim();
+  // Markdown link [text](url)
+  const md = v.match(/\]\((https?:\/\/[^)]+)\)/);
+  if (md) v = md[1];
+  // Strip wrapping [ ] or < >
+  v = v.replace(/^[\[<]+/, "").replace(/[\]>]+$/, "");
+  return v.trim();
+}
+
+const R2_ENDPOINT = cleanUrl(Deno.env.get("R2_ENDPOINT"));
+const R2_ACCESS_KEY_ID = (Deno.env.get("R2_ACCESS_KEY_ID") || "").trim();
+const R2_SECRET_ACCESS_KEY = (Deno.env.get("R2_SECRET_ACCESS_KEY") || "").trim();
+const R2_BUCKET_NAME = (Deno.env.get("R2_BUCKET_NAME") || "").trim();
 
 const s3 = new S3Client({
   region: "auto",
