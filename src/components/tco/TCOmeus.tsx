@@ -268,15 +268,11 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48 p-1" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenuItem onClick={() => handleOpenDocx(tco)} className="flex items-center gap-2 p-2 text-sm cursor-pointer">
-                          <Eye className="h-4 w-4 text-blue-500" /> Abrir DOCX
+                        <DropdownMenuItem onClick={() => handleViewTco(tco)} className="flex items-center gap-2 p-2 text-sm cursor-pointer">
+                          <Eye className="h-4 w-4 text-blue-500" /> Ver TCO
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDownloadDocx(tco)} className="flex items-center gap-2 p-2 text-sm cursor-pointer">
                           <Download className="h-4 w-4 text-green-500" /> Baixar DOCX
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleConvertToWord(tco)} disabled={isCurrentlyConverting} className="flex items-center gap-2 p-2 text-sm cursor-pointer">
-                          {isCurrentlyConverting ? <RefreshCw className="h-4 w-4 text-orange-500 animate-spin" /> : <FileEdit className="h-4 w-4 text-orange-500" />}
-                          {isCurrentlyConverting ? "Convertendo..." : "Converter p/ Word"}
                         </DropdownMenuItem>
                         {canDelete && (
                           <DropdownMenuItem onClick={() => confirmDelete(tco)} className="flex items-center gap-2 p-2 text-sm cursor-pointer text-red-600">
