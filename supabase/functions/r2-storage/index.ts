@@ -24,14 +24,42 @@ function cleanUrl(raw: string | undefined): string {
   return v.trim();
 }
 
-const R2_ENDPOINT = cleanUrl(Deno.env.get("R2_ENDPOINT"));
+const DEFAULT_R2_ENDPOINT = "https://9c99360d74e441a4ae63ae79ca3d180f.r2.cloudflarestorage.com";
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function resolveR2Config() {
+  const rawEndpoint = cleanUrl(Deno.env.get("R2_ENDPOINT"));
+  const rawBucket = cleanUrl(Deno.env.get("R2_BUCKET_NAME"));
+
+  let endpoint = rawEndpoint;
+  let bucketName = rawBucket;
+
+  if (!isValidHttpUrl(endpoint) && isValidHttpUrl(bucketName)) {
+    endpoint = bucketName;
+    bucketName = rawEndpoint;
+  }
+
+  if (!isValidHttpUrl(endpoint)) endpoint = DEFAULT_R2_ENDPOINT;
+
+  return { endpoint, bucketName };
+}
+
+const { endpoint: R2_ENDPOINT, bucketName: R2_BUCKET_NAME } = resolveR2Config();
 const R2_ACCESS_KEY_ID = (Deno.env.get("R2_ACCESS_KEY_ID") || "").trim();
 const R2_SECRET_ACCESS_KEY = (Deno.env.get("R2_SECRET_ACCESS_KEY") || "").trim();
-const R2_BUCKET_NAME = (Deno.env.get("R2_BUCKET_NAME") || "").trim();
 
 const s3 = new S3Client({
   region: "auto",
   endpoint: R2_ENDPOINT,
+  forcePathStyle: true,
   credentials: {
     accessKeyId: R2_ACCESS_KEY_ID,
     secretAccessKey: R2_SECRET_ACCESS_KEY,
@@ -43,6 +71,13 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
 }
 
 Deno.serve(async (req) => {
@@ -91,6 +126,30 @@ Deno.serve(async (req) => {
           { expiresIn: 600 }
         );
         return json({ uploadUrl: url });
+      }
+
+      case "upload": {
+        const fileName = String(body.fileName || "");
+        const fileType = String(body.fileType || "application/octet-stream");
+        const base64 = String(body.base64 || "");
+        if (!fileName) return json({ error: "fileName obrigatório" }, 400);
+        if (!base64) return json({ error: "arquivo obrigatório" }, 400);
+
+        const uploadUrl = await getSignedUrl(
+          s3,
+          new PutObjectCommand({ Bucket: R2_BUCKET_NAME, Key: fileName, ContentType: fileType }),
+          { expiresIn: 600 }
+        );
+        const putRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": fileType },
+          body: base64ToBytes(base64),
+        });
+        if (!putRes.ok) {
+          const text = await putRes.text().catch(() => "");
+          return json({ error: `Falha ao enviar para o R2 (${putRes.status}): ${text}` }, 500);
+        }
+        return json({ ok: true });
       }
 
       case "download-url": {
