@@ -64,7 +64,7 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
   const fetchAllTcos = useCallback(async () => {
     setIsLoading(true);
     try {
-      const items = await r2ListTcos(user.id);
+      const items = await r2ListTcos(user.id, user.userType);
       const mapped: TcoData[] = items.map((item: any) => ({
         id: item.docxKey || item.tcoNumber || crypto.randomUUID(),
         tcoNumber: item.tcoNumber || "TCO-??",
@@ -85,7 +85,7 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
     } finally {
       setIsLoading(false);
     }
-  }, [user.id, toast]);
+  }, [user.id, user.userType, toast]);
 
   useEffect(() => {
     fetchAllTcos();
