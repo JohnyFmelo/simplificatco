@@ -783,6 +783,11 @@ const TCOForm: React.FC = () => {
             graduacao: componentesGuarnicao[0].posto,
             rgpm: componentesGuarnicao[0].rg,
           } : undefined,
+          equipe: componentesGuarnicao.slice(1).map(g => ({
+            nome: g.nome,
+            graduacao: g.posto,
+            rgpm: g.rg,
+          })),
         };
         const jsonBlob = new Blob([JSON.stringify(metadata)], { type: "application/json" });
         await r2UploadFile(jsonBlob, r2JsonKey, "application/json");

@@ -192,6 +192,7 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
                   <TableHead className="w-[100px] px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</TableHead>
                   <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</TableHead>
                   <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Natureza</TableHead>
+                  <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guarnição</TableHead>
                   <TableHead className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -216,6 +217,23 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
                       </TableCell>
                       <TableCell className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate" title={tco.natureza || "Não especificada"}>
                         {tco.natureza || "Não especificada"}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-sm text-gray-700">
+                        {tco.condutor?.nome ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs">
+                              <Badge variant="outline" className="mr-1 bg-amber-50 text-amber-700 border-amber-300 text-[10px] px-1.5 py-0">Condutor</Badge>
+                              <span className="font-medium">{tco.condutor.graduacao ? `${tco.condutor.graduacao} ` : ""}{tco.condutor.nome}</span>
+                            </span>
+                            {tco.equipe && tco.equipe.length > 0 && (
+                              <span className="text-xs text-gray-500 truncate" title={tco.equipe.map(e => `${e.graduacao || ""} ${e.nome}`.trim()).join(", ")}>
+                                + {tco.equipe.map(e => `${e.graduacao ? e.graduacao + " " : ""}${e.nome}`).join(", ")}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="px-4 py-3 whitespace-nowrap text-right">
                         <DropdownMenu>
