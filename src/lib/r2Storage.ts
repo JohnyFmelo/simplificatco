@@ -28,14 +28,12 @@ export async function r2DeleteTco(fileName: string): Promise<void> {
 }
 
 export async function r2UploadFile(file: Blob, r2Key: string, contentType: string): Promise<void> {
-  const uploadUrl = await r2GetUploadUrl(r2Key, contentType);
-  const putRes = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
-    body: file,
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Erro ao ler arquivo para backup"));
+    reader.readAsDataURL(file);
   });
-  if (!putRes.ok) {
-    const txt = await putRes.text().catch(() => "");
-    throw new Error(`Erro ao fazer upload do arquivo (${putRes.status}): ${txt}`);
-  }
+  const base64 = dataUrl.split(",")[1] || "";
+  await callR2("upload", { fileName: r2Key, fileType: contentType, base64 });
 }
