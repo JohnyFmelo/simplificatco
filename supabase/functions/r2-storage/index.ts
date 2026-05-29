@@ -72,6 +72,13 @@ function json(body: unknown, status = 200) {
   });
 }
 
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -118,6 +125,24 @@ Deno.serve(async (req) => {
           { expiresIn: 600 }
         );
         return json({ uploadUrl: url });
+      }
+
+      case "upload": {
+        const fileName = String(body.fileName || "");
+        const fileType = String(body.fileType || "application/octet-stream");
+        const base64 = String(body.base64 || "");
+        if (!fileName) return json({ error: "fileName obrigatório" }, 400);
+        if (!base64) return json({ error: "arquivo obrigatório" }, 400);
+
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: R2_BUCKET_NAME,
+            Key: fileName,
+            ContentType: fileType,
+            Body: base64ToBytes(base64),
+          })
+        );
+        return json({ ok: true });
       }
 
       case "download-url": {
