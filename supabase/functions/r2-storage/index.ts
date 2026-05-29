@@ -80,6 +80,20 @@ function base64ToBytes(base64: string): Uint8Array {
   return bytes;
 }
 
+function onlyDigits(value: unknown): string {
+  return String(value || "").replace(/\D+/g, "");
+}
+
+function isAdminAccess(value: unknown): boolean {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized === "admin" || normalized === "administrador";
+}
+
+function ownerFromLegacyKey(key: string): string {
+  const fileName = key.split("/").pop() || "";
+  return onlyDigits(fileName.split("_")[0]);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -94,12 +108,24 @@ Deno.serve(async (req) => {
     switch (action) {
       case "list": {
         const userId = String(body.userId || "");
+        const userType = String(body.userType || "");
         if (!userId) return json({ error: "userId obrigatório" }, 400);
-        const prefix = `tcos/${userId}/`;
-        const out = await s3.send(new ListObjectsV2Command({ Bucket: R2_BUCKET_NAME, Prefix: prefix }));
-        const items = (out.Contents || [])
-          .filter((o) => o.Key?.endsWith(".json"))
-          .map((o) => ({ key: o.Key!, size: o.Size, lastModified: o.LastModified }));
+        const currentUserRgpm = onlyDigits(userId);
+        const canSeeAll = isAdminAccess(userType);
+        const items: { key: string; size?: number; lastModified?: Date }[] = [];
+        let continuationToken: string | undefined = undefined;
+
+        do {
+          const out = await s3.send(new ListObjectsV2Command({
+            Bucket: R2_BUCKET_NAME,
+            Prefix: "tcos/",
+            ContinuationToken: continuationToken,
+          }));
+          (out.Contents || [])
+            .filter((o) => o.Key?.endsWith(".json"))
+            .forEach((o) => items.push({ key: o.Key!, size: o.Size, lastModified: o.LastModified }));
+          continuationToken = out.IsTruncated ? out.NextContinuationToken : undefined;
+        } while (continuationToken);
 
         const tcos = await Promise.all(
           items.map(async (it) => {
@@ -107,13 +133,20 @@ Deno.serve(async (req) => {
               const url = await getSignedUrl(s3, new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: it.key }), { expiresIn: 300 });
               const r = await fetch(url);
               const meta = await r.json();
-              return { ...meta, _key: it.key };
+              const docxKey = String(meta?.docxKey || it.key.replace(/\.json$/i, ".docx"));
+              const ownerRgpm = onlyDigits(meta?.ownerRgpm) || ownerFromLegacyKey(it.key) || onlyDigits(docxKey);
+              if (!canSeeAll && ownerRgpm !== currentUserRgpm) return null;
+              return { ...meta, docxKey, ownerRgpm, _key: it.key };
             } catch {
               return null;
             }
           })
         );
-        return json(tcos.filter(Boolean));
+        return json(tcos.filter(Boolean).sort((a: any, b: any) => {
+          const ta = Date.parse(String(a?.savedAt || "")) || 0;
+          const tb = Date.parse(String(b?.savedAt || "")) || 0;
+          return tb - ta;
+        }));
       }
 
       case "upload-url": {
