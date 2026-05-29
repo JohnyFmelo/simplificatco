@@ -24,10 +24,37 @@ function cleanUrl(raw: string | undefined): string {
   return v.trim();
 }
 
-const R2_ENDPOINT = cleanUrl(Deno.env.get("R2_ENDPOINT"));
+const DEFAULT_R2_ENDPOINT = "https://9c99360d74e441a4ae63ae79ca3d180f.r2.cloudflarestorage.com";
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function resolveR2Config() {
+  const rawEndpoint = cleanUrl(Deno.env.get("R2_ENDPOINT"));
+  const rawBucket = cleanUrl(Deno.env.get("R2_BUCKET_NAME"));
+
+  let endpoint = rawEndpoint;
+  let bucketName = rawBucket;
+
+  if (!isValidHttpUrl(endpoint) && isValidHttpUrl(bucketName)) {
+    endpoint = bucketName;
+    bucketName = rawEndpoint;
+  }
+
+  if (!isValidHttpUrl(endpoint)) endpoint = DEFAULT_R2_ENDPOINT;
+
+  return { endpoint, bucketName };
+}
+
+const { endpoint: R2_ENDPOINT, bucketName: R2_BUCKET_NAME } = resolveR2Config();
 const R2_ACCESS_KEY_ID = (Deno.env.get("R2_ACCESS_KEY_ID") || "").trim();
 const R2_SECRET_ACCESS_KEY = (Deno.env.get("R2_SECRET_ACCESS_KEY") || "").trim();
-const R2_BUCKET_NAME = (Deno.env.get("R2_BUCKET_NAME") || "").trim();
 
 const s3 = new S3Client({
   region: "auto",
