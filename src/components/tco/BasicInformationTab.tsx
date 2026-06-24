@@ -379,7 +379,9 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
         <div className="form-group">
           <label>CR <span className="required">*</span></label>
           <select value={cr} onChange={(e) => setCr(e.target.value)}>
-            <option>{FIXED_CR}</option>
+            {crOptions.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
           </select>
         </div>
         <div className="form-group">
