@@ -1,1 +1,0 @@
-ALTER TABLE public.usuarios_login ALTER COLUMN rgpm TYPE varchar(120);

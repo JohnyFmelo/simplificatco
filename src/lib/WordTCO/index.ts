@@ -73,13 +73,9 @@ export function getUnitAddressLines(unidade?: string | null): string[] {
 // Busca endereço/contato da unidade no Supabase e retorna linhas do rodapé
 async function getUnitAddressLinesFromDb(unidade?: string | null): Promise<string[] | null> {
   if (!unidade) return null;
-
-  // Regra especial: Raio2CR usa cabeçalho/rodapé do 2º CR (2º Comando Regional)
-  const isRaio2CR = /raio\s*2\s*cr/i.test(unidade) || unidade.trim().toLowerCase() === "raio2cr";
-
-  const fullName = isRaio2CR ? "2º Comando Regional" : formatUnitFooterName(unidade);
-  const abbr = isRaio2CR ? "2º CR" : abbreviateUnidade(unidade);
-
+  
+  const fullName = formatUnitFooterName(unidade);
+  const abbr = abbreviateUnidade(unidade);
   
   const buildLines = (u: any): string[] => {
     const nomeLinha = u?.nome_oficial || fullName || "***";
