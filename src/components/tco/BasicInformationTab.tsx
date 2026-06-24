@@ -196,10 +196,11 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
   }, [customNaturezas]);
 
   // Opções de CR e Unidade
-  const [crOptions, setCrOptions] = useState<string[]>([FIXED_CR]);
-  const [unidadeOptions, setUnidadeOptions] = useState<string[]>(CR2_UNIDADES.map(u => u.nome));
+  const [crOptions] = useState<string[]>(CR_OPTIONS);
+  const initialUnidades = (UNIDADES_BY_CR[cr] || CR2_UNIDADES).map(u => u.nome);
+  const [unidadeOptions, setUnidadeOptions] = useState<string[]>(initialUnidades);
 
-  // Carregar/seed de Unidades no Supabase e fixar CR
+  // Carregar/seed de Unidades no Supabase e fixar CR padrão se vazio
   useEffect(() => {
     const seedUnidades = async () => {
       try {
@@ -209,12 +210,18 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
       }
     };
     if (!cr) setCr(FIXED_CR);
-    setCrOptions([FIXED_CR]);
-    setUnidadeOptions(CR2_UNIDADES.map(u => u.nome));
     seedUnidades();
   }, []);
 
-  // Registro de CR removido conforme solicitação; CR é fixo.
+  // Atualiza opções de Unidade conforme CR selecionado
+  useEffect(() => {
+    const lista = (UNIDADES_BY_CR[cr] || CR2_UNIDADES).map(u => u.nome);
+    setUnidadeOptions(lista);
+    if (unidade && !lista.includes(unidade)) {
+      setUnidade(lista[0] || "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cr]);
 
 
 
