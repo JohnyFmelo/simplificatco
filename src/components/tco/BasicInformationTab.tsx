@@ -91,8 +91,15 @@ const naturezaTipificacoes: Record<string, string> = {
   "Periclitação da vida": "ART. 132 DO CÓDIGO PENAL"
 };
 
-// CR fixo e dataset de Unidades do CR2
+// CRs disponíveis e datasets de Unidades por CR
 const FIXED_CR = "2º Comando Regional";
+const CR1 = "1º Comando Regional";
+const CR_OPTIONS = [CR1, FIXED_CR];
+
+const CR1_UNIDADES: { nome: string; cidade: string; endereco: string; email: string; telefone: string }[] = [
+  { nome: "Batalhão de Polícia Militar de Trânsito Urbano e Rodoviário - BPMTRAN", cidade: "Cuiabá", endereco: "Av. Fernando Corrêa da Costa, nº 4177, Chácara dos Pinheiros - Cuiabá - MT", email: "bpmtran@pm.mt.gov.br", telefone: "(65) 78085-625 / (65) 3661-1956" },
+];
+
 const CR2_UNIDADES: { nome: string; cidade: string; endereco: string; email: string; telefone: string }[] = [
   { nome: "2º Comando Regional - Sede", cidade: "", endereco: "", email: "", telefone: "" },
   { nome: "4º Batalhão de Polícia Militar", cidade: "Várzea Grande", endereco: "Av. Filinto Muller, nº 538, Centro, CEP 78.110-100", email: "4bpm@pm.mt.gov.br", telefone: "(65) 3901-8295 / (65) 9996-9600" },
@@ -109,6 +116,11 @@ const CR2_UNIDADES: { nome: string; cidade: string; endereco: string; email: str
   { nome: "6ª Companhia Independente de Polícia Militar - Poconé", cidade: "Poconé", endereco: "Av. dos Trabalhadores, s/nº, Bairro: Jardim dos Estados, CEP 78.175-000", email: "6cipm@pm.mt.gov.br", telefone: "(65) 3345-1190 / (65) 9 9913-2126 / (65) 9 8170-0294" },
   { nome: "Núcleo de Polícia Militar - Nossa Senhora do Livramento", cidade: "Nossa Senhora do Livramento", endereco: "Av. Coronel Botelho, Bairro: Centro, CEP 78.170-000", email: "npmlivramento@pm.mt.gov.br", telefone: "(65) 3351-1298" },
 ];
+
+const UNIDADES_BY_CR: Record<string, typeof CR2_UNIDADES> = {
+  [CR1]: CR1_UNIDADES,
+  [FIXED_CR]: CR2_UNIDADES,
+};
 
 const formatarPena = (anosDecimais: number): string => {
   if (anosDecimais < 0) return "Pena indeterminada";
