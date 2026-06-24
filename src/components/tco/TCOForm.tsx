@@ -845,7 +845,8 @@ const TCOForm: React.FC = () => {
             "4º Batalhão de Polícia Militar": "Várzea Grande",
             "15ª Cia Independente de Polícia Militar - Força Tática": "Várzea Grande",
             "25º Batalhão de Polícia Militar do Bairro Cristo Rei": "Várzea Grande",
-            "25ª Companhia Independente de Polícia Militar": "Várzea Grande"
+            "25ª Companhia Independente de Polícia Militar": "Várzea Grande",
+            "Batalhão de Polícia Militar de Trânsito Urbano e Rodoviário - BPMTRAN": "Cuiabá"
           };
           setMunicipio(MAPA[value] || municipio);
           if (cr === "2º Comando Regional") {

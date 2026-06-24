@@ -91,8 +91,15 @@ const naturezaTipificacoes: Record<string, string> = {
   "Periclitação da vida": "ART. 132 DO CÓDIGO PENAL"
 };
 
-// CR fixo e dataset de Unidades do CR2
+// CRs disponíveis e datasets de Unidades por CR
 const FIXED_CR = "2º Comando Regional";
+const CR1 = "1º Comando Regional";
+const CR_OPTIONS = [CR1, FIXED_CR];
+
+const CR1_UNIDADES: { nome: string; cidade: string; endereco: string; email: string; telefone: string }[] = [
+  { nome: "Batalhão de Polícia Militar de Trânsito Urbano e Rodoviário - BPMTRAN", cidade: "Cuiabá", endereco: "Av. Fernando Corrêa da Costa, nº 4177, Chácara dos Pinheiros - Cuiabá - MT", email: "bpmtran@pm.mt.gov.br", telefone: "(65) 78085-625 / (65) 3661-1956" },
+];
+
 const CR2_UNIDADES: { nome: string; cidade: string; endereco: string; email: string; telefone: string }[] = [
   { nome: "2º Comando Regional - Sede", cidade: "", endereco: "", email: "", telefone: "" },
   { nome: "4º Batalhão de Polícia Militar", cidade: "Várzea Grande", endereco: "Av. Filinto Muller, nº 538, Centro, CEP 78.110-100", email: "4bpm@pm.mt.gov.br", telefone: "(65) 3901-8295 / (65) 9996-9600" },
@@ -109,6 +116,11 @@ const CR2_UNIDADES: { nome: string; cidade: string; endereco: string; email: str
   { nome: "6ª Companhia Independente de Polícia Militar - Poconé", cidade: "Poconé", endereco: "Av. dos Trabalhadores, s/nº, Bairro: Jardim dos Estados, CEP 78.175-000", email: "6cipm@pm.mt.gov.br", telefone: "(65) 3345-1190 / (65) 9 9913-2126 / (65) 9 8170-0294" },
   { nome: "Núcleo de Polícia Militar - Nossa Senhora do Livramento", cidade: "Nossa Senhora do Livramento", endereco: "Av. Coronel Botelho, Bairro: Centro, CEP 78.170-000", email: "npmlivramento@pm.mt.gov.br", telefone: "(65) 3351-1298" },
 ];
+
+const UNIDADES_BY_CR: Record<string, typeof CR2_UNIDADES> = {
+  [CR1]: CR1_UNIDADES,
+  [FIXED_CR]: CR2_UNIDADES,
+};
 
 const formatarPena = (anosDecimais: number): string => {
   if (anosDecimais < 0) return "Pena indeterminada";
@@ -184,10 +196,11 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
   }, [customNaturezas]);
 
   // Opções de CR e Unidade
-  const [crOptions, setCrOptions] = useState<string[]>([FIXED_CR]);
-  const [unidadeOptions, setUnidadeOptions] = useState<string[]>(CR2_UNIDADES.map(u => u.nome));
+  const [crOptions] = useState<string[]>(CR_OPTIONS);
+  const initialUnidades = (UNIDADES_BY_CR[cr] || CR2_UNIDADES).map(u => u.nome);
+  const [unidadeOptions, setUnidadeOptions] = useState<string[]>(initialUnidades);
 
-  // Carregar/seed de Unidades no Supabase e fixar CR
+  // Carregar/seed de Unidades no Supabase e fixar CR padrão se vazio
   useEffect(() => {
     const seedUnidades = async () => {
       try {
@@ -197,12 +210,18 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
       }
     };
     if (!cr) setCr(FIXED_CR);
-    setCrOptions([FIXED_CR]);
-    setUnidadeOptions(CR2_UNIDADES.map(u => u.nome));
     seedUnidades();
   }, []);
 
-  // Registro de CR removido conforme solicitação; CR é fixo.
+  // Atualiza opções de Unidade conforme CR selecionado
+  useEffect(() => {
+    const lista = (UNIDADES_BY_CR[cr] || CR2_UNIDADES).map(u => u.nome);
+    setUnidadeOptions(lista);
+    if (unidade && !lista.includes(unidade)) {
+      setUnidade(lista[0] || "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cr]);
 
 
 
@@ -360,7 +379,9 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
         <div className="form-group">
           <label>CR <span className="required">*</span></label>
           <select value={cr} onChange={(e) => setCr(e.target.value)}>
-            <option>{FIXED_CR}</option>
+            {crOptions.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
           </select>
         </div>
         <div className="form-group">
