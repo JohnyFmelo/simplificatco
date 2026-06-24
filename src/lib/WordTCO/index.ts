@@ -58,6 +58,13 @@ export function formatUnitFooterName(unidade?: string | null): string {
 export function getUnitAddressLines(unidade?: string | null): string[] {
   const u = (unidade || "").toLowerCase();
   // Mapeamentos conhecidos
+  if (/bpmtran|tr[âa]nsito\s+urbano\s+e\s+rodovi[áa]rio/i.test(u)) {
+    return [
+      "Batalhão de Polícia Militar de Trânsito Urbano e Rodoviário - BPMTRAN",
+      "Av. Fernando Corrêa da Costa, nº 4177, Chácara dos Pinheiros",
+      "Cuiabá - MT  |  Tel.: (65) 3661-1956  |  E-mail: bpmtran@pm.mt.gov.br",
+    ];
+  }
   if (/25\s*[ºª]?\s*bpm|25\s*[ºª]?\s*batalh[aã]o/i.test(u)) {
     return [
       "25º Batalhão de Polícia Militar",
