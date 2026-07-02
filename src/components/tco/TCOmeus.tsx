@@ -205,10 +205,15 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
                       key={tco.id}
                       aria-selected={selectedTco?.id === tco.id}
                       className={`cursor-pointer transition-colors duration-150 ease-in-out hover:bg-slate-50 ${selectedTco?.id === tco.id ? "bg-primary/10 hover:bg-primary/20" : ""}`}
-                      onClick={() => setSelectedTco(tco)}
+                      onClick={() => { setSelectedTco(tco); handleViewTco(tco); }}
                     >
                       <TableCell className="px-4 py-3 whitespace-nowrap">
-                        <Badge variant="outline" className="text-sm font-medium bg-blue-50 text-blue-700 border-blue-300">
+                        <Badge
+                          variant="outline"
+                          onClick={(e) => { e.stopPropagation(); handleDownloadDocx(tco); }}
+                          className="text-sm font-medium bg-blue-50 text-blue-700 border-blue-300 cursor-pointer hover:bg-blue-100"
+                          title="Baixar DOCX"
+                        >
                           {extractTcoDisplayNumber(tco.tcoNumber)}
                         </Badge>
                       </TableCell>
@@ -272,11 +277,16 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
               return (
                 <div
                   key={`card-${tco.id}`}
-                  onClick={() => setSelectedTco(tco)}
+                  onClick={() => { setSelectedTco(tco); handleViewTco(tco); }}
                   className={`bg-white p-4 rounded-lg border border-gray-200 shadow-sm cursor-pointer transition-all duration-150 ease-in-out ${selectedTco?.id === tco.id ? "ring-2 ring-primary ring-offset-1" : "hover:shadow-md"}`}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <Badge variant="outline" className="text-base font-semibold bg-blue-50 text-blue-700 border-blue-300 px-2.5 py-1">
+                    <Badge
+                      variant="outline"
+                      onClick={(e) => { e.stopPropagation(); handleDownloadDocx(tco); }}
+                      className="text-base font-semibold bg-blue-50 text-blue-700 border-blue-300 px-2.5 py-1 cursor-pointer hover:bg-blue-100"
+                      title="Baixar DOCX"
+                    >
                       TCO {extractTcoDisplayNumber(tco.tcoNumber)}
                     </Badge>
                     <DropdownMenu>
