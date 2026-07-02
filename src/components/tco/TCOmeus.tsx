@@ -277,11 +277,16 @@ const TCOmeus: React.FC<TCOmeusProps> = ({ user, toast, setSelectedTco, selected
               return (
                 <div
                   key={`card-${tco.id}`}
-                  onClick={() => setSelectedTco(tco)}
+                  onClick={() => { setSelectedTco(tco); handleViewTco(tco); }}
                   className={`bg-white p-4 rounded-lg border border-gray-200 shadow-sm cursor-pointer transition-all duration-150 ease-in-out ${selectedTco?.id === tco.id ? "ring-2 ring-primary ring-offset-1" : "hover:shadow-md"}`}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <Badge variant="outline" className="text-base font-semibold bg-blue-50 text-blue-700 border-blue-300 px-2.5 py-1">
+                    <Badge
+                      variant="outline"
+                      onClick={(e) => { e.stopPropagation(); handleDownloadDocx(tco); }}
+                      className="text-base font-semibold bg-blue-50 text-blue-700 border-blue-300 px-2.5 py-1 cursor-pointer hover:bg-blue-100"
+                      title="Baixar DOCX"
+                    >
                       TCO {extractTcoDisplayNumber(tco.tcoNumber)}
                     </Badge>
                     <DropdownMenu>
