@@ -998,7 +998,7 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
           new TableCell({ children: [ new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'ASSINATURA' }) ] }) ] })
         ]}),
         // Linha adicional em branco para preenchimento (altura 1 cm)
-        new TableRow({ height: { value: convertMillimetersToTwip(10), rule: HeightRule.EXACT }, children: [
+        new TableRow({ height: { value: convertMillimetersToTwip(10), rule: HeightRule.ATLEAST }, children: [
           new TableCell({ children: [ new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }) ] }),
           new TableCell({ children: [ new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }) ] }),
           new TableCell({ children: [ new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }) ] }),
@@ -1052,38 +1052,39 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
       ? drogas.map((drug, idx) => `${idx + 1}. ${drug.quantidade} de substância ${String(drug.substancia || '').toLowerCase()} de cor ${String(drug.cor || '').toLowerCase()}, com odor ${String(drug.odor || '').toLowerCase()}${drug.indicios ? `, ${String(drug.indicios || '').toLowerCase()}` : ''}${(idx === drogas.length - 1 && lacreNumero) ? `, tudo acondicionado sob o lacre nº ${lacreNumero}.` : '.'}`).join(' ')
       : ((apreensoes || '').trim() || '—'));
     const tabela = new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: 9000, type: WidthType.DXA },
+      columnWidths: [3000, 3000, 3000],
       rows: [
         new TableRow({
-          height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT },
+          height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST },
           children: [
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('DATA', formatDateBR(dataFato) || '___/___/______') ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('HORA', horaApreensao) ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('LOCAL', unidadeLinha) ] }),
           ]
         }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('NOME DO POLICIAL', `${condutorNome} ${condutorPosto}`.trim()) ] }) ] }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('FILIAÇÃO PAI', (condutor?.pai || '').toUpperCase()) ] }) ] }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('FILIAÇÃO MÃE', (condutor?.mae || '').toUpperCase()) ] }) ] }),
+        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('NOME DO POLICIAL', `${condutorNome} ${condutorPosto}`.trim()) ] }) ] }),
+        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('FILIAÇÃO PAI', (condutor?.pai || '').toUpperCase()) ] }) ] }),
+        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('FILIAÇÃO MÃE', (condutor?.mae || '').toUpperCase()) ] }) ] }),
         new TableRow({
-          height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT },
+          height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST },
           children: [
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('NATURALIDADE', (condutor?.naturalidade || '').toUpperCase()) ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('RGPM', condutor?.rg || '') ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('CPF', condutor?.cpf || '') ] }),
           ]
         }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('END.', (endereco || '').toUpperCase()) ] }) ] }),
+        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('END.', (endereco || '').toUpperCase()) ] }) ] }),
         new TableRow({
-          height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT },
+          height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST },
           children: [
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('MUNICÍPIO', (municipio || '').toUpperCase()) ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('UF', 'MT') ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('TEL', condutor?.telefone || '') ] }),
           ]
         }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ new Paragraph({ children: [ new TextRun({ text: 'FICA APREENDIDO O DESCRITO ABAIXO: ', bold: true }), new TextRun({ text: descricaoLinha }) ] }) ] }) ] }),
-        new TableRow({ height: { value: convertMillimetersToTwip(20.7), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ new Paragraph({ children: [ new TextRun({ text: 'O PRESENTE TERMO TEM POR OBJETIVO APENAS A CONSTATAÇÃO PRELIMINAR DA NATUREZA DA SUBSTÂNCIA PARA FINS DE LAVRATURA DO TERMO CIRCUNSTANCIADO, NÃO SUPRINDO O EXAME PERICIAL DEFINITIVO (ART. 50, §1º DA LEI 11.343/2006).' }) ] }) ] }) ] })
+        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ new Paragraph({ children: [ new TextRun({ text: 'FICA APREENDIDO O DESCRITO ABAIXO: ', bold: true }), new TextRun({ text: descricaoLinha }) ] }) ] }) ] }),
+        new TableRow({ height: { value: convertMillimetersToTwip(20.7), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ new Paragraph({ children: [ new TextRun({ text: 'O PRESENTE TERMO TEM POR OBJETIVO APENAS A CONSTATAÇÃO PRELIMINAR DA NATUREZA DA SUBSTÂNCIA PARA FINS DE LAVRATURA DO TERMO CIRCUNSTANCIADO, NÃO SUPRINDO O EXAME PERICIAL DEFINITIVO (ART. 50, §1º DA LEI 11.343/2006).' }) ] }) ] }) ] })
       ]
     });
     segundaPaginaChildren.push(tabela);
@@ -1234,38 +1235,39 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
       ? drogas.map((drug, idx) => `${idx + 1}. ${drug.quantidade} de substância ${drug.substancia.toLowerCase()} de cor ${drug.cor.toLowerCase()}, com odor ${drug.odor.toLowerCase()}${drug.indicios ? `, ${drug.indicios.toLowerCase()}` : ''}${(idx === drogas.length - 1 && lacreNumero) ? `, tudo acondicionado sob o lacre nº ${lacreNumero}.` : '.'}`).join(' ')
       : ((apreensoes || '').trim() || '—'));
     const tabela = new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: 9000, type: WidthType.DXA },
+      columnWidths: [3000, 3000, 3000],
       rows: [
         new TableRow({
-          height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT },
+          height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST },
           children: [
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('DATA', formatDateBR(dataFato) || '___/___/______') ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('HORA', horaApreensao) ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('LOCAL', unidadeLinha) ] }),
           ]
         }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('NOME DO POLICIAL', `${condutorNome} ${condutorPosto}`.trim()) ] }) ] }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('FILIAÇÃO PAI', (condutor?.pai || '').toUpperCase()) ] }) ] }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('FILIAÇÃO MÃE', (condutor?.mae || '').toUpperCase()) ] }) ] }),
+        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('NOME DO POLICIAL', `${condutorNome} ${condutorPosto}`.trim()) ] }) ] }),
+        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('FILIAÇÃO PAI', (condutor?.pai || '').toUpperCase()) ] }) ] }),
+        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('FILIAÇÃO MÃE', (condutor?.mae || '').toUpperCase()) ] }) ] }),
         new TableRow({
-          height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT },
+          height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST },
           children: [
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('NATURALIDADE', (condutor?.naturalidade || '').toUpperCase()) ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('RGPM', condutor?.rg || '') ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('CPF', condutor?.cpf || '') ] }),
           ]
         }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('END.', (endereco || '').toUpperCase()) ] }) ] }),
+        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ labelValueParagraph('END.', (endereco || '').toUpperCase()) ] }) ] }),
         new TableRow({
-          height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT },
+          height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST },
           children: [
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('MUNICÍPIO', (municipio || '').toUpperCase()) ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('UF', 'MT') ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('TEL', condutor?.telefone || '') ] }),
           ]
         }),
-        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ new Paragraph({ children: [ new TextRun({ text: 'FICA APREENDIDO O DESCRITO ABAIXO: ', bold: true }), new TextRun({ text: descricaoLinha2 }) ] }) ] }) ] }),
-        new TableRow({ height: { value: convertMillimetersToTwip(15), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [
+        new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [ new Paragraph({ children: [ new TextRun({ text: 'FICA APREENDIDO O DESCRITO ABAIXO: ', bold: true }), new TextRun({ text: descricaoLinha2 }) ] }) ] }) ] }),
+        new TableRow({ height: { value: convertMillimetersToTwip(15), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, columnSpan: 3, children: [
           new Paragraph({ children: [ new TextRun({ text: (drogas && drogas.length > 0)
             ? 'O PRESENTE TERMO TEM POR OBJETIVO APENAS A CONSTATAÇÃO PRELIMINAR DA NATUREZA DA SUBSTÂNCIA PARA FINS DE LAVRATURA DO TERMO CIRCUNSTANCIADO, NÃO SUPRINDO O EXAME PERICIAL DEFINITIVO (ART. 50, §1º DA LEI 11.343/2006).' 
             : 'O PRESENTE TERMO DE APREENSÃO FOI LAVRADO COM BASE NO ART. 6º, II, DO CÓDIGO DE PROCESSO PENAL.' }) ] })
@@ -1322,23 +1324,23 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
       const tabelaDep = new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [
-          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('NOME OU RAZÃO SOCIAL', nomeFiel) ] }) ] }),
-          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('CPF/CNPJ', cpfFiel) ] }) ] }),
-          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('FILIAÇÃO PAI', paiFiel) ] }) ] }),
-          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('FILIAÇÃO MÃE', maeFiel) ] }) ] }),
-          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('ENDEREÇO', enderecoFiel) ] }) ] }),
-          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [
+          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('NOME OU RAZÃO SOCIAL', nomeFiel) ] }) ] }),
+          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('CPF/CNPJ', cpfFiel) ] }) ] }),
+          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('FILIAÇÃO PAI', paiFiel) ] }) ] }),
+          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('FILIAÇÃO MÃE', maeFiel) ] }) ] }),
+          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('ENDEREÇO', enderecoFiel) ] }) ] }),
+          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('MUNICÍPIO', municipioFiel) ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('UF', 'MT') ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('TELEFONE', telFiel) ] })
           ] }),
-          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [
+          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('LOCAL DO DEPÓSITO', enderecoFiel) ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('DATA', dataDep) ] }),
             new TableCell({ borders: tableCellBorders, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('HORA', horaDep) ] })
           ] }),
-          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('DESCRIÇÃO DO BEM', descricaoBem) ] }) ] }),
-          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('RECEBI OS BENS DEPOSITADOS EM', dataDep) ] }) ] })
+          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('DESCRIÇÃO DO BEM', descricaoBem) ] }) ] }),
+          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [ new TableCell({ borders: tableCellBorders, columnSpan: 3, verticalAlign: VerticalAlign.CENTER, children: [ labelValueParagraph('RECEBI OS BENS DEPOSITADOS EM', dataDep) ] }) ] })
         ]
       });
       segundaPaginaChildren.push(tabelaDep);
@@ -1352,10 +1354,10 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
       const tabelaTestemunha = new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [
-          new TableRow({ height: { value: convertMillimetersToTwip(6.2), rule: HeightRule.EXACT }, children: [
+          new TableRow({ height: { value: convertMillimetersToTwip(6.2), rule: HeightRule.ATLEAST }, children: [
             new TableCell({ borders: tableCellBorders, columnSpan: 2, children: [ new Paragraph({ children: [ new TextRun({ text: 'Testemunha', bold: true }) ] }) ] })
           ] }),
-          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.EXACT }, children: [
+          new TableRow({ height: { value: convertMillimetersToTwip(13), rule: HeightRule.ATLEAST }, children: [
             new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('Nome', '') ] }),
             new TableCell({ borders: tableCellBorders, children: [ labelValueParagraph('Assinatura', '') ] })
           ] })
