@@ -373,34 +373,29 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
   const unidadeLinha = unidadeAbr || '***';
   const crParte = crAbr ? ` / ${crAbr}` : '';
 
-  // carregar brasão do diretório public, opcional (lida com acento e extensão)
+  // carregar brasão empacotado pelo Vite (garante o binário correto em qualquer host)
   let imageParagraph: any = null;
-  const logoCandidates = [
-    '/Brasão.png', '/Bras%C3%A3o.png', '/brasao.png', '/Brasao.png',
-    '/Brasão.jpg', '/Bras%C3%A3o.jpg', '/brasao.jpg', '/Brasao.jpg',
-    '/Brasão', '/Bras%C3%A3o', '/brasao', '/Brasao'
-  ];
-  for (const url of logoCandidates) {
-    try {
-      const resp = await fetch(encodeURI(url));
-      if (!resp.ok) continue;
+  try {
+    const brasaoUrl = (await import('@/assets/brasao-pmmt.png')).default as string;
+    const resp = await fetch(brasaoUrl);
+    if (resp.ok) {
       const bytes = new Uint8Array(await resp.arrayBuffer());
-      const ct = (resp.headers.get('Content-Type') || '').toLowerCase();
-      const isPng = ct.includes('png') || url.toLowerCase().endsWith('.png');
-      const isJpeg = ct.includes('jpeg') || ct.includes('jpg') || url.toLowerCase().endsWith('.jpg');
-      const imgType = isPng ? 'png' : 'jpg';
-      imageParagraph = new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 0, after: 0 },
-        children: [new ImageRun({ 
-          data: bytes, 
-          transformation: { width: 80, height: 80 },
-          type: imgType
-        })],
-      });
-      break;
-    } catch { /* tenta próximo candidato */ }
-  }
+      // valida magic bytes de PNG (89 50 4E 47)
+      const isPng = bytes.length > 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47;
+      if (isPng) {
+        imageParagraph = new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 0 },
+          children: [new ImageRun({
+            data: bytes,
+            transformation: { width: 80, height: 80 },
+            type: 'png'
+          })],
+        });
+      }
+    }
+  } catch { /* segue sem brasão se falhar */ }
+
 
   // ===== Corpo da página: AUTUAÇÃO =====
   const { dia, mes, ano } = obterDataCuiaba();
