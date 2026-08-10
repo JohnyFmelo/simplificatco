@@ -17,6 +17,9 @@ import { uploadPhoto, listPhotos, deletePhoto, getUserIdOrAnon } from "@/lib/sup
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 
 // Tipos mínimos para composição
@@ -445,10 +448,262 @@ const TCOForm: React.FC = () => {
   const [audienciaHora, setAudienciaHora] = useState("");
   const [photoCaptions, setPhotoCaptions] = useState<Record<string, string>>({});
 
+  // ===== MODAL: GERAR TCO DE TESTE (ADMIN EXCLUSIVO) =====
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [testNatureza, setTestNatureza] = useState<string>("Porte de drogas para consumo");
+  const [testSegundaNatureza, setTestSegundaNatureza] = useState<boolean>(false);
+  const [testIncluirVitima, setTestIncluirVitima] = useState<boolean>(false);
+  const [testMaisPoliciais, setTestMaisPoliciais] = useState<boolean>(false);
+  const [testExameLesao, setTestExameLesao] = useState<boolean>(false);
+  const [testFielDepositario, setTestFielDepositario] = useState<boolean>(false);
+  const [isTestTCO, setIsTestTCO] = useState<boolean>(false);
+
+  const isAdmin = (accessLevel && accessLevel.toLowerCase().startsWith("admin")) || false;
+
+  const { toast } = useToast();
+
+  const pad2 = (n: number) => n.toString().padStart(2, '0');
+  const formatDateBR = (d: Date) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  const todayBR = () => formatDateBR(new Date());
+  const addDaysBR = (days: number) => { const d = new Date(); d.setDate(d.getDate() + days); return formatDateBR(d); };
+  const nowHHMM = () => `${pad2(new Date().getHours())}:${pad2(new Date().getMinutes())}`;
+
+  const gerarCpfFicticio = () => {
+    const r = () => Math.floor(Math.random() * 9);
+    const n = Array.from({ length: 9 }, () => r());
+    const d1 = (n.reduce((s, v, i) => s + v * (10 - i), 0) * 10) % 11;
+    const d1ok = d1 === 10 ? 0 : d1;
+    const n2 = [...n, d1ok];
+    const d2 = (n2.reduce((s, v, i) => s + v * (11 - i), 0) * 10) % 11;
+    const d2ok = d2 === 10 ? 0 : d2;
+    const nums = [...n2, d2ok].map(String);
+    return `${nums[0]}${nums[1]}${nums[2]}.${nums[3]}${nums[4]}${nums[5]}.${nums[6]}${nums[7]}${nums[8]}-${nums[9]}${nums[10]}`;
+  };
+
+  const fillTestTCO = () => {
+    setShowTestModal(false);
+    setIsTestTCO(true);
+
+    // 1) Informações Básicas
+    setTcoNumber("999.2ºCR.2026");
+    setNatureza(testNatureza);
+    setCustomNatureza(testNatureza === "Outros" ? "Natureza customizada de teste" : "");
+    setCr("2º Comando Regional");
+    setUnidade("25º Batalhão de Polícia Militar do Bairro Cristo Rei");
+    setLocalRegistro("CISC DO PARQUE DO LAGO");
+    setMunicipio("VÁRZEA GRANDE - MT");
+
+    // 2) Dados da Ocorrência
+    const hoje = todayBR();
+    const agora = nowHHMM();
+    setDataFato(hoje);
+    setHoraFato(agora);
+    setDataInicioRegistro(hoje);
+    setHoraInicioRegistro(agora);
+    setDataTerminoRegistro(hoje);
+    setHoraTerminoRegistro(agora);
+    setLocalFato("RUA DAS PALMEIRAS, Nº 100, BAIRRO CENTRO");
+    setEndereco("RUA DAS PALMEIRAS, Nº 100, BAIRRO CENTRO, VÁRZEA GRANDE - MT");
+    setComunicante("PATRULHAMENTO DE ROTINA");
+    setGuarnicao("Equipe Alfa 01");
+    setOperacao("Operação Verão Seguro");
+
+    // 3) Drogas (se porte de drogas)
+    if (testNatureza === "Porte de drogas para consumo") {
+      const idDroga = Math.random().toString(36).slice(2);
+      setDrogasAdicionadas([{
+        id: idDroga,
+        quantidade: "01 porção",
+        substancia: "vegetal",
+        cor: "verde",
+        odor: "forte",
+        indicios: "Maconha",
+        isUnknownMaterial: false,
+        customMaterialDesc: ""
+      }]);
+      setLacreNumero("A12345678");
+      setNumeroRequisicao("123");
+      setApreensoes("01 PORÇÃO DE MACONHA (SUBSTÂNCIA VEGETAL VERDE), ACONDICIONADA EM EMBALAGEM PLÁSTICA, LACRE A12345678.");
+    } else {
+      setDrogasAdicionadas([]);
+      setLacreNumero("");
+      setNumeroRequisicao("");
+      setApreensoes("Nenhuma substância apreendida.");
+    }
+
+    // 4) Pessoas Envolvidas
+    const autorMock: PersonalInfo = {
+      nome: "JOÃO DA SILVA (TESTE)",
+      sexo: "Masculino",
+      estadoCivil: "Solteiro(a)",
+      profissao: "Servidor(a) Público(a)",
+      endereco: "RUA DOS TESTES, 123, BAIRRO ALEMÃO, CUIABÁ - MT",
+      dataNascimento: "01/01/1990",
+      naturalidade: "Cuiabá - MT",
+      filiacaoMae: "MARIA DA SILVA",
+      filiacaoPai: "JOSÉ DA SILVA",
+      rg: "1.234.567-SSP-MT",
+      cpf: gerarCpfFicticio(),
+      celular: "(65) 99999-0001",
+      email: "joao.teste@teste.gov.br",
+      laudoPericial: testExameLesao ? "Sim" : "Não",
+      relato: "Eu estava passando pela rua quando a polícia me abordou. Não fiz nada de errado. Reconheço o fato.",
+      representacao: "",
+      semCpf: ""
+    };
+    setAutores([autorMock]);
+
+    if (testIncluirVitima) {
+      const vitimaMock: PersonalInfo = {
+        nome: "MARIA DE SOUZA (TESTE)",
+        sexo: "Feminino",
+        estadoCivil: "Casado(a)",
+        profissao: "Professor(a)",
+        endereco: "AVENIDA BRASIL, 500, BAIRRO CENTRO, VÁRZEA GRANDE - MT",
+        dataNascimento: "15/05/1985",
+        naturalidade: "Várzea Grande - MT",
+        filiacaoMae: "ANA DE SOUZA",
+        filiacaoPai: "PEDRO DE SOUZA",
+        rg: "7.654.321-SSP-MT",
+        cpf: gerarCpfFicticio(),
+        celular: "(65) 98888-0002",
+        email: "maria.teste@teste.gov.br",
+        laudoPericial: testExameLesao ? "Sim" : "Não",
+        relato: "Estava caminhando quando o autor me abordou e me ameaçou. Fiquei muito assustada e sofri danos morais.",
+        representacao: "representar",
+        semCpf: ""
+      };
+      setVitimas([vitimaMock]);
+    } else {
+      setVitimas([{ ...initialPersonalInfo }]);
+    }
+
+    const testemunhaMock: PersonalInfo = {
+      nome: "PEDRO ALVES (TESTE)",
+      sexo: "Masculino",
+      estadoCivil: "Divorciado(a)",
+      profissao: "Aposentado(a)",
+      endereco: "RUA CINCO, 77, BAIRRO JARDIM PRIMAVERA, VÁRZEA GRANDE - MT",
+      dataNascimento: "10/10/1970",
+      naturalidade: "São Paulo - SP",
+      filiacaoMae: "CLARA ALVES",
+      filiacaoPai: "ANTÔNIO ALVES",
+      rg: "3.333.222-SSP-MT",
+      cpf: gerarCpfFicticio(),
+      celular: "(65) 97777-0003",
+      email: "pedro.teste@teste.gov.br",
+      laudoPericial: "Não",
+      relato: "Presenciei tudo do outro lado da rua. Vi o autor abordando a vítima de forma agressiva.",
+      representacao: "",
+      semCpf: ""
+    };
+    setTestemunhas([testemunhaMock]);
+
+    // 5) Guarnição
+    const rgpmCondutor = localStorage.getItem("rgpm") || sessionStorage.getItem("rgpm") || "";
+    const nomeCondutor = userSubtitle && userSubtitle !== "SimplificaTCO"
+      ? userSubtitle.replace(/^SimplificaTCO:\s*/, "")
+      : "SGT PM JOÃO CONDUTOR (TESTE)";
+    const gradMatch = nomeCondutor.match(/^(SGT|SD|CB|1º SGT|2º SGT|SUB TEN|1º TEN|2º TEN|CAP|MAJ|TEN CEL|CEL)\s+(.+)$/i);
+    const postoCond = gradMatch ? gradMatch[1].toUpperCase() : "SGT";
+    const nomeCond = gradMatch ? gradMatch[2] : nomeCondutor;
+
+    const condutor: ComponenteGuarnicao = {
+      rg: rgpmCondutor || "123456",
+      nome: nomeCond,
+      posto: postoCond,
+      pai: "PAI DO CONDUTOR (TESTE)",
+      mae: "MÃE DO CONDUTOR (TESTE)",
+      naturalidade: "Várzea Grande - MT",
+      cpf: gerarCpfFicticio(),
+      telefone: "(65) 99123-1000",
+      apoio: false
+    };
+
+    const novos: ComponenteGuarnicao[] = [condutor];
+    if (testMaisPoliciais) {
+      novos.push({
+        rg: "222222",
+        nome: "CARLOS AUXILIAR (TESTE)",
+        posto: "CB PM",
+        pai: "PAI CARLOS",
+        mae: "MÃE CARLOS",
+        naturalidade: "Cuiabá - MT",
+        cpf: gerarCpfFicticio(),
+        telefone: "(65) 99222-1001",
+        apoio: true
+      });
+      novos.push({
+        rg: "333333",
+        nome: "MARCOS AUXILIAR (TESTE)",
+        posto: "SD PM",
+        pai: "PAI MARCOS",
+        mae: "MÃE MARCOS",
+        naturalidade: "Várzea Grande - MT",
+        cpf: gerarCpfFicticio(),
+        telefone: "(65) 99333-1002",
+        apoio: true
+      });
+    }
+    setComponentesGuarnicao(novos);
+
+    // 6) Histórico
+    const tipoNatureza = testNatureza.toLowerCase();
+    const temVitima = testIncluirVitima;
+    const textoRelatoPolicial =
+`NO DIA ${hoje} POR VOLTA DAS ${agora}, DURANTE PATRULHAMENTO DE ROTINA NA RUA DAS PALMEIRAS, Nº 100, BAIRRO CENTRO, MUNICÍPIO DE VÁRZEA GRANDE - MT, A EQUIPE DE GUARNIÇÃO AVISTOU ${temVitima ? "O(A) SR(A) MARIA DE SOUZA (TESTE) SENDO ABORDADA POR JOÃO DA SILVA (TESTE), EM POSTURA SUSPEITA. APÓS ABORDAGEM POLICIAL, CONSTATOU-SE QUE O AUTOR ESTAVA EM POSSE DE MATERIAL ILÍCITO E AMEAÇAVA A VÍTIMA." : "O(A) SR(A) JOÃO DA SILVA (TESTE), QUE APRESENTAVA COMPORTAMENTO SUSPEITO. APÓS ABORDAGEM POLICIAL, CONSTATOU-SE A OCORRÊNCIA DE ${testNatureza.toUpperCase()}."}
+DIANTE DOS FATOS, A EQUIPE PROCEDEU À LAVRATURA DO PRESENTE TERMO CIRCUNSTANCIADO DE OCORRÊNCIA (TCO), PARA OS FINS DE DIREITO. INQUERITO POLICIAL NÃO APURADO, ENCAMINHA-SE O PRESENTE AO JUIZADO ESPECIAL CRIMINAL COMPETENTE.`.toUpperCase();
+    setRelatoPolicial(textoRelatoPolicial);
+
+    setRelatoAutor("Eu estava passando pela rua quando a polícia me abordou. Não fiz nada de errado. Reconheço o fato.".toUpperCase());
+    if (testIncluirVitima) setRelatoVitima("Estava caminhando quando o autor me abordou e me ameaçou. Fiquei muito assustada e sofri danos morais.".toUpperCase());
+    setRelatoTestemunha("Presenciei tudo do outro lado da rua. Vi o autor abordando a vítima de forma agressiva.".toUpperCase());
+
+    setConclusaoPolicial(
+`CONCLUSÃO: OS FATOS APURADOS DURANTE A ABORDAGEM E AS DECLARAÇÕES DAS PARTES E TESTEMUNHAS CONFIGURAM A OCORRÊNCIA DE ${testNatureza.toUpperCase()}${testSegundaNatureza ? " (MULTI-NATUREZA)" : ""}. DEVE-SE ENCAMINHAR OS AUTOS AO JUIZADO ESPECIAL CRIMINAL COMPETENTE PARA O TRÂMITE LEGAL ADEQUADO.
+${testExameLesao ? " - SOLICITADA PERÍCIA MÉDICA DE LESÃO CORPORAL / CORPO DE DELITO NAS PARTES INDICADAS." : ""}
+${testFielDepositario ? " - NOMEADO Fiel DEPOSITÁRIO PARA GUARDA DE BENS APREENDIDOS." : ""}`.toUpperCase());
+
+    setProvidencias(
+`1. LAVRATURA DO PRESENTE TERMO CIRCUNSTANCIADO DE OCORRÊNCIA (TCO);
+2. IDENTIFICAÇÃO E QUALIFICAÇÃO DO AUTOR, VÍTIMA E TESTEMUNHAS;
+3.${testNatureza === "Porte de drogas para consumo" ? " APREENSAO DE SUBSTANCIA ANALOG A ENTORPECENTE, ACONDICIONADA SOB LACRE A12345678 PARA ENVIO A POLITEC;" : " COLETA DE DEPOIMENTOS E REGISTRO DAS DECLARAÇÕES;"}
+4.${testExameLesao ? " SOLICITAÇÃO DE EXAME DE CORPO DE DELITO / LESÃO CORPORAL PARA A VÍTIMA;" : " ACOLHIMENTO DAS DECLARAÇÕES DAS PARTES;"}
+5.${testFielDepositario ? " NOMEAÇÃO DE Fiel DEPOSITÁRIO PARA BENS APREENDIDOS;" : " ORIENTAÇÃO JURÍDICA ÀS PARTES;"}
+6. ENCAMINHAMENTO DO PRESENTE INSTRUMENTO AO JUIZADO ESPECIAL CRIMINAL COMPETENTE.`.toUpperCase());
+
+    setDocumentosAnexos(
+`- CÓPIA DO RG E CPF DO AUTOR;
+- CÓPIA DO RG E CPF DA VÍTIMA;
+- CÓPIA DO RG E CPF DA TESTEMUNHA;
+${testNatureza === "Porte de drogas para consumo" ? "- FOTOGRAFIAS DO MATERIAL APREENDIDO E DO LOCAL;" : ""}
+- FOLHAS DE REGISTRO DE OCORRÊNCIA (FRO);
+${testExameLesao ? "- REQUISIÇÃO DE EXAME PERICIAL / CORPO DE DELITO;" : ""}
+${testFielDepositario ? "- TERMO DE NOMEAÇÃO DE Fiel DEPOSITÁRIO;" : ""}`);
+
+    // Fiel depositário
+    if (testFielDepositario) {
+      setNomearFielDepositario("Sim");
+      setFielDepositarioSelecionado("SGT PM JOÃO CONDUTOR (TESTE) - RGPM 123456");
+    } else {
+      setNomearFielDepositario("Não");
+      setFielDepositarioSelecionado("");
+    }
+
+    // 7) Audiência (30 dias a frente)
+    setAudienciaData(addDaysBR(30));
+    setAudienciaHora("14:00");
+    setJuizadoEspecialData(addDaysBR(30));
+    setJuizadoEspecialHora("14:00");
+
+    toast({
+      title: "TCO de teste gerado com sucesso!",
+      description: "Você já pode navegar pelas abas, baixar o Word ou enviar e-mail.",
+      duration: 5000
+    });
+  };
+
   // Navegação controlada por etapas
-  const {
-    toast
-  } = useToast();
   const [activeTab, setActiveTab] = useState("basico");
   const tabOrder = useMemo(() => isDrugCase ? ["basico", "geral", "drogas", "pessoas", "guarnicao", "historico", "arquivos", "audiencia"] : ["basico", "geral", "pessoas", "guarnicao", "historico", "arquivos", "audiencia"], [isDrugCase]);
   const validateBasico = () => !!tcoNumber.trim() && !!natureza.trim() && !!cr.trim() && !!unidade.trim() && !!localRegistro.trim() && (natureza !== "Outros" || !!customNatureza.trim());
@@ -566,6 +821,9 @@ const TCOForm: React.FC = () => {
         : `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
       
       const pessoasComLaudo = [...vitimas, ...autores].filter(p => p.laudoPericial === "Sim");
+      const naturezaLowerEmail = (natureza || '').toLowerCase();
+      const isFalsaIdentidadeEmail = naturezaLowerEmail.includes("falsa identidade");
+      const autoresParaGraf = autores.filter(a => (a?.nome || "").trim());
 
       const opts = {
         unidade,
@@ -586,6 +844,7 @@ const TCOForm: React.FC = () => {
           nome: a.nome,
           relato: a.relato
         })),
+        autores,
         condutor: componentesGuarnicao[0] ? {
           nome: componentesGuarnicao[0].nome,
           posto: componentesGuarnicao[0].posto,
@@ -625,6 +884,7 @@ const TCOForm: React.FC = () => {
         lacreNumero,
         numeroRequisicao,
         periciasLesao: pessoasComLaudo.map(p => p.nome),
+        periciasGrafotecnica: isFalsaIdentidadeEmail ? autoresParaGraf.map(a => a.nome) : [],
         nomearFielDepositario,
         fielDepositarioSelecionado
       };
@@ -696,6 +956,10 @@ const TCOForm: React.FC = () => {
       ...(vitimas || []).filter(v => flagSim(v.laudoPericial)).map(v => ({ nome: v.nome }))
     ].filter(p => p.nome && String(p.nome).trim());
     if (pessoasComLaudo.length > 0) anexosList.push("REQUISIÇÃO DE EXAME DE LESÃO CORPORAL");
+    const naturezaLower = (natureza || '').toLowerCase();
+    const isFalsaIdentidade = naturezaLower.includes("falsa identidade");
+    const autoresNaoVazios = (autores || []).filter(a => (a?.nome || "").trim());
+    if (isFalsaIdentidade && autoresNaoVazios.length > 0) anexosList.push("REQUISIÇÃO DE EXAME DE GRAFOTÉCNICO");
     anexosList.push("TERMO DE ENCERRAMENTO E REMESSA");
     try {
       setIsDownloadingDocx(true);
@@ -715,6 +979,7 @@ const TCOForm: React.FC = () => {
         providencias,
         documentosAnexos: anexosList.join('\n'),
         periciasLesao: pessoasComLaudo.map(p => p.nome),
+        periciasGrafotecnica: isFalsaIdentidade ? autoresNaoVazios.map(a => a.nome) : [],
         condutor: componentesGuarnicao[0] ? {
           nome: componentesGuarnicao[0].nome,
           posto: componentesGuarnicao[0].posto,
@@ -761,44 +1026,53 @@ const TCOForm: React.FC = () => {
         fielDepositarioSelecionado
       });
 
-      // Upload DOCX to R2
-      try {
-        const ownerRgpm = (sessionStorage.getItem("rgpm") || localStorage.getItem("rgpm") || "anon").trim() || "anon";
-        const savedAt = new Date().toISOString();
-        const safeOwnerRgpm = ownerRgpm.replace(/\D+/g, "") || "anon";
-        const uniquePrefix = `${safeOwnerRgpm}_${savedAt.replace(/[:.]/g, "-")}`;
-        const r2DocxKey = `tcos/${uniquePrefix}_${filename}`;
-        const r2JsonKey = r2DocxKey.replace(/\.docx$/i, ".json");
+      // Upload DOCX to R2 (PULAR para TCOs de TESTE)
+      if (!isTestTCO) {
+        try {
+          const ownerRgpm = (sessionStorage.getItem("rgpm") || localStorage.getItem("rgpm") || "anon").trim() || "anon";
+          const savedAt = new Date().toISOString();
+          const safeOwnerRgpm = ownerRgpm.replace(/\D+/g, "") || "anon";
+          const uniquePrefix = `${safeOwnerRgpm}_${savedAt.replace(/[:.]/g, "-")}`;
+          const r2DocxKey = `tcos/${uniquePrefix}_${filename}`;
+          const r2JsonKey = r2DocxKey.replace(/\.docx$/i, ".json");
 
-        await r2UploadFile(blob, r2DocxKey, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+          await r2UploadFile(blob, r2DocxKey, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 
-        const metadata = {
-          tcoNumber,
-          natureza: natureza === "Outros" ? customNatureza : natureza,
-          savedAt,
-          docxKey: r2DocxKey,
-          ownerRgpm,
-          condutor: componentesGuarnicao[0] ? {
-            nome: componentesGuarnicao[0].nome,
-            graduacao: componentesGuarnicao[0].posto,
-            rgpm: componentesGuarnicao[0].rg,
-          } : undefined,
-          equipe: componentesGuarnicao.slice(1).map(g => ({
-            nome: g.nome,
-            graduacao: g.posto,
-            rgpm: g.rg,
-          })),
-        };
-        const jsonBlob = new Blob([JSON.stringify(metadata)], { type: "application/json" });
-        await r2UploadFile(jsonBlob, r2JsonKey, "application/json");
-      } catch (uploadErr) {
-        console.error("Erro ao salvar no R2:", uploadErr);
+          const metadata = {
+            tcoNumber,
+            natureza: natureza === "Outros" ? customNatureza : natureza,
+            savedAt,
+            docxKey: r2DocxKey,
+            ownerRgpm,
+            condutor: componentesGuarnicao[0] ? {
+              nome: componentesGuarnicao[0].nome,
+              graduacao: componentesGuarnicao[0].posto,
+              rgpm: componentesGuarnicao[0].rg,
+            } : undefined,
+            equipe: componentesGuarnicao.slice(1).map(g => ({
+              nome: g.nome,
+              graduacao: g.posto,
+              rgpm: g.rg,
+            })),
+          };
+          const jsonBlob = new Blob([JSON.stringify(metadata)], { type: "application/json" });
+          await r2UploadFile(jsonBlob, r2JsonKey, "application/json");
+        } catch (uploadErr) {
+          console.error("Erro ao salvar no R2:", uploadErr);
+          toast({
+            variant: "destructive",
+            title: "Erro no Backup Automático",
+            description: "O arquivo foi baixado, mas não foi possível salvar o backup na nuvem. Verifique sua conexão ou configurações.",
+          });
+        }
+      } else {
+        // TCO de teste: informar que não foi salvo no R2
         toast({
-          variant: "destructive",
-          title: "Erro no Backup Automático",
-          description: "O arquivo foi baixado, mas não foi possível salvar o backup na nuvem. Verifique sua conexão ou configurações.",
+          title: "🧪 TCO de Teste (Não salvo no R2)",
+          description: "Arquivo DOCX baixado, mas nenhum backup foi criado no R2 (modo de teste).",
+          duration: 5000,
+          variant: "default",
         });
-        // Non-blocking: download already happened
       }
 
     } catch (e: any) {
@@ -822,6 +1096,38 @@ const TCOForm: React.FC = () => {
             <span className="tag">Padrão</span>
           )}
         </div>
+        {isAdmin && (
+          <div className="flex justify-center mt-2 gap-2 items-center flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTestModal(true)}
+              className="border-purple-500 text-purple-700 hover:bg-purple-50 dark:text-purple-300 dark:border-purple-400 dark:hover:bg-purple-950"
+            >
+              🧪 Gerar Teste de TCO
+            </Button>
+            {isTestTCO && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-orange-400 bg-orange-50 dark:bg-orange-950/50 dark:border-orange-500 px-3 py-1 text-xs font-medium text-orange-700 dark:text-orange-300">
+                🚫 MODO TESTE (NÃO SALVA NO R2)
+                <button
+                  type="button"
+                  className="ml-1 rounded-full bg-orange-200/60 hover:bg-orange-300 px-2 py-0.5 text-[10px] leading-none text-orange-900 transition"
+                  onClick={() => {
+                    setIsTestTCO(false);
+                    toast({
+                      title: "Modo Teste desativado",
+                      description: "Agora, ao baixar, o TCO será salvo normalmente no R2.",
+                      duration: 3000,
+                    });
+                  }}
+                  title="Desativar modo de teste (permitir salvar no R2)"
+                >
+                  ✕
+                </button>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={val => setActiveTab(val)}>
@@ -929,6 +1235,107 @@ const TCOForm: React.FC = () => {
             )}
           </div>
           
+      <Dialog open={showTestModal} onOpenChange={setShowTestModal}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+          <DialogTitle>🧪 Gerar TCO de Teste (Administrador)</DialogTitle>
+          <DialogDescription>
+            Configure as opções abaixo para preencher automaticamente o formulário com dados fictícios válidos.
+          </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-5 py-3">
+
+            <div className="grid gap-2">
+              <Label>A) Natureza da Ocorrência</Label>
+              <Select value={testNatureza} onValueChange={(v) => setTestNatureza(v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a natureza" />
+                </SelectTrigger>
+                <SelectContent>
+                  {naturezaOptions.map((n) => (
+                    <SelectItem key={n} value={n}>{n}</SelectItem>
+                  ))}
+                  <SelectItem value="Outros">Outros (Natureza Customizada)</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-2 mt-1">
+                <Checkbox
+                  id="test-segunda-natureza"
+                  checked={testSegundaNatureza}
+                  onCheckedChange={(v) => setTestSegundaNatureza(Boolean(v))}
+                />
+                <Label htmlFor="test-segunda-natureza" className="!mt-0 text-sm font-normal">
+                  Incluir Segunda Natureza (Multi-natureza)
+                </Label>
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>B) Envolvidos</Label>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="test-incluir-vitima"
+                  checked={testIncluirVitima}
+                  onCheckedChange={(v) => setTestIncluirVitima(Boolean(v))}
+                />
+                <Label htmlFor="test-incluir-vitima" className="!mt-0 text-sm font-normal">
+                  Adicionar Vítima(s) (se desmarcado: apenas Autor + Testemunha)
+                </Label>
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>C) Guarnição</Label>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="test-mais-policiais"
+                  checked={testMaisPoliciais}
+                  onCheckedChange={(v) => setTestMaisPoliciais(Boolean(v))}
+                />
+                <Label htmlFor="test-mais-policiais" className="!mt-0 text-sm font-normal">
+                  Adicionar mais de 1 policial na Guarnição (Condutor + 2 auxiliares)
+                </Label>
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>D) Demais Solicitações e Formalidades</Label>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="test-exame-lesao"
+                  checked={testExameLesao}
+                  onCheckedChange={(v) => setTestExameLesao(Boolean(v))}
+                />
+                <Label htmlFor="test-exame-lesao" className="!mt-0 text-sm font-normal">
+                  Solicitar Exame de Lesão Corporal / Corpo de Delito
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="test-fiel-depositario"
+                  checked={testFielDepositario}
+                  onCheckedChange={(v) => setTestFielDepositario(Boolean(v))}
+                />
+                <Label htmlFor="test-fiel-depositario" className="!mt-0 text-sm font-normal">
+                  Nomear Fiel Depositário
+                </Label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTestModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={fillTestTCO}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              ✨ Confirmar e Preencher TCO
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

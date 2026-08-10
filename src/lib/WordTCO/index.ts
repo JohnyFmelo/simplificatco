@@ -307,6 +307,7 @@ export interface TcoDocOptions {
   lacreNumero?: string;
   numeroRequisicao?: string;
   periciasLesao?: string[];
+  periciasGrafotecnica?: string[];
   nomearFielDepositario?: string;
   fielDepositarioSelecionado?: string;
 }
@@ -923,7 +924,8 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
   const isDrogaNatureza = ((natureza || '').toLowerCase().includes('droga')) || ((drogas && drogas.length > 0));
   if (isDrogaNatureza) {
     const cidadeEnc = extrairCidadeDoMunicipio(municipio) || 'VÁRZEA GRANDE';
-    
+    const apensoLinhas = (drogas && drogas.length > 0) ? drogas.map((drug) => `${(drug.quantidade || '').trim()} DE SUBSTÂNCIA ${String(drug.substancia || '').toUpperCase()}, DE COR ${String(drug.cor || '').toUpperCase()}, COM ODOR ${String(drug.odor || '').toUpperCase()}${drug.indicios ? `, ${String(drug.indicios || '').toUpperCase()}` : ''}.`) : [(apreensoes || '').trim()].filter(Boolean);
+
     const brDate = formatDateBR(dataFato);
     const mAno = brDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     const anoFato = mAno ? parseInt(mAno[3], 10) : new Date().getFullYear();
@@ -936,46 +938,91 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
     const cpfAutor = (autores && autores[0]?.cpf) ? autores[0].cpf : 'NÃO INFORMADO';
     const numeroRefTco = `${(tcoNumber || '').trim()}/${unidadeAbr}/${crAbr}/${anoFato}`;
     const dataFatoDisplay = formatDateBR(dataFato) || '__/__/____';
-    const horaFatoDisplay = (horaFato || '').trim().replace(':', '') || '__';
+
+    // ========== CORREÇÃO: HORA FORMATO HH:MM ==========
+    const horaBruta = (horaFato || '').trim();
+    let hh = '__', mm = '__';
+    if (horaBruta.length >= 2) {
+      const limpa = horaBruta.replace(/[^0-9]/g, '');
+      if (limpa.length >= 4) { hh = limpa.substring(0,2); mm = limpa.substring(2,4); }
+      else if (limpa.length === 3) { hh = '0' + limpa.substring(0,1); mm = limpa.substring(1,3); }
+      else if (limpa.length === 2) { hh = limpa; mm = '00'; }
+      else if (limpa.length === 1) { hh = '0' + limpa; mm = '00'; }
+    } else if (horaBruta.includes(':')) {
+      const [a,b] = horaBruta.split(':');
+      if (a) hh = a.replace(/[^0-9]/g,'').padStart(2,'0');
+      if (b) mm = b.replace(/[^0-9]/g,'').padStart(2,'0');
+    }
+    const horaFatoDisplay = `${hh}:${mm}`;
+    // ======================================================
 
     const corpoLegal = `Requisito a POLITEC - Perícia Oficial e Identificação Técnica, nos termos dos artigos 158 e seguintes do Código de Processo Penal, combinado com o Artigo 69, Caput da Lei 9.099/95, combinado com Artigo 48, § 2º da Lei nº 11.343/06, a realização de exame químico na substância análoga a entorpecente apensada, encontrada em posse do (a) Sr. (a) ${nomeAutor.toUpperCase()}, autor do fato, portador do CPF ${cpfAutor} qualificado no Termo Circunstanciado de Ocorrência nº ${numeroRefTco}, de natureza Posse de Drogas para consumo pessoal, ocorrido na data dia ${dataFatoDisplay} às ${horaFatoDisplay}min.`;
 
+    // (1) TÍTULO + LINHA EM BRANCO ABAIXO
     segundaPaginaChildren.push(
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [
-        new TextRun({ text: tituloRequisicao, bold: true, font: 'Times New Roman', size: 24 })
-      ] }),
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: corpoLegal.toUpperCase() }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 0, after: 0, line: 240 },
+        children: [ new TextRun({ text: tituloRequisicao, bold: true, font: 'Times New Roman', size: 24 }) ]
+      }),
+      new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [ new TextRun({ text: ' ' }) ] }),
     );
 
+    // CORPO LEGAL (12pt = size 24)
+    segundaPaginaChildren.push(
+      new Paragraph({
+        alignment: AlignmentType.JUSTIFIED,
+        indent: { firstLine: convertMillimetersToTwip(25) },
+        spacing: { before: 0, after: 30, line: 240 },
+        children: [ new TextRun({ text: corpoLegal.toUpperCase(), size: 24 }) ]
+      }),
+    );
+
+    // APENSOS (1 por droga - GÊNERO FEMININO: UMA porção)
     if (drogas && drogas.length > 0) {
       drogas.forEach((drug) => {
         const qtdNum = parseInt((drug.quantidade || '1').replace(/[^\d]/g, ''), 10) || 1;
         const qtdStr = qtdNum.toString().padStart(2, '0');
-        const qtdExt = numeroAte99PorExtenso(qtdNum).toLowerCase();
-        const nomeDroga = (drug.isUnknownMaterial && drug.customMaterialDesc) 
-          ? drug.customMaterialDesc 
+        // ============ GARANTE GÊNERO FEMININO =============
+        let qtdExtBruto = numeroAte99PorExtenso(qtdNum).toLowerCase();
+        // Substitui masculino "um" por feminino "uma" quando substantivo é "porção"
+        if (qtdNum === 1) qtdExtBruto = qtdExtBruto.replace(/\bum\b/g, 'uma').replace(/\bhomens?\b/g, 'uma');
+        const qtdExt = qtdExtBruto;
+        const nomeDroga = (drug.isUnknownMaterial && drug.customMaterialDesc)
+          ? drug.customMaterialDesc
           : (drug.substancia || 'substância não identificada');
         const apenso = `Apenso: ${qtdStr} (${qtdExt}) porção de substância análoga ao entorpecente conhecido como ${nomeDroga.toLowerCase()}.`;
         segundaPaginaChildren.push(
-          new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: apenso.toUpperCase() }) ] })
+          new Paragraph({
+            alignment: AlignmentType.JUSTIFIED,
+            spacing: { before: 0, after: 10, line: 240 },
+            children: [ new TextRun({ text: apenso.toUpperCase(), size: 24 }) ]
+          })
         );
       });
     } else if (apreensoes && apreensoes.trim()) {
       const apenso = `Apenso: 01 (uma) porção de substância análoga ao entorpecente. ${apreensoes.trim()}`;
       segundaPaginaChildren.push(
-        new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: apenso.toUpperCase() }) ] })
+        new Paragraph({
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { before: 0, after: 10, line: 240 },
+          children: [ new TextRun({ text: apenso.toUpperCase(), size: 24 }) ]
+        })
       );
     }
 
+    // TEXTO DE SOLICITAÇÃO + (2) LINHA EM BRANCO ANTES DOS QUESITOS
     segundaPaginaChildren.push(
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: 'Para tanto, solicito a Vossa senhoria, que seja confeccionado o respectivo Laudo definitivo, devendo os peritos responderem aos quesitos oficiais, conforme abaixo:'.toUpperCase() }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
+      new Paragraph({
+        alignment: AlignmentType.JUSTIFIED,
+        indent: { firstLine: convertMillimetersToTwip(25) },
+        spacing: { before: 0, after: 0, line: 240 },
+        children: [ new TextRun({ text: 'Para tanto, solicito a Vossa senhoria, que seja confeccionado o respectivo Laudo definitivo, devendo os peritos responderem aos quesitos oficiais, conforme abaixo:'.toUpperCase(), size: 24 }) ]
+      }),
+      new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [ new TextRun({ text: ' ' }) ] }),
     );
 
+    // QUESITOS OFICIAIS (SOMENTE size 20 = 10pt, compactos)
     const quesitosDrogasNovos = [
       'Qual a natureza e característica das substâncias enviadas a exame?',
       'Podem as mesmas causar dependência física ou psíquica?',
@@ -986,43 +1033,83 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
         new Paragraph({
           alignment: AlignmentType.JUSTIFIED,
           indent: { left: convertMillimetersToTwip(25) },
+          spacing: { before: 0, after: 10, line: 226 },
           children: [ new TextRun({ text: `${i + 1}. ${q.toUpperCase()}`, size: 20 }) ]
         })
       );
     });
 
+    // BLOCO NOTAS + (3) LINHA EM BRANCO ANTES DA DATA
+    // DESTINO DO LAUDO = UNIDADE (UNIDADE ABR OU UNIDADE LINHA) — NUNCA CR!
+    const destinoDrogas = (unidadeAbr && unidadeAbr.trim()) ? String(unidadeAbr).trim().toUpperCase() : String(unidadeLinha || '').trim().toUpperCase();
     segundaPaginaChildren.push(
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: 'NOTAS:', bold: true }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: `EM REQUISIÇÃO Nº ${numReqDisplay} COM LACRE Nº ${(lacreNumero || '').trim().toUpperCase() || '__________'}` }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: `DESTINO DO LAUDO: ${crAbr || unidadeAbr || '__________'}` }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.RIGHT, children: [ new TextRun({ text: String(formatCidadeDataExtenso(cidadeEncAll, dataFato)).toUpperCase() }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] })
+      new Paragraph({ spacing: { before: 30, after: 10, line: 240 }, children: [ new TextRun({ text: 'NOTAS:', bold: true, size: 24 }) ] }),
+      new Paragraph({ spacing: { before: 0, after: 10, line: 240 }, children: [ new TextRun({ text: `EM REQUISIÇÃO Nº ${numReqDisplay} COM LACRE Nº ${(lacreNumero || '').trim().toUpperCase() || '__________'}`, size: 24 }) ] }),
+      new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [ new TextRun({ text: 'DESTINO DO LAUDO: ', bold: true, size: 24 }), new TextRun({ text: destinoDrogas || '__________', size: 24 }) ] }),
+      new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [ new TextRun({ text: ' ' }) ] }),
     );
-    segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }));
 
+    // Local e Data (alinhado à direita)
+    segundaPaginaChildren.push(
+      new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        spacing: { before: 0, after: 80, line: 240 },
+        children: [ new TextRun({ text: String(formatCidadeDataExtenso(cidadeEnc || cidadeEncAll || '', dataFato)).toUpperCase(), size: 24 }) ]
+      }),
+    );
+
+    // ASSINATURA PADRÃO UNIFICADO: Nome/Posto → CONDUTOR → RG Nº XXXX PMMT
+    const condutorPosto2 = String(condutor?.graduacao || condutor?.posto || condutorPosto || '').trim().toUpperCase();
+    const condutorNome2 = String(condutor?.nome_completo || condutor?.nome || condutorNome || '').trim().toUpperCase();
+    const condutorAssinaturaDrogas = [condutorPosto2, condutorNome2].filter(Boolean).join(' ') || '_________________________________';
+    const condutorRgDrogas = String(condutor?.rgpm || condutor?.rg || '').trim().toUpperCase() || '____________________';
+    segundaPaginaChildren.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 80, after: 10, line: 240 },
+        children: [ new TextRun({ text: condutorAssinaturaDrogas, bold: true, size: 24 }) ]
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 0, after: 10, line: 240 },
+        children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA'.toUpperCase(), size: 24 }) ]
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 0, after: 30, line: 240 },
+        children: [ new TextRun({ text: `RG Nº ${condutorRgDrogas} PMMT`.toUpperCase(), size: 24 }) ]
+      }),
+    );
+
+    // TABELA DE PROTOCOLO DA POLITEC (3 COLUNAS, CABEÇALHOS NEGRITADOS)
+    const drgLabel = (t: string) => new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 10, line: 240 },
+      children: [ new TextRun({ text: t, bold: true, size: 24 }) ]
+    });
     const tabelaReceb = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
-      columnWidths: [convertMillimetersToTwip(60), convertMillimetersToTwip(60), convertMillimetersToTwip(60)],
+      columnWidths: [3000, 3000, 3000],
       rows: [
-        new TableRow({ children: [
-          new TableCell({ children: [ new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'DATA', bold: true }) ] }) ] }),
-          new TableCell({ children: [ new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'POLITEC', bold: true }) ] }) ] }),
-          new TableCell({ children: [ new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'ASSINATURA', bold: true }) ] }) ] })
-        ]}),
-        new TableRow({ height: { value: convertMillimetersToTwip(10), rule: HeightRule.ATLEAST }, children: [
-          new TableCell({ children: [ new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }) ] }),
-          new TableCell({ children: [ new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }) ] }),
-          new TableCell({ children: [ new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }) ] }),
-        ]})
+        new TableRow({
+          height: { value: convertMillimetersToTwip(15), rule: HeightRule.ATLEAST },
+          children: [
+            new TableCell({ verticalAlign: VerticalAlign.CENTER, children: [ drgLabel('DATA') ] }),
+            new TableCell({ verticalAlign: VerticalAlign.CENTER, children: [ drgLabel('POLITEC') ] }),
+            new TableCell({ verticalAlign: VerticalAlign.CENTER, children: [ drgLabel('ASSINATURA') ] })
+          ]
+        }),
+        new TableRow({
+          height: { value: convertMillimetersToTwip(18), rule: HeightRule.ATLEAST },
+          children: [
+            new TableCell({ verticalAlign: VerticalAlign.CENTER, children: [ new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [ new TextRun({ text: ' ' }) ] }) ] }),
+            new TableCell({ verticalAlign: VerticalAlign.CENTER, children: [ new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [ new TextRun({ text: ' ' }) ] }) ] }),
+            new TableCell({ verticalAlign: VerticalAlign.CENTER, children: [ new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [ new TextRun({ text: ' ' }) ] }) ] }),
+          ]
+        })
       ]
     });
     segundaPaginaChildren.push(tabelaReceb);
-
     segundaPaginaChildren.push(new Paragraph({ children: [ new PageBreak() ] }));
 
     segundaPaginaChildren.push(
@@ -1168,49 +1255,389 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
     });
   }
 
-  // ===== REQUISIÇÃO DE EXAME DE LESÃO CORPORAL (após Termo da Vítima) =====
+  // ===== REQUISIÇÃO DE EXAME DE LESÃO CORPORAL (nova versão - uma página por pessoa) =====
   if (opts.periciasLesao && opts.periciasLesao.length > 0) {
-    const nome = opts.periciasLesao[0] || '';
-    segundaPaginaChildren.push(new Paragraph({ children: [ new PageBreak() ] }));
-    const titulo = 'REQUISIÇÃO DE EXAME DE LESÃO CORPORAL';
-    const corpo = `REQUISITA-SE EXAME PERICIAL EM FAVOR DE ${(String(nome || '').toUpperCase())}, CONSIGNANDO-SE OS QUESITOS PERTINENTES.`;
-    segundaPaginaChildren.push(
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: titulo, bold: true, size: 28 }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: corpo }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
-    );
+    const vitimasArr = Array.isArray(opts.vitimas) ? opts.vitimas : [];
+    const autoresArr = Array.isArray(opts.autores) ? opts.autores : [];
+    const condutorNomeStr = String(condutor?.nome_completo || condutor?.nome || condutorNome || '').trim().toUpperCase();
+    const condutorPostoStr = String(condutor?.graduacao || condutor?.posto || condutorPosto || '').trim().toUpperCase();
+    const condutorRgPM = String(condutor?.rgpm || condutor?.rg || '').trim().toUpperCase();
+    const condutorAssinatura = [condutorPostoStr, condutorNomeStr].filter(Boolean).join(' ') || '_________________________________';
+    const numReq = String(opts.numeroRequisicao || opts.tcoNumber || '000').trim().replace(/\s+/g, ' ');
+    const anoFato = (() => { try { const d = String(dataFato || '').trim(); const m = d.match(/(\d{4})/); if (m) return m[1]; } catch (e) {} const hoje = new Date(); return String(hoje.getFullYear()); })();
+
+    const tableCellBordersReq = {
+      top: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
+      left: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
+      right: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
+    };
+
     const quesitos = [
-      'IDENTIFIQUE O PERICIANDO.',
-      'INFORME A IDADE APROXIMADA.',
-      'DESCREVA AS LESÕES E SUA NATUREZA.',
-      'INDIQUE O LOCAL DAS LESÕES.',
-      'IDENTIFIQUE O PROVÁVEL INSTRUMENTO CAUSADOR.',
-      'ESTIME O TEMPO PROVÁVEL DAS LESÕES.',
-      'ESCLAREÇA SE HÁ INCAPACIDADE PARA AS OCUPAÇÕES HABITUAIS POR MAIS DE 30 DIAS.',
-      'INDIQUE SE HOUVE PERIGO DE VIDA.',
-      'CLASSIFIQUE AS LESÕES QUANTO À GRAVIDADE.',
-      'APONTE OUTRAS OBSERVAÇÕES RELEVANTES.'
+      'Houve ofensa à integridade corporal ou à saúde do(a) periciando(a) que possa estar relacionada ao delito em apuração?',
+      'Qual o agente vulnerante ou meio empregado para produzi-la?',
+      'A ofensa foi produzida com o emprego de veneno, fogo, explosivo, tortura ou outro meio insidioso ou cruel, ou de que possa resultar perigo comum? Especificar.',
+      'Resultou perigo de vida?',
+      'Resultou incapacidade para as ocupações habituais, por mais de 30 (trinta) dias?',
+      'Resultou debilidade permanente de membro, sentido ou função? Se sexo feminino, resultou em aceleração de parto? (Especificar)',
+      'Resultou incapacidade permanente para o trabalho, ou enfermidade incurável, ou perda ou inutilização de membro, sentido ou função, ou deformidade permanente? Se sexo feminino, resultou em aborto? Especificar.',
     ];
-    quesitos.forEach((q, i) => {
+
+    opts.periciasLesao.forEach((nomePessoa, idx) => {
+      const nomePessoaUpper = String(nomePessoa || '').trim().toUpperCase() || 'NOME NÃO INFORMADO';
+      let pessoa: any = null;
+      let papelPessoa = 'vítima';
+      let tituloTabelaNome = 'Nome da Vítima';
+      for (const v of vitimasArr) {
+        if (String(v?.nome || '').toUpperCase() === nomePessoaUpper) {
+          pessoa = v;
+          papelPessoa = 'vítima';
+          tituloTabelaNome = 'Nome da Vítima';
+          break;
+        }
+      }
+      if (!pessoa) {
+        for (const a of autoresArr) {
+          if (String(a?.nome || '').toUpperCase() === nomePessoaUpper) {
+            pessoa = a;
+            papelPessoa = 'autor do fato';
+            tituloTabelaNome = 'Nome Autor do Fato';
+            break;
+          }
+        }
+      }
+      const cpfPessoa = pessoa?.cpf ? String(pessoa.cpf).trim() : 'NÃO INFORMADO';
+      const nomeMaePessoa = (pessoa?.filiacaoMae || '').trim().toUpperCase() || 'NÃO INFORMADO';
+      const relatoPessoa = (pessoa?.relato || opts.relatoPolicial || 'foi vítima de agressão física').trim();
+      const naturezaStr = String(natureza || '').trim() || 'LESÃO CORPORAL';
+      const dataFatoBR = formatDateBR(dataFato) || '__/__/____';
+      const cidade = (extrairCidadeDoMunicipio(municipio) || 'VÁRZEA GRANDE').toUpperCase();
+      const dataExt = formatCidadeDataExtenso(cidade, dataFato).toUpperCase();
+
+      // Pula de página antes de cada requisição (exceto se for a primeira e não tiver conteúdo anterior)
+      if (idx > 0 || segundaPaginaChildren.length > 0) {
+        segundaPaginaChildren.push(new Paragraph({ children: [ new PageBreak() ] }));
+      }
+
+      // 3. Título (12pt = size 24, negrito) + LINHA EM BRANCO ABAIXO (1)
+      segundaPaginaChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 0, line: 240 },
+          children: [
+            new TextRun({
+              text: `REQUISIÇÃO DE EXAME DE LESÃO CORPORAL nº ${numReq}/${unidadeAbr}/${crAbr}/${anoFato}`,
+              bold: true,
+              size: 24
+            })
+          ]
+        }),
+        new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [ new TextRun({ text: ' ' }) ] }),
+      );
+
+      // 4. Corpo legal (12pt = size 24)
+      const corpoLegal = `Requisito a POLITEC - Perícia Oficial e Identificação Técnica, nos termos dos artigos 158 e seguintes do Código de Processo Penal e artigo 69 Caput da Lei n.º 9.099/1995, a realização de exame de corpo de delito no (a) Sr. (a) ${nomePessoaUpper}, ${papelPessoa}, portador(a) do CPF ${cpfPessoa} qualificado no Termo Circunstanciado de Ocorrência nº ${numeroDisplay}, por ter relatado que: ${relatoPessoa} de natureza ${naturezaStr}, ocorrido na data ${dataFatoBR}, respondendo para tal os seguintes quesitos:`;
       segundaPaginaChildren.push(
         new Paragraph({
           alignment: AlignmentType.JUSTIFIED,
-          indent: { left: convertMillimetersToTwip(25) },
-          children: [ new TextRun({ text: `${i + 1}. ${q}`, size: 20 }) ]
-        })
+          indent: { firstLine: convertMillimetersToTwip(25) },
+          spacing: { before: 0, after: 0, line: 240 },
+          children: [ new TextRun({ text: corpoLegal.toUpperCase(), size: 24 }) ]
+        }),
       );
+
+      // 5. Texto de solicitação (12pt) + LINHA EM BRANCO ABAIXO (2)
+      segundaPaginaChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.JUSTIFIED,
+          indent: { firstLine: convertMillimetersToTwip(25) },
+          spacing: { before: 0, after: 0, line: 240 },
+          children: [ new TextRun({ text: 'Para tanto, solicito que Vossa Senhoria responda aos quesitos oficiais, conforme abaixo:'.toUpperCase(), size: 24 }) ]
+        }),
+        new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [ new TextRun({ text: ' ' }) ] }),
+      );
+
+      // 6. 7 Quesitos (10pt - compactos para manter em 1 página)
+      quesitos.forEach((q, i) => {
+        segundaPaginaChildren.push(
+          new Paragraph({
+            alignment: AlignmentType.JUSTIFIED,
+            indent: { left: convertMillimetersToTwip(25) },
+            spacing: { before: 0, after: 10, line: 226 },
+            children: [ new TextRun({ text: `${i + 1}. ${q.toUpperCase()}`, size: 20 }) ]
+          })
+        );
+      });
+
+      // 7. DESTINO DO LAUDO + observação em VERMELHO + LINHA EM BRANCO ABAIXO (3) - USA UNIDADE, NUNCA CR!
+      const destinoLaudo = (unidadeAbr && unidadeAbr.trim()) ? String(unidadeAbr).trim().toUpperCase() : String(unidadeLinha || '').trim().toUpperCase();
+      segundaPaginaChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.LEFT,
+          spacing: { before: 0, after: 10, line: 240 },
+          children: [
+            new TextRun({ text: 'DESTINO DO LAUDO: ', bold: true, size: 24 }),
+            new TextRun({ text: destinoLaudo, size: 24 })
+          ]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.LEFT,
+          spacing: { before: 0, after: 0, line: 240 },
+          children: [ new TextRun({ text: '(verificar quais quesitos são aplicáveis ao fato)'.toUpperCase(), italics: true, size: 24, color: "FF0000" }) ]
+        }),
+        new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [ new TextRun({ text: ' ' }) ] }),
+      );
+
+      // 8. Data / Cidade (12pt)
+      segundaPaginaChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          spacing: { before: 0, after: 80, line: 240 },
+          children: [ new TextRun({ text: dataExt, size: 24 }) ]
+        }),
+      );
+
+      // 9. ASSINATURA (ORDEM EXATA): Nome+Posto → CONDUTOR → RG Nº XXXX PMMT
+      const rgpmFinal = condutorRgPM || '____________________';
+      segundaPaginaChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 80, after: 10, line: 240 },
+          children: [ new TextRun({ text: condutorAssinatura, bold: true, size: 24 }) ]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 10, line: 240 },
+          children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA'.toUpperCase(), size: 24 }) ]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 20, line: 240 },
+          children: [ new TextRun({ text: `RG Nº ${rgpmFinal} PMMT`.toUpperCase(), size: 24 }) ]
+        }),
+      );
+
+      // 10. Tabela de protocolo (compacta: margens menores para manter em 1 página)
+      const cellLabelPara = (texto: string) => new Paragraph({
+        spacing: { before: 0, after: 10, line: 236 },
+        children: [ new TextRun({ text: `${texto}:`, bold: true, size: 24 }) ]
+      });
+      const cellValuePara = (texto: string) => new Paragraph({
+        spacing: { before: 0, after: 0, line: 236 },
+        children: [ new TextRun({ text: texto.toUpperCase(), size: 24 }) ]
+      });
+      const tabelaProtocolo = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        columnWidths: [3000, 3000, 3000],
+        rows: [
+          new TableRow({
+            height: { value: convertMillimetersToTwip(20), rule: HeightRule.ATLEAST },
+            children: [
+              new TableCell({
+                borders: tableCellBordersReq,
+                verticalAlign: VerticalAlign.CENTER,
+                margins: { top: 40, bottom: 40, left: 80, right: 80 },
+                children: [
+                  cellLabelPara('DATA'),
+                  cellValuePara(dataFatoBR)
+                ]
+              }),
+              new TableCell({
+                borders: tableCellBordersReq,
+                verticalAlign: VerticalAlign.CENTER,
+                margins: { top: 40, bottom: 40, left: 80, right: 80 },
+                children: [
+                  cellLabelPara(tituloTabelaNome),
+                  cellValuePara(nomePessoaUpper)
+                ]
+              }),
+              new TableCell({
+                borders: tableCellBordersReq,
+                verticalAlign: VerticalAlign.CENTER,
+                margins: { top: 40, bottom: 40, left: 80, right: 80 },
+                children: [
+                  cellLabelPara('Nome da Mãe'),
+                  cellValuePara(nomeMaePessoa)
+                ]
+              }),
+            ]
+          })
+        ]
+      });
+      segundaPaginaChildren.push(tabelaProtocolo);
     });
-    segundaPaginaChildren.push(
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.RIGHT, children: [ new TextRun({ text: String(formatCidadeDataExtenso(extrairCidadeDoMunicipio(municipio) || 'VÁRZEA GRANDE', dataFato)).toUpperCase() }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] })
-    );
+  }
+
+  // ===== REQUISIÇÃO DE EXAME DE GRAFOTÉCNICO =====
+  if (opts.periciasGrafotecnica && opts.periciasGrafotecnica.length > 0) {
+    const autoresArr = Array.isArray(opts.autores) ? opts.autores : [];
+    const condutorNomeStr = String(condutor?.nome_completo || condutor?.nome || condutorNome || '').trim().toUpperCase();
+    const condutorPostoStr = String(condutor?.graduacao || condutor?.posto || condutorPosto || '').trim().toUpperCase();
+    const condutorRgPM = String(condutor?.rgpm || condutor?.rg || '').trim().toUpperCase();
+    const condutorAssinaturaG = [condutorPostoStr, condutorNomeStr].filter(Boolean).join(' ') || '_________________________________';
+    const numReq = String(opts.numeroRequisicao || opts.tcoNumber || '000').trim().replace(/\s+/g, ' ');
+    const anoFato = (() => { try { const d = String(dataFato || '').trim(); const m = d.match(/(\d{4})/); if (m) return m[1]; } catch (e) {} return String(new Date().getFullYear()); })();
+
+    const tableCellBordersGraf = {
+      top: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
+      left: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
+      right: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
+    };
+
+    const quesitosGraf = (nomeA: string) => [
+      `A assinatura ou grafismo (identificar) lançada no documento encaminhado é autêntica ou falsa?`,
+      `Sendo falsa, a assinatura ou grafismo lançada (identificar) no documento encaminhado a exame proveio do punho escritor de ${nomeA} que forneceu material gráfico padrão?`,
+      `O grafismo questionado lançado no documento encaminhado a exame proveio do punho escritor de ${nomeA} que forneceu material gráfico padrão?`,
+    ];
+
+    opts.periciasGrafotecnica.forEach((nomeAutor, idx) => {
+      const nomeAutorUpper = String(nomeAutor || '').trim().toUpperCase() || 'NOME NÃO INFORMADO';
+      let pessoa: any = null;
+      for (const a of autoresArr) {
+        if (String(a?.nome || '').toUpperCase() === nomeAutorUpper) { pessoa = a; break; }
+      }
+      const cpfAutor = pessoa?.cpf ? String(pessoa.cpf).trim() : 'NÃO INFORMADO';
+      const nomeMaeAutor = (pessoa?.filiacaoMae || '').trim().toUpperCase() || 'NÃO INFORMADO';
+      const naturezaStr = String(natureza || 'Falsa identidade').trim();
+      const dataFatoBR = formatDateBR(dataFato) || '__/__/____';
+      const cidade = (extrairCidadeDoMunicipio(municipio) || 'VÁRZEA GRANDE').toUpperCase();
+      const dataExt = formatCidadeDataExtenso(cidade, dataFato).toUpperCase();
+      const quesitos = quesitosGraf(nomeAutorUpper);
+
+      if (idx > 0 || segundaPaginaChildren.length > 0) {
+        segundaPaginaChildren.push(new Paragraph({ children: [ new PageBreak() ] }));
+      }
+
+      // Título Grafotécnico 12pt negrito + (1) LINHA EM BRANCO ABAIXO
+      segundaPaginaChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 0, line: 240 },
+          children: [
+            new TextRun({
+              text: `REQUISIÇÃO DE EXAME DE GRAFOTÉCNICO nº ${numReq}/${unidadeAbr}/${crAbr}/${anoFato}`,
+              bold: true,
+              size: 24
+            })
+          ]
+        }),
+        new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [ new TextRun({ text: ' ' }) ] }),
+      );
+
+      // Corpo legal (12pt)
+      const corpoGraf = `Requisito a POLITEC - Perícia Oficial e Identificação Técnica, nos termos dos artigos 174 e 235 do Código de Processo Penal e artigo 69 Caput da Lei n.º 9.099/1995, a realização de exame grafotécnico no (a) Sr. (a) ${nomeAutorUpper}, autor do fato, portador(a) do CPF ${cpfAutor}, qualificado no Termo Circunstanciado de Ocorrência nº ${numeroDisplay}, de natureza ${naturezaStr}, ocorrido na data ${dataFatoBR}, respondendo para tal os seguintes quesitos:`;
+      segundaPaginaChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.JUSTIFIED,
+          indent: { firstLine: convertMillimetersToTwip(25) },
+          spacing: { before: 0, after: 0, line: 240 },
+          children: [ new TextRun({ text: corpoGraf.toUpperCase(), size: 24 }) ]
+        }),
+        // (2) LINHA EM BRANCO ENTRE CORPO LEGAL E QUESITO 1
+        new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [ new TextRun({ text: ' ' }) ] }),
+      );
+
+      // 3 Quesitos (SOMENTE aqui 10pt = size 20, compactos)
+      quesitos.forEach((q, i) => {
+        segundaPaginaChildren.push(
+          new Paragraph({
+            alignment: AlignmentType.JUSTIFIED,
+            indent: { left: convertMillimetersToTwip(25) },
+            spacing: { before: 0, after: 10, line: 226 },
+            children: [ new TextRun({ text: `${i + 1}. ${q.toUpperCase()}`, size: 20 }) ]
+          })
+        );
+      });
+
+      // DESTINO DO LAUDO + observação VERMELHA itálico + (3) LINHA EM BRANCO ANTES DA DATA - USA UNIDADE, NUNCA CR!
+      const destinoLaudoG = (unidadeAbr && unidadeAbr.trim()) ? String(unidadeAbr).trim().toUpperCase() : String(unidadeLinha || '').trim().toUpperCase();
+      segundaPaginaChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.LEFT,
+          spacing: { before: 0, after: 10, line: 240 },
+          children: [
+            new TextRun({ text: 'DESTINO DO LAUDO: ', bold: true, size: 24 }),
+            new TextRun({ text: destinoLaudoG, size: 24 })
+          ]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.LEFT,
+          spacing: { before: 0, after: 0, line: 240 },
+          children: [ new TextRun({ text: '(verificar quais quesitos são aplicáveis ao fato)'.toUpperCase(), italics: true, size: 24, color: "FF0000" }) ]
+        }),
+        new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [ new TextRun({ text: ' ' }) ] }),
+      );
+
+      // Local e data (12pt)
+      segundaPaginaChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          spacing: { before: 0, after: 80, line: 240 },
+          children: [ new TextRun({ text: dataExt, size: 24 }) ]
+        }),
+      );
+
+      // PADRÃO OFICIAL DE ASSINATURA: Nome+Posto → CONDUTOR → RG Nº XXXX PMMT
+      const rgpmGraf = condutorRgPM || '____________________';
+      segundaPaginaChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 80, after: 10, line: 240 },
+          children: [ new TextRun({ text: condutorAssinaturaG, bold: true, size: 24 }) ]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 10, line: 240 },
+          children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA'.toUpperCase(), size: 24 }) ]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 20, line: 240 },
+          children: [ new TextRun({ text: `RG Nº ${rgpmGraf} PMMT`.toUpperCase(), size: 24 }) ]
+        }),
+      );
+
+      // Tabela Inferior (3 colunas, 2 linhas / célula) - COMPACTA
+      const gLabel = (txt: string) => new Paragraph({
+        spacing: { before: 0, after: 10, line: 236 },
+        children: [ new TextRun({ text: `${txt}:`, bold: true, size: 24 }) ]
+      });
+      const gValue = (txt: string) => new Paragraph({
+        spacing: { before: 0, after: 0, line: 236 },
+        children: [ new TextRun({ text: txt.toUpperCase(), size: 24 }) ]
+      });
+      const tabelaGraf = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        columnWidths: [3000, 3000, 3000],
+        rows: [
+          new TableRow({
+            height: { value: convertMillimetersToTwip(20), rule: HeightRule.ATLEAST },
+            children: [
+              new TableCell({
+                borders: tableCellBordersGraf,
+                verticalAlign: VerticalAlign.CENTER,
+                margins: { top: 40, bottom: 40, left: 80, right: 80 },
+                children: [ gLabel('DATA'), gValue(dataFatoBR) ]
+              }),
+              new TableCell({
+                borders: tableCellBordersGraf,
+                verticalAlign: VerticalAlign.CENTER,
+                margins: { top: 40, bottom: 40, left: 80, right: 80 },
+                children: [ gLabel('Nome Autor do Fato'), gValue(nomeAutorUpper) ]
+              }),
+              new TableCell({
+                borders: tableCellBordersGraf,
+                verticalAlign: VerticalAlign.CENTER,
+                margins: { top: 40, bottom: 40, left: 80, right: 80 },
+                children: [ gLabel('Nome da Mãe'), gValue(nomeMaeAutor) ]
+              }),
+            ]
+          })
+        ]
+      });
+      segundaPaginaChildren.push(tabelaGraf);
+    });
   }
   // ===== TERMO DE APREENSÃO (somente se houver apreensões ou drogas) =====
   const hasSeizure = (apreensoes && apreensoes.trim() !== '') || (drogas && drogas.length > 0);
