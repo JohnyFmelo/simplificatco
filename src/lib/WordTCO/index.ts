@@ -923,56 +923,79 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
   const isDrogaNatureza = ((natureza || '').toLowerCase().includes('droga')) || ((drogas && drogas.length > 0));
   if (isDrogaNatureza) {
     const cidadeEnc = extrairCidadeDoMunicipio(municipio) || 'VÁRZEA GRANDE';
-    const anoAtual = new Date().getFullYear();
-    const crCode = (crAbr || '').replace(/\s+/g, '');
-    const acrRaw = cityAcronym(cidadeEnc);
-    const acrPart = acrRaw && acrRaw.length >= 2 ? `.${acrRaw}` : '';
-    const base = (numeroRequisicao && numeroRequisicao.trim()) ? numeroRequisicao.trim() : (tcoNumber || '').trim();
-    const codigo = `${base}.${crCode}${acrPart}.${anoAtual}`;
+    
+    const brDate = formatDateBR(dataFato);
+    const mAno = brDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    const anoFato = mAno ? parseInt(mAno[3], 10) : new Date().getFullYear();
+
+    const numReqDisplay = (numeroRequisicao && numeroRequisicao.trim()) ? numeroRequisicao.trim() : ((tcoNumber && tcoNumber.trim()) ? tcoNumber.trim() : '000');
+
+    const tituloRequisicao = `REQUISIÇÃO DE EXAME EM DROGAS DE ABUSO nº ${numReqDisplay}/${unidadeAbr}/${crAbr}/${anoFato}`;
+
+    const nomeAutor = (autores && autores[0]?.nome) ? autores[0].nome : ((autoresNomes && autoresNomes[0]) ? autoresNomes[0] : 'NÃO INFORMADO');
+    const cpfAutor = (autores && autores[0]?.cpf) ? autores[0].cpf : 'NÃO INFORMADO';
+    const numeroRefTco = `${(tcoNumber || '').trim()}/${unidadeAbr}/${crAbr}/${anoFato}`;
+    const dataFatoDisplay = formatDateBR(dataFato) || '__/__/____';
+    const horaFatoDisplay = (horaFato || '').trim().replace(':', '') || '__';
+
+    const corpoLegal = `Requisito a POLITEC - Perícia Oficial e Identificação Técnica, nos termos dos artigos 158 e seguintes do Código de Processo Penal, combinado com o Artigo 69, Caput da Lei 9.099/95, combinado com Artigo 48, § 2º da Lei nº 11.343/06, a realização de exame químico na substância análoga a entorpecente apensada, encontrada em posse do (a) Sr. (a) ${nomeAutor.toUpperCase()}, autor do fato, portador do CPF ${cpfAutor} qualificado no Termo Circunstanciado de Ocorrência nº ${numeroRefTco}, de natureza Posse de Drogas para consumo pessoal, ocorrido na data dia ${dataFatoDisplay} às ${horaFatoDisplay}min.`;
 
     segundaPaginaChildren.push(
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [
-        new TextRun({ text: 'REQUISIÇÃO DE EXAME PERICIAL EM DROGAS', bold: true, size: 28 }),
-        new TextRun({ break: 1, text: codigo, bold: true })
+        new TextRun({ text: tituloRequisicao, bold: true, font: 'Times New Roman', size: 24 })
       ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: `REQUISITA-SE À POLITEC, NOS TERMOS DO ARTIGO 159 E SEGUINTES DO CPP COMBINADO COM O ARTIGO 69, CAPUT DA LEI Nº 9.099/95, E ARTIGO 50, §1º DA LEI Nº 11.343/2006, A REALIZAÇÃO DE EXAME PERICIAL DEFINITIVO NA(S) SUBSTÂNCIA APREENDIDA E ACONDICIONADA SOB O LACRE Nº ${(lacreNumero || '').toUpperCase()}, ENCONTRADA EM POSSE DO AUTOR DO FATO ${(autoresNomes && autoresNomes[0]) ? autoresNomes[0].toUpperCase() : ''}, QUALIFICADO NESTE TCO.` }) ] }),
-      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: 'APENSO:' }) ] }),
+      new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: corpoLegal.toUpperCase() }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
     );
-    const apensoLinhas = (drogas && drogas.length > 0) ? drogas.map((drug) => `${(drug.quantidade || '').trim()} DE SUBSTÂNCIA ${String(drug.substancia || '').toUpperCase()}, DE COR ${String(drug.cor || '').toUpperCase()}, COM ODOR ${String(drug.odor || '').toUpperCase()}${drug.indicios ? `, ${String(drug.indicios || '').toUpperCase()}` : ''}.`) : [(apreensoes || '').trim()].filter(Boolean);
-    let apensoTexto = apensoLinhas.join(' ').trim();
-    if (lacreNumero && lacreNumero.trim()) {
-      apensoTexto = `${apensoTexto} O MATERIAL ENCONTRA-SE DEVIDAMENTE ACONDICIONADO SOB O LACRE Nº ${lacreNumero.trim().toUpperCase()}.`;
-    }
-    if (apensoTexto) {
-      segundaPaginaChildren.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: `- ${apensoTexto}` }) ] }));
+
+    if (drogas && drogas.length > 0) {
+      drogas.forEach((drug) => {
+        const qtdNum = parseInt((drug.quantidade || '1').replace(/[^\d]/g, ''), 10) || 1;
+        const qtdStr = qtdNum.toString().padStart(2, '0');
+        const qtdExt = numeroAte99PorExtenso(qtdNum).toLowerCase();
+        const nomeDroga = (drug.isUnknownMaterial && drug.customMaterialDesc) 
+          ? drug.customMaterialDesc 
+          : (drug.substancia || 'substância não identificada');
+        const apenso = `Apenso: ${qtdStr} (${qtdExt}) porção de substância análoga ao entorpecente conhecido como ${nomeDroga.toLowerCase()}.`;
+        segundaPaginaChildren.push(
+          new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: apenso.toUpperCase() }) ] })
+        );
+      });
+    } else if (apreensoes && apreensoes.trim()) {
+      const apenso = `Apenso: 01 (uma) porção de substância análoga ao entorpecente. ${apreensoes.trim()}`;
+      segundaPaginaChildren.push(
+        new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [ new TextRun({ text: apenso.toUpperCase() }) ] })
+      );
     }
 
     segundaPaginaChildren.push(
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-      new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: 'PARA TANTO, SOLICITA-SE QUE SEJA CONFECCIONADO O RESPECTIVO LAUDO PERICIAL DEFINITIVO, DEVENDO OS PERITOS RESPONDEREM AOS QUESITOS ABAIXO:' }) ] }),
+      new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: 'Para tanto, solicito a Vossa senhoria, que seja confeccionado o respectivo Laudo definitivo, devendo os peritos responderem aos quesitos oficiais, conforme abaixo:'.toUpperCase() }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] })
     );
-    const quesitosDrogas = [
-      'A AMOSTRA APRESENTADA É CONSTITUÍDA POR SUBSTÂNCIA ENTORPECENTE OU DE USO PROSCRITO NO BRASIL?',
-      'EM CASO POSITIVO, QUAL SUBSTÂNCIA?',
-      'QUAL O PESO LÍQUIDO TOTAL DA AMOSTRA APRESENTADA?'
+
+    const quesitosDrogasNovos = [
+      'Qual a natureza e característica das substâncias enviadas a exame?',
+      'Podem as mesmas causar dependência física ou psíquica?',
+      'Qual a massa das substâncias enviadas a exame?'
     ];
-    quesitosDrogas.forEach((q, i) => {
+    quesitosDrogasNovos.forEach((q, i) => {
       segundaPaginaChildren.push(
         new Paragraph({
           alignment: AlignmentType.JUSTIFIED,
           indent: { left: convertMillimetersToTwip(25) },
-          children: [ new TextRun({ text: `${i + 1}. ${q}`, size: 20 }) ]
+          children: [ new TextRun({ text: `${i + 1}. ${q.toUpperCase()}`, size: 20 }) ]
         })
       );
     });
 
     segundaPaginaChildren.push(
+      new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: 'NOTAS:', bold: true }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: `EM REQUISIÇÃO Nº ${numReqDisplay} COM LACRE Nº ${(lacreNumero || '').trim().toUpperCase() || '__________'}` }) ] }),
+      new Paragraph({ children: [ new TextRun({ text: `DESTINO DO LAUDO: ${crAbr || unidadeAbr || '__________'}` }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
       new Paragraph({ alignment: AlignmentType.RIGHT, children: [ new TextRun({ text: String(formatCidadeDataExtenso(cidadeEncAll, dataFato)).toUpperCase() }) ] }),
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
@@ -980,7 +1003,6 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: `${(condutorNome || '').trim()} ${condutorPosto ? condutorPosto : ''}`.trim() || '__________________________', bold: true }) ] }),
       new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'CONDUTOR DA OCORRÊNCIA' }) ] })
     );
-    // Espaço adicional entre o nome e a tabela
     segundaPaginaChildren.push(new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }));
 
     const tabelaReceb = new Table({
@@ -988,11 +1010,10 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
       columnWidths: [convertMillimetersToTwip(60), convertMillimetersToTwip(60), convertMillimetersToTwip(60)],
       rows: [
         new TableRow({ children: [
-          new TableCell({ children: [ new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'DATA' }) ] }) ] }),
-          new TableCell({ children: [ new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'POLITEC' }) ] }) ] }),
-          new TableCell({ children: [ new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'ASSINATURA' }) ] }) ] })
+          new TableCell({ children: [ new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'DATA', bold: true }) ] }) ] }),
+          new TableCell({ children: [ new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'POLITEC', bold: true }) ] }) ] }),
+          new TableCell({ children: [ new Paragraph({ alignment: AlignmentType.CENTER, children: [ new TextRun({ text: 'ASSINATURA', bold: true }) ] }) ] })
         ]}),
-        // Linha adicional em branco para preenchimento (altura 1 cm)
         new TableRow({ height: { value: convertMillimetersToTwip(10), rule: HeightRule.ATLEAST }, children: [
           new TableCell({ children: [ new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }) ] }),
           new TableCell({ children: [ new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }) ] }),
