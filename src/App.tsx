@@ -22,8 +22,35 @@ import { createPortal } from "react-dom";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+// Ocultar/remover badge automático do Lovable injetado dinamicamente no rodapé
+const useHideLovableBadge = () => {
+  React.useEffect(() => {
+    const purge = () => {
+      const closeBtn = document.getElementById("lovable-badge-close") as HTMLButtonElement | null;
+      if (closeBtn) {
+        try { closeBtn.click(); } catch { /* noop */ }
+      }
+      const sel = '#lovable-badge, aside[aria-label="Edit with Lovable"]';
+      document.querySelectorAll<HTMLElement>(sel).forEach((el) => {
+        try { el.remove(); } catch { /* noop */ }
+      });
+    };
+    purge();
+    const observer = new MutationObserver(() => purge());
+    observer.observe(document.body, { childList: true, subtree: false });
+    const interval = window.setInterval(purge, 1500);
+    return () => {
+      observer.disconnect();
+      window.clearInterval(interval);
+    };
+  }, []);
+};
+
+const App = () => {
+  useHideLovableBadge();
+  return (
   <QueryClientProvider client={queryClient}>
+
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -38,7 +65,9 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
+
 
 export default App;
 
