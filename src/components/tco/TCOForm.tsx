@@ -844,7 +844,6 @@ ${testFielDepositario ? "- TERMO DE NOMEAÇÃO DE Fiel DEPOSITÁRIO;" : ""}`);
           nome: a.nome,
           relato: a.relato
         })),
-        autores,
         condutor: componentesGuarnicao[0] ? {
           nome: componentesGuarnicao[0].nome,
           posto: componentesGuarnicao[0].posto,
