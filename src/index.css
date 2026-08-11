@@ -272,3 +272,12 @@ All colors MUST be HSL.
 /* Container interno para seções das abas */
 /* Login page styles removed as they are now handled by Tailwind CSS in Login.tsx */
 
+
+/* Ocultar badge automático do Lovable */
+#lovable-badge,
+aside[aria-label="Edit with Lovable"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
