@@ -906,7 +906,7 @@ const HeaderActions = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => setOpenMeusTcos(true)}
-                className="h-9 gap-2 rounded-xl border border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white/90 backdrop-blur-sm shadow-lg px-3 font-medium"
+                className="h-8 sm:h-9 gap-2 rounded-xl border border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white/90 backdrop-blur-sm shadow-lg px-2.5 sm:px-3 font-medium"
               >
                 <Folder className="h-4 w-4" />
                 <span className="hidden sm:inline">Meus TCO's</span>
@@ -941,7 +941,7 @@ const HeaderActions = () => {
           );
 
           const rightPortal = createPortal(
-            <div className="fixed top-2 right-2 sm:top-3 sm:right-4 z-[100] pointer-events-auto flex items-center gap-2">
+            <div className="fixed top-2 right-2 sm:top-3 sm:right-4 z-[100] pointer-events-auto flex items-center gap-1.5 sm:gap-2">
               {storedNome && (
                 <span className="hidden sm:inline-block text-white/90 text-xs font-medium backdrop-blur-sm bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 shadow-lg max-w-[200px] truncate">
                   {storedNome}
@@ -950,7 +950,7 @@ const HeaderActions = () => {
               {storedRgpm && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" aria-label="Configurações" className="h-9 w-9 rounded-xl border border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white/90 backdrop-blur-sm shadow-lg">
+                    <Button variant="ghost" size="icon" aria-label="Configurações" className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl border border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white/90 backdrop-blur-sm shadow-lg">
                       <Settings className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -973,7 +973,7 @@ const HeaderActions = () => {
                 size="icon" 
                 onClick={handleLogout} 
                 aria-label="Sair"
-                className="h-9 w-9 rounded-xl border border-white/30 bg-white/10 text-white hover:bg-red-500/40 hover:text-white backdrop-blur-sm shadow-lg"
+                className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl border border-white/30 bg-white/10 text-white hover:bg-red-500/40 hover:text-white backdrop-blur-sm shadow-lg"
               >
                 <LogOut className="h-5 w-5" />
               </Button>

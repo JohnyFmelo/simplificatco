@@ -1086,13 +1086,13 @@ ${testFielDepositario ? "- TERMO DE NOMEAÇÃO DE Fiel DEPOSITÁRIO;" : ""}`);
     }
   };
   return <>
-      <div className="header">
-        <div className="absolute bottom-2 right-4 text-[10px] text-blue-200/50 font-light select-none">
+      <div className="header tco-main-header">
+        <div className="tco-watermark absolute bottom-2 right-4 text-[10px] text-blue-200/50 font-light select-none">
           @johny.f.melo
         </div>
         <h1><i className="fas fa-file-alt"></i> Termo Circunstanciado de Ocorrência</h1>
-        <div className="flex items-center gap-2 justify-center">
-          <p>{userSubtitle}</p>
+        <div className="tco-header-meta flex items-center gap-2 justify-center flex-wrap">
+          <p className="tco-header-subtitle">{userSubtitle}</p>
           {(accessLevel && accessLevel.toLowerCase().startsWith("admin")) && (
             <span className="tag">Administrador</span>
           )}
@@ -1101,7 +1101,7 @@ ${testFielDepositario ? "- TERMO DE NOMEAÇÃO DE Fiel DEPOSITÁRIO;" : ""}`);
           )}
         </div>
         {isAdmin && (
-          <div className="flex justify-center mt-2 gap-2 items-center flex-wrap">
+          <div className="tco-header-actions flex justify-center mt-2 gap-2 items-center flex-wrap">
             <Button
               variant="outline"
               size="sm"
@@ -1135,7 +1135,7 @@ ${testFielDepositario ? "- TERMO DE NOMEAÇÃO DE Fiel DEPOSITÁRIO;" : ""}`);
       </div>
 
       <Tabs value={activeTab} onValueChange={val => setActiveTab(val)}>
-          <TabsList className="flex w-full">
+          <TabsList className="tco-tabs-list flex w-full">
             <TabsTrigger className={activeTab === "basico" ? "tab active" : "tab"} value="basico" disabled={!canNavigateToTab("basico")}><i className="fas fa-info-circle"></i> Informações Básicas</TabsTrigger>
             <TabsTrigger className={activeTab === "geral" ? "tab active" : "tab"} value="geral" disabled={!canNavigateToTab("geral")}><i className="fas fa-calendar-alt"></i> Dados da Ocorrência</TabsTrigger>
             {isDrugCase && <TabsTrigger className={activeTab === "drogas" ? "tab active" : "tab"} value="drogas" disabled={!canNavigateToTab("drogas")}><i className="fas fa-flask"></i> Drogas</TabsTrigger>}
