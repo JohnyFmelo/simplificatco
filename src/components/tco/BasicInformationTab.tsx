@@ -94,9 +94,18 @@ const naturezaTipificacoes: Record<string, string> = {
 // CRs disponíveis e datasets de Unidades por CR
 const FIXED_CR = "2º Comando Regional";
 const CR1 = "1º Comando Regional";
-const CR_OPTIONS = [CR1, FIXED_CR];
+const COMANDO_ESPECIALIZADO = "Comando Especializado";
+const CR_OPTIONS = [CR1, FIXED_CR, COMANDO_ESPECIALIZADO];
 
 const CR1_UNIDADES: { nome: string; cidade: string; endereco: string; email: string; telefone: string }[] = [
+  { nome: "1º Comando Regional - Sede", cidade: "Cuiabá", endereco: "Rua Filinto Muller, nº 1981, Bairro Quilombo, CEP 78.043-409", email: "cr1@pm.mt.gov.br", telefone: "" },
+  { nome: "1º Batalhão de Polícia Militar - Daniel de Queiroz", cidade: "Cuiabá", endereco: "Av. XV de Novembro, nº 669, Bairro Porto, CEP 78.020-301", email: "1cpa@pm.mt.gov.br", telefone: "(65) 9 8170-0272" },
+  { nome: "2ª Cia PM Lixiera", cidade: "Cuiabá", endereco: "Av. João Gomes Sobrinho, s/nº, Bairro Lixeira, CEP 78.008-800", email: "cialixeira@gmail.com", telefone: "(65) 3321-2790 / (65) 9 9954-8494" },
+  { nome: "3ª Cia PM Beira Rio", cidade: "Cuiabá", endereco: "Rua Bahia, s/nº, Bairro Jardim Europa, CEP 78.065-335", email: "ciapmbeirario@gmail.com", telefone: "(65) 3634-7184" },
+  { nome: "4ª Cia PM do Bairro Boa Esperança (UFMT)", cidade: "Cuiabá", endereco: "Av. Alziro Zahur, s/nº, Bairro Boa Esperança, CEP 78.060-900", email: "baseufmt@gmail.com", telefone: "(65) 3615-8190" },
+];
+
+const COMANDO_ESPECIALIZADO_UNIDADES: { nome: string; cidade: string; endereco: string; email: string; telefone: string }[] = [
   { nome: "Batalhão de Polícia Militar de Trânsito Urbano e Rodoviário - BPMTRAN", cidade: "Cuiabá", endereco: "Av. Fernando Corrêa da Costa, nº 4177, Chácara dos Pinheiros - Cuiabá - MT", email: "bpmtran@pm.mt.gov.br", telefone: "(65) 78085-625 / (65) 3661-1956" },
 ];
 
@@ -120,6 +129,7 @@ const CR2_UNIDADES: { nome: string; cidade: string; endereco: string; email: str
 const UNIDADES_BY_CR: Record<string, typeof CR2_UNIDADES> = {
   [CR1]: CR1_UNIDADES,
   [FIXED_CR]: CR2_UNIDADES,
+  [COMANDO_ESPECIALIZADO]: COMANDO_ESPECIALIZADO_UNIDADES,
 };
 
 const formatarPena = (anosDecimais: number): string => {

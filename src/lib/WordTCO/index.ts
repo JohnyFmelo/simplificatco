@@ -58,6 +58,41 @@ export function formatUnitFooterName(unidade?: string | null): string {
 export function getUnitAddressLines(unidade?: string | null): string[] {
   const u = (unidade || "").toLowerCase();
   // Mapeamentos conhecidos
+  if (/1\s*[º°ª]?\s*comando\s*regional\s*-\s*sede|1\s*[º°ª]?\s*comando\s*regional/i.test(u)) {
+    return [
+      "1º Comando Regional",
+      "Rua Filinto Muller, nº 1981, Bairro Quilombo",
+      "CEP 78.043-409, Cuiabá - MT  |  E-mail: cr1@pm.mt.gov.br",
+    ];
+  }
+  if (/4\s*[ªa]?\s*cia\s*pm.*boa\s+esperan[çc]a|boa\s+esperan[çc]a.*ufmt|baseufmt/i.test(u)) {
+    return [
+      "4ª Companhia de Polícia Militar Boa Esperança (UFMT)",
+      "Av. Alziro Zahur, s/nº, Bairro Boa Esperança",
+      "CEP 78.060-900, Cuiabá - MT  |  Tel.: (65) 3615-8190  |  E-mail: baseufmt@gmail.com",
+    ];
+  }
+  if (/3\s*[ªa]?\s*cia\s*pm\s*beira\s*rio|beira\s*rio/i.test(u)) {
+    return [
+      "3ª Cia PM Beira Rio",
+      "Rua Bahia, s/nº, Bairro Jardim Europa",
+      "CEP 78.065-335, Cuiabá - MT  |  Tel.: (65) 3634-7184  |  E-mail: ciapmbeirario@gmail.com",
+    ];
+  }
+  if (/2\s*[ªa]?\s*cia\s*pm\s*lixiera|2\s*[ªa]?\s*cia\s*pm\s*lixeira|lixiera|lixeira/i.test(u)) {
+    return [
+      "2ª Cia PM Lixiera",
+      "Av. João Gomes Sobrinho, s/nº, Bairro Lixeira",
+      "CEP 78.008-800, Cuiabá - MT  |  Tel.: (65) 3321-2790 / (65) 9 9954-8494  |  E-mail: cialixeira@gmail.com",
+    ];
+  }
+  if (/1\s*[º°ª]?\s*batalh[aã]o.*daniel\s+de\s+queiroz|daniel\s+de\s+queiroz/i.test(u)) {
+    return [
+      "1º Batalhão de Polícia Militar - Daniel de Queiroz",
+      "Av. XV de Novembro, nº 669, Bairro Porto",
+      "CEP 78.020-301, Cuiabá - MT  |  Tel.: (65) 9 8170-0272  |  E-mail: 1cpa@pm.mt.gov.br",
+    ];
+  }
   if (/bpmtran|tr[âa]nsito\s+urbano\s+e\s+rodovi[áa]rio/i.test(u)) {
     return [
       "Batalhão de Polícia Militar de Trânsito Urbano e Rodoviário - BPMTRAN",

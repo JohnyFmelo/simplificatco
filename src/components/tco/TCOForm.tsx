@@ -119,6 +119,11 @@ const TCOForm: React.FC = () => {
 
   // Mapeamento Unidade -> Cidade para preencher município automaticamente
   const UNIDADE_TO_CIDADE: Record<string, string> = {
+    "1º Comando Regional - Sede": "Cuiabá",
+    "1º Batalhão de Polícia Militar - Daniel de Queiroz": "Cuiabá",
+    "2ª Cia PM Lixiera": "Cuiabá",
+    "3ª Cia PM Beira Rio": "Cuiabá",
+    "4ª Cia PM do Bairro Boa Esperança (UFMT)": "Cuiabá",
     "2º Comando Regional - Sede": "",
     "4º Batalhão de Polícia Militar": "Várzea Grande",
     "15ª Cia Independente de Polícia Militar - Força Tática": "Várzea Grande",
