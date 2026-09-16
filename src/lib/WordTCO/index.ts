@@ -24,8 +24,8 @@ export function abbreviateUnidade(unidade?: string): string {
     const base = ordinal ? `${ordinal} CIPM` : "CIPM";
     return /Força Tática/i.test(name) ? `${base} FT` : base;
   }
-  if (/Companhia de Polícia Militar/i.test(name)) {
-    return ordinal ? `${ordinal} CPM` : "CPM";
+  if (/Companhia de Polícia Militar|\bCia\s*PM\b/i.test(name)) {
+    return ordinal ? `${ordinal} CIA` : "CIA";
   }
   if (/Núcleo de Polícia Militar/i.test(name)) {
     return "NPM";
@@ -298,6 +298,16 @@ function formatCidadeDataExtenso(cidade?: string | null, dataStr?: string | null
   const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
   const mesNome = MESES[(mes - 1) % 12];
   return `${cidadeMt}, ${dia} de ${mesNome} de ${ano}`;
+}
+
+function getJuizadoEspecialDestino(opts: { cr?: string | null; unidade?: string | null; municipio?: string | null }): string {
+  const cr = String(opts.cr || '').trim();
+  if (cr === '1º Comando Regional') {
+    return 'CUIABÁ, SITO: AV. DR. HÉLIO PONCE DE ARRUDA, S/Nº - CENTRO POLÍTICO ADMINISTRATIVO, 78.049-944';
+  }
+
+  const cidadeAudiencia = extrairCidadeDoMunicipio(opts.municipio) || 'VÁRZEA GRANDE';
+  return `${cidadeAudiencia} - MT`;
 }
 
 export interface TcoDocOptions {
@@ -909,7 +919,7 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
   // ===== Quebra de página e TERMO DE COMPROMISSO DE COMPARECIMENTO =====
   const audienciaDataDisplay = formatDateBR(audienciaData) || '___/___/______';
   const audienciaHoraDisplay = (audienciaHora && audienciaHora.trim()) ? audienciaHora : '__:__';
-  const cidadeAudiencia = extrairCidadeDoMunicipio(municipio) || 'VÁRZEA GRANDE';
+  const juizadoDestino = getJuizadoEspecialDestino({ cr, unidade, municipio });
   const autorNome = (autoresNomes && autoresNomes.length > 0) ? (autoresNomes[0] || '').toUpperCase() : '';
   const condutorNome = (condutor?.nome || '').toUpperCase();
   const condutorPosto = (condutor?.posto || '').toUpperCase();
@@ -924,7 +934,7 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
       indent: { firstLine: convertMillimetersToTwip(25) },
       children: [
         new TextRun({
-          text: `POR ESTE INSTRUMENTO, EU, AUTOR DOS FATOS ABAIXO ASSINADO, JÁ QUALIFICADO NOS AUTOS, ASSUMO, NOS TERMOS DO PARÁGRAFO ÚNICO DO ART. 69 DA LEI Nº 9.099/95, O COMPROMISSO DE COMPARECER AO JUIZADO ESPECIAL CRIMINAL DE ${cidadeAudiencia} - MT, NO DIA ${audienciaDataDisplay} ÀS ${audienciaHoraDisplay}, EM VIRTUDE DOS FATOS REGISTRADOS NO TERMO CIRCUNSTANCIADO DE OCORRÊNCIA ACIMA REFERENCIADO, CONFORME NOTIFICADO ABAIXO. FICO CIENTE DE QUE A CONCORDÂNCIA EM COMPARECER AO JUIZADO ESPECIAL CRIMINAL NÃO IMPLICA CONFISSÃO DE QUALQUER NATUREZA, ADMISSÃO DE CULPA OU ANUÊNCIA ÀS DECLARAÇÕES DA PARTE CONTRÁRIA E QUE O NÃO COMPARECIMENTO NO DIA E HORA AJUSTADOS NESTE TERMO SUJEITARÁ ÀS MEDIDAS PREVISTAS NA LEI Nº 9.099/95. FICO CIENTE, TAMBÉM, QUE DEVEREI COMPARECER ACOMPANHADO DE ADVOGADO E QUE NA AUSÊNCIA DESTE SERÁ NOMEADO UM DEFENSOR PÚBLICO.`
+          text: `POR ESTE INSTRUMENTO, EU, AUTOR DOS FATOS ABAIXO ASSINADO, JÁ QUALIFICADO NOS AUTOS, ASSUMO, NOS TERMOS DO PARÁGRAFO ÚNICO DO ART. 69 DA LEI Nº 9.099/95, O COMPROMISSO DE COMPARECER AO JUIZADO ESPECIAL CRIMINAL DE ${juizadoDestino}, NO DIA ${audienciaDataDisplay} ÀS ${audienciaHoraDisplay}, EM VIRTUDE DOS FATOS REGISTRADOS NO TERMO CIRCUNSTANCIADO DE OCORRÊNCIA ACIMA REFERENCIADO, CONFORME NOTIFICADO ABAIXO. FICO CIENTE DE QUE A CONCORDÂNCIA EM COMPARECER AO JUIZADO ESPECIAL CRIMINAL NÃO IMPLICA CONFISSÃO DE QUALQUER NATUREZA, ADMISSÃO DE CULPA OU ANUÊNCIA ÀS DECLARAÇÕES DA PARTE CONTRÁRIA E QUE O NÃO COMPARECIMENTO NO DIA E HORA AJUSTADOS NESTE TERMO SUJEITARÁ ÀS MEDIDAS PREVISTAS NA LEI Nº 9.099/95. FICO CIENTE, TAMBÉM, QUE DEVEREI COMPARECER ACOMPANHADO DE ADVOGADO E QUE NA AUSÊNCIA DESTE SERÁ NOMEADO UM DEFENSOR PÚBLICO.`
         })
       ]
     }),
@@ -1262,7 +1272,7 @@ export async function generateTcoDocObject(opts: TcoDocOptions) {
       // O parágrafo de ciência da audiência só aparece quando a vítima decide representar imediatamente
       ...(marcarRepresentar ? [
         new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
-        new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: `ESTOU CIENTE DE QUE A AUDIÊNCIA OCORRERÁ NO DIA ${audienciaDataDisplay}, ÀS ${audienciaHoraDisplay} HORAS, NAS DEPENDÊNCIAS DO JUIZADO ESPECIAL CRIMINAL DE ${cidadeAudiencia} - MT, E QUE O NÃO COMPARECIMENTO IMPORTARÁ EM RENÚNCIA À REPRESENTAÇÃO.` }) ] }),
+        new Paragraph({ alignment: AlignmentType.JUSTIFIED, indent: { firstLine: convertMillimetersToTwip(25) }, children: [ new TextRun({ text: `ESTOU CIENTE DE QUE A AUDIÊNCIA OCORRERÁ NO DIA ${audienciaDataDisplay}, ÀS ${audienciaHoraDisplay} HORAS, NAS DEPENDÊNCIAS DO JUIZADO ESPECIAL CRIMINAL DE ${juizadoDestino}, E QUE O NÃO COMPARECIMENTO IMPORTARÁ EM RENÚNCIA À REPRESENTAÇÃO.` }) ] }),
       ] : []),
       // Espaço adicional antes da identificação
       new Paragraph({ children: [ new TextRun({ text: ' ' }) ] }),
