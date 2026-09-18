@@ -6,13 +6,24 @@ import { ptBR } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
 
 interface AudienciaTabProps {
+  tcoNumber: string;
+  setTcoNumber: (val: string) => void;
   audienciaData: string;
   setAudienciaData: (val: string) => void;
   audienciaHora: string;
   setAudienciaHora: (val: string) => void;
+  setStartTimestamp?: () => void;
 }
 
-const AudienciaTab: React.FC<AudienciaTabProps> = ({ audienciaData, setAudienciaData, audienciaHora, setAudienciaHora }) => {
+const AudienciaTab: React.FC<AudienciaTabProps> = ({
+  tcoNumber,
+  setTcoNumber,
+  audienciaData,
+  setAudienciaData,
+  audienciaHora,
+  setAudienciaHora,
+  setStartTimestamp,
+}) => {
   const [open, setOpen] = useState(false);
   const selectedDate = useMemo(() => {
     const m = audienciaData && audienciaData.match?.(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -26,9 +37,26 @@ const AudienciaTab: React.FC<AudienciaTabProps> = ({ audienciaData, setAudiencia
   }, [audienciaData]);
   return (
     <div>
-      <div className="two-columns">
+      <div className="three-columns">
         <div className="form-group">
-          <label htmlFor="audienciaData">Data</label>
+          <label htmlFor="audienciaTcoNumber">N° do TCO <span className="text-red-500">*</span></label>
+          <Input
+            id="audienciaTcoNumber"
+            type="text"
+            inputMode="numeric"
+            placeholder="Número do TCO"
+            value={tcoNumber}
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, '');
+              setTcoNumber(value);
+              if (value.length > 0 && setStartTimestamp) {
+                setStartTimestamp();
+              }
+            }}
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="audienciaData">Data da Audiência <span className="text-red-500">*</span></label>
           <div className="input-row">
             <Input
               id="audienciaData"
@@ -65,7 +93,7 @@ const AudienciaTab: React.FC<AudienciaTabProps> = ({ audienciaData, setAudiencia
           </div>
         </div>
         <div className="form-group">
-          <label htmlFor="audienciaHora">Hora <span className="text-red-500">*</span></label>
+          <label htmlFor="audienciaHora">Horário da Audiência <span className="text-red-500">*</span></label>
           <Input
             id="audienciaHora"
             type="text"

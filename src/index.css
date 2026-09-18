@@ -174,12 +174,15 @@ All colors MUST be HSL.
 .penalty-header h3 { font-size: 17px; color: #343a40; font-weight: 600; }
 .penalty-item { background: #ffffff; padding: 12px; border-radius: 10px; border-left: 4px solid #003366; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .penalty-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.penalty-main { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
 .penalty-name { font-weight: 600; color: #343a40; font-size: 15px; flex: 1; }
 .penalty-value { background: #003366; color: #ffffff; padding: 4px 10px; border-radius: 18px; font-weight: 600; font-size: 12px; min-width: 56px; text-align: center; }
+.penalty-remove { border: none; background: transparent; color: #ff0000; font-size: 24px; line-height: 1; padding: 0 2px; cursor: pointer; align-self: center; }
+.penalty-remove:hover { color: #cc0000; }
 .penalty-legal { background: #f8f9fa; padding: 5px 8px; border-radius: 6px; font-size: 11px; color: #6c757d; font-family: 'Courier New', monospace; border: 1px dashed #e9ecef; margin-top: 6px; }
 .penalty-total { margin-top: 16px; padding-top: 12px; border-top: 2px dashed #e9ecef; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #343a40; }
 .penalty-total strong { color: #003366; font-size: 19px; }
-.alert-box { background: linear-gradient(135deg, #fff5f5 0%, #fef2f2 100%); border: 1.5px solid #e63946; border-radius: 12px; padding: 20px; display: flex; gap: 16px; margin-top: 24px; animation: slideUp 0.4s ease; box-shadow: 0 4px 12px rgba(230, 57, 70, 0.15); }
+.alert-box { background: linear-gradient(135deg, #fff5f5 0%, #fef2f2 100%); border: 1.5px solid #e63946; border-radius: 12px; padding: 20px; display: flex; gap: 16px; margin-top: 8px; animation: slideUp 0.4s ease; box-shadow: 0 4px 12px rgba(230, 57, 70, 0.15); }
 .alert-icon { font-size: 26px; color: #e63946; flex-shrink: 0; }
 .alert-content strong { color: #b91c1c; font-size: 15px; display: block; margin-bottom: 6px; }
 .alert-content p { color: #991b1b; font-size: 13.5px; line-height: 1.6; }
@@ -264,6 +267,12 @@ All colors MUST be HSL.
     align-items: flex-start;
     gap: 6px;
   }
+  .penalty-main {
+    gap: 8px;
+  }
+  .penalty-remove {
+    font-size: 22px;
+  }
   .input-row {
     display: flex;
     width: 100%;
@@ -309,12 +318,15 @@ All colors MUST be HSL.
     font-size: 11px;
   }
   .penalty-top {
-    flex-direction: column;
     align-items: flex-start;
     gap: 8px;
   }
+  .penalty-main {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
   .penalty-value {
-    align-self: flex-end;
+    align-self: flex-start;
   }
 }
 @media (max-width: 380px) {

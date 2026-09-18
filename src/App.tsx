@@ -197,22 +197,6 @@ const HeaderActions = () => {
     const p2 = d.slice(5);
     return p2 ? `${p1}-${p2}` : p1;
   };
-  const getUsageDaysRemaining = (dateValue?: string | null) => {
-    const raw = String(dateValue || "").trim();
-    if (!raw) return null;
-    const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const deadline = new Date(`${raw}T00:00:00`);
-    if (Number.isNaN(deadline.getTime())) return null;
-    return Math.floor((deadline.getTime() - startOfToday.getTime()) / 86400000);
-  };
-  const isUsageExpired = (dateValue?: string | null) => {
-    const daysRemaining = getUsageDaysRemaining(dateValue);
-    if (daysRemaining === null) return false;
-    return daysRemaining <= 0;
-  };
-  const requiresUsageDeadline = (accessLevel?: string | null) =>
-    String(accessLevel || "").trim() !== "Administrador";
   const formatUsageDate = (dateValue?: string | null) => {
     const raw = String(dateValue || "").trim();
     if (!raw) return "-";
@@ -286,10 +270,6 @@ const HeaderActions = () => {
       supportsDefinedAt: false,
     };
   }, []);
-  React.useEffect(() => {
-    if (!storedRgpm || !requiresUsageDeadline(storedNivel) || !currentUsageDeadline) return;
-    emitUsageRenewalAlert(currentUsageDeadline, currentUsageDefinedAt, storedRgpm);
-  }, [currentUsageDeadline, currentUsageDefinedAt, emitUsageRenewalAlert, storedNivel, storedRgpm]);
   const fetchOfficerByRgpm = async (rg: string) => {
     try {
       const { data, error } = await supabase
@@ -676,23 +656,9 @@ const HeaderActions = () => {
         } else {
           sessionStorage.removeItem("prazo_utilizacao_definido_em");
         }
-        if (requiresUsageDeadline(currentAccessLevel) && latestDeadline) {
-          emitUsageRenewalAlert(latestDeadline, latestDefinedAt, current);
-        }
-        if (
-          loginRow &&
-          (
-            currentAccessLevel === "Bloqueado" ||
-            (requiresUsageDeadline(currentAccessLevel) && !latestDeadline) ||
-            isUsageExpired(latestDeadline)
-          )
-        ) {
+        if (loginRow && currentAccessLevel === "Bloqueado") {
           if (currentAccessLevel === "Bloqueado") {
             toast({ variant: "destructive", title: "Acesso bloqueado", description: "Contate o administrador." });
-          } else if (requiresUsageDeadline(currentAccessLevel) && !latestDeadline) {
-            toast({ variant: "destructive", title: "Acesso sem prazo", description: "Contate o administrador." });
-          } else if (isUsageExpired(latestDeadline)) {
-            toast({ variant: "destructive", title: "Senha incorreta", description: "Contate o administrador." });
           }
           handleLogout();
         }
@@ -701,7 +667,7 @@ const HeaderActions = () => {
     checkAccess();
     timer = setInterval(checkAccess, 10000);
     return () => { if (timer) clearInterval(timer); };
-  }, [emitUsageRenewalAlert, fetchMilitaryUsageInfo]);
+  }, [fetchMilitaryUsageInfo]);
 
   const resetChangePasswordForm = React.useCallback(() => {
     passwordCheckRequestRef.current += 1;
@@ -1117,7 +1083,7 @@ const HeaderActions = () => {
                                   <td className="p-3 align-top min-w-[180px] break-words">{p.unidade || '-'}</td>
                                   <td className="p-3 align-top min-w-[140px] break-words">{p.nivel || '-'}</td>
                                   <td className="p-3 align-top whitespace-nowrap">
-                                    <span className={isUsageExpired(p.prazoUtilizacaoAte) ? "font-medium text-red-600" : ""}>
+                                    <span>
                                       {p.prazoUtilizacaoAte ? formatUsageDate(p.prazoUtilizacaoAte) : "-"}
                                     </span>
                                   </td>

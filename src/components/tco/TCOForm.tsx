@@ -711,12 +711,12 @@ ${testFielDepositario ? "- TERMO DE NOMEAÇÃO DE Fiel DEPOSITÁRIO;" : ""}`);
   // Navegação controlada por etapas
   const [activeTab, setActiveTab] = useState("basico");
   const tabOrder = useMemo(() => isDrugCase ? ["basico", "geral", "drogas", "pessoas", "guarnicao", "historico", "arquivos", "audiencia"] : ["basico", "geral", "pessoas", "guarnicao", "historico", "arquivos", "audiencia"], [isDrugCase]);
-  const validateBasico = () => !!tcoNumber.trim() && !!natureza.trim() && !!cr.trim() && !!unidade.trim() && !!localRegistro.trim() && (natureza !== "Outros" || !!customNatureza.trim());
+  const validateBasico = () => !!natureza.trim() && !!cr.trim() && !!unidade.trim() && !!localRegistro.trim() && (natureza !== "Outros" || !!customNatureza.trim());
   const validateGeral = () => !!dataFato.trim() && !!horaFato.trim() && !!localFato.trim() && !!municipio.trim();
   const validatePessoas = () => autores.length > 0 && autores.every(a => !!a.nome?.trim() && (a.semCpf === 'true' || (a.cpf && a.cpf.replace(/\D/g, "").length === 11)));
   const validateGuarnicao = () => componentesGuarnicao.length > 0;
   const validateHistorico = () => !!relatoPolicial.trim();
-  const validateAudiencia = () => !!audienciaData.trim() && !!audienciaHora.trim();
+  const validateAudiencia = () => !!tcoNumber.trim() && !!audienciaData.trim() && !!audienciaHora.trim();
 
   const checkTabValidity = (tab: string) => {
     switch (tab) {
@@ -1148,7 +1148,7 @@ ${testFielDepositario ? "- TERMO DE NOMEAÇÃO DE Fiel DEPOSITÁRIO;" : ""}`);
 
           <div className="form-content">
         <TabsContent value="basico">
-          <BasicInformationTab tcoNumber={tcoNumber} setTcoNumber={setTcoNumber} natureza={natureza} setNatureza={setNatureza} autor={autor} setAutor={setAutor} penaDescricao={penaDescricao} naturezaOptions={naturezaOptions} customNatureza={customNatureza} setCustomNatureza={setCustomNatureza} startTime={startTime} isTimerRunning={isTimerRunning} cr={cr} setCr={setCr} unidade={unidade} setUnidade={value => {
+          <BasicInformationTab natureza={natureza} setNatureza={setNatureza} autor={autor} setAutor={setAutor} penaDescricao={penaDescricao} naturezaOptions={naturezaOptions} customNatureza={customNatureza} setCustomNatureza={setCustomNatureza} startTime={startTime} isTimerRunning={isTimerRunning} cr={cr} setCr={setCr} unidade={unidade} setUnidade={value => {
           setUnidade(value);
           const MAPA: Record<string, string> = {
             "2º Comando Regional - Sede": "",
@@ -1210,7 +1210,14 @@ ${testFielDepositario ? "- TERMO DE NOMEAÇÃO DE Fiel DEPOSITÁRIO;" : ""}`);
         </TabsContent>
 
         <TabsContent value="audiencia">
-          <AudienciaTab audienciaData={audienciaData} setAudienciaData={setAudienciaData} audienciaHora={audienciaHora} setAudienciaHora={setAudienciaHora} />
+          <AudienciaTab tcoNumber={tcoNumber} setTcoNumber={setTcoNumber} audienciaData={audienciaData} setAudienciaData={setAudienciaData} audienciaHora={audienciaHora} setAudienciaHora={setAudienciaHora} setStartTimestamp={() => {
+            if (!dataInicioRegistro) {
+              const now = new Date();
+              const pad2 = (n: number) => n.toString().padStart(2, '0');
+              setDataInicioRegistro(`${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()}`);
+              setHoraInicioRegistro(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
+            }
+          }} />
         </TabsContent>
 
           </div>

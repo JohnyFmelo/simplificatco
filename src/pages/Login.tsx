@@ -8,22 +8,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Eye, EyeOff, Lock, Loader2, ShieldCheck, Mail } from "lucide-react";
 import { toast } from "sonner";
 
-const getUsageDaysRemaining = (dateValue?: string | null) => {
-  const raw = String(dateValue || "").trim();
-  if (!raw) return null;
-  const today = new Date();
-  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const deadline = new Date(`${raw}T00:00:00`);
-  if (Number.isNaN(deadline.getTime())) return null;
-  return Math.floor((deadline.getTime() - startOfToday.getTime()) / 86400000);
-};
-const isUsageExpired = (dateValue?: string | null) => {
-  const daysRemaining = getUsageDaysRemaining(dateValue);
-  if (daysRemaining === null) return false;
-  return daysRemaining <= 0;
-};
-const requiresUsageDeadline = (accessLevel?: string | null) =>
-  String(accessLevel || "").trim() !== 'Administrador';
 const isMissingUsageDefinedAtColumnError = (error: any) => {
   const message = String(error?.message || '');
   return message.includes('prazo_utilizacao_definido_em') && message.includes('does not exist');
@@ -105,19 +89,8 @@ const Login: React.FC = () => {
           .eq('rgpm', row.rgpm)
           .limit(1);
         const loginRow = loginData && (loginData as any[])[0];
-        const accessLevel = String(loginRow?.nivel_acesso || '').trim();
         if (loginRow?.nivel_acesso === 'Bloqueado') {
           toast.error('Seu acesso está bloqueado. Contate o administrador.');
-          setLoading(false);
-          return;
-        }
-        if (requiresUsageDeadline(accessLevel) && !row?.prazo_utilizacao_ate) {
-          toast.error('Seu perfil está sem prazo de utilização. Contate o administrador.');
-          setLoading(false);
-          return;
-        }
-        if (isUsageExpired(row?.prazo_utilizacao_ate)) {
-          toast.error('Senha incorreta. Contate o administrador.');
           setLoading(false);
           return;
         }

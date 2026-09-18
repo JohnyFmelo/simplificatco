@@ -1,6 +1,6 @@
 // --- START OF FILE BasicInformationTab (5).tsx ---
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,6 @@ import { supabase } from "@/lib/supabaseClient";
 // Firebase removido nesta integração (sem Firestore)
 
 interface BasicInformationTabProps {
-  tcoNumber: string;
-  setTcoNumber: (value: string) => void;
   natureza: string;
   setNatureza: (value: string) => void;
   autor: string;
@@ -33,7 +31,6 @@ interface BasicInformationTabProps {
   localRegistro: string;
   setLocalRegistro: (value: string) => void;
   onTipificacaoChange?: (value: string) => void;
-  setStartTimestamp?: () => void;
 }
 
 
@@ -158,8 +155,6 @@ const formatarPena = (anosDecimais: number): string => {
   return partes.join(' e ');
 };
 const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
-  tcoNumber,
-  setTcoNumber,
   natureza,
   setNatureza,
   penaDescricao,
@@ -175,12 +170,9 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
   localRegistro,
   setLocalRegistro,
   onTipificacaoChange,
-  setStartTimestamp,
 }) => {
   const { toast } = useToast();
-  const [isChecking, setIsChecking] = useState(false);
   const [selectedNaturezas, setSelectedNaturezas] = useState<string[]>([]);
-  const [selectedCustomNatureza, setSelectedCustomNatureza] = useState<string>("");
   const [totalPenaAnos, setTotalPenaAnos] = useState<number>(0);
   const [showPenaAlert, setShowPenaAlert] = useState<boolean>(false);
   const [tipificacaoCompleta, setTipificacaoCompleta] = useState<string>("");
@@ -287,38 +279,6 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps 
   }, [selectedNaturezas, customNatureza, customNaturezas]); // Removido toast da lista de dependências
 
-  const checkDuplicateTco = useCallback(async (tcoNum: string) => {
-    // Verificação de duplicidade desativada nesta integração (sem Firebase)
-    if (!tcoNum || tcoNum.length < 3) return;
-    setIsChecking(true);
-    try {
-      // No-op
-    } finally {
-      setIsChecking(false);
-    }
-  }, []);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-
-  const handleTcoNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    const numericValue = value.replace(/[^0-9]/g, '');
-    setTcoNumber(numericValue);
-    // Definir data/hora de início se ainda não definida e o número for válido (ex: começou a digitar)
-    if (numericValue.length > 0 && setStartTimestamp) {
-      setStartTimestamp();
-    }
-  };
-  useEffect(() => {
-    if (tcoNumber && tcoNumber.length >= 3) {
-      checkDuplicateTco(tcoNumber);
-    }
-  }, [tcoNumber, checkDuplicateTco]);
-
-  const handleCustomNaturezaChange = (value: string) => {
-    setSelectedCustomNatureza(value);
-    setCustomNatureza(value);
-  };
-
   const handleNaturezaSelectChange = (value: string) => {
     if (!value) return;
     if (!selectedNaturezas.includes(value)) {
@@ -339,7 +299,6 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
     const newNaturezas = selectedNaturezas.filter(nat => nat !== naturezaToRemove);
     setSelectedNaturezas(newNaturezas);
     if (naturezaToRemove === "Outros") {
-      setSelectedCustomNatureza("");
       setCustomNatureza("");
     }
     if (customNaturezas.some(c => c.nome === naturezaToRemove)) {
@@ -409,11 +368,7 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
         <input type="text" value={localRegistro} onChange={(e) => setLocalRegistro(e.target.value)} placeholder="Digite o local do registro" />
       </div>
 
-      <div className="three-columns">
-        <div className="form-group">
-          <label>Número do TCO <span className="required">*</span></label>
-          <input type="number" value={tcoNumber} onChange={handleTcoNumberChange} placeholder="Número do TCO" />
-        </div>
+      <div className="two-columns">
         <div className="form-group">
           <label>Natureza <span className="required">*</span></label>
           <select onChange={(e) => handleNaturezaSelectChange(e.target.value)}>
@@ -430,41 +385,10 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
         </div>
       </div>
 
-      <div className="form-group">
-        <label>Naturezas Selecionadas</label>
-        <div className="tag-container">
-          {selectedNaturezas.map((nat, index) => (
-            <div key={`${nat}-${index}`} className="tag">
-              {(nat || '').toUpperCase()} <span className="tag-close" onClick={() => handleRemoveNatureza(nat)}>×</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="penalty-header">
         <i className="fas fa-balance-scale"></i>
         <h3>Tipificação e Análise de Penas</h3>
       </div>
-      <div className="penalty-list">
-        {naturezasComPena.map(({ nat, penaAnos }) => {
-          const custom = customNaturezas.find(c => c.nome === nat);
-          const legal = custom ? custom.tipificacao : naturezaTipificacoes[nat];
-          return (
-            <div key={`pen-${nat}`} className="penalty-item">
-              <div className="penalty-top">
-                <div className="penalty-name">{(nat || '').toUpperCase()}</div>
-                <div className="penalty-value">{formatarPena(penaAnos)}</div>
-              </div>
-              {legal && <div className="penalty-legal">{legal}</div>}
-            </div>
-          );
-        })}
-      </div>
-      <div className="penalty-total">
-        <span>Soma das Penas Máximas:</span>
-        <strong>{formatarPena(totalPenaAnos)}</strong>
-      </div>
-
       {showPenaAlert && (
         <div className="alert-box">
           <div className="alert-icon">⚠️</div>
@@ -472,6 +396,37 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
             <strong>Atenção: Pena Máxima Superior a 2 Anos</strong>
             <p>A soma das penas máximas ({formatarPena(totalPenaAnos)}) excede o limite de 2 anos. Não é permitido registrar TCO nesta situação. Verifique a existência de subsunção (se um crime absorve o outro) ou proceda com o registro adequado (B.O.).</p>
           </div>
+        </div>
+      )}
+      <div className="penalty-list">
+        {naturezasComPena.map(({ nat, penaAnos }) => {
+          const custom = customNaturezas.find(c => c.nome === nat);
+          const legal = custom ? custom.tipificacao : naturezaTipificacoes[nat];
+          return (
+            <div key={`pen-${nat}`} className="penalty-item">
+              <div className="penalty-top">
+                <div className="penalty-main">
+                  <div className="penalty-value">{formatarPena(penaAnos)}</div>
+                  <div className="penalty-name">{(nat || '').toUpperCase()}</div>
+                </div>
+                <button
+                  type="button"
+                  className="penalty-remove"
+                  onClick={() => handleRemoveNatureza(nat)}
+                  aria-label={`Remover natureza ${(nat || '').toUpperCase()}`}
+                >
+                  ×
+                </button>
+              </div>
+              {legal && <div className="penalty-legal">{legal}</div>}
+            </div>
+          );
+        })}
+      </div>
+      {!showPenaAlert && (
+        <div className="penalty-total">
+          <span>Soma das Penas Máximas:</span>
+          <strong>{formatarPena(totalPenaAnos)}</strong>
         </div>
       )}
 
