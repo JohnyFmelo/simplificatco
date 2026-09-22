@@ -75,10 +75,27 @@ type ManagedProfile = {
   rgpm: string;
   nome: string;
   email?: string;
+  cr?: string;
   graduacao?: string;
   unidade?: string;
   nivel?: string;
   prazoUtilizacaoAte?: string;
+};
+
+const normalizeEmail = (value: string) => value.trim().toLowerCase();
+const normalizeAccessLevel = (value: string) => value.trim() === "Operador" ? "Operacional" : value.trim();
+const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const hashPassword = async (value: string) => {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+};
+const doesPasswordMatch = async (candidate: string, storedPassword?: string | null) => {
+  const normalizedCandidate = candidate.trim();
+  const normalizedStored = String(storedPassword || "").trim();
+  if (!normalizedCandidate || !normalizedStored) return false;
+  if (normalizedCandidate === normalizedStored) return true;
+  return (await hashPassword(normalizedCandidate)) === normalizedStored;
 };
 
 const HeaderActions = () => {
@@ -95,6 +112,7 @@ const HeaderActions = () => {
   const [cr, setCr] = React.useState("");
   const [unidade, setUnidade] = React.useState("");
   const [rgpm, setRgpm] = React.useState("");
+  const [email, setEmail] = React.useState("");
   const [graduacao, setGraduacao] = React.useState("");
   const [nome, setNome] = React.useState("");
   const [cpf, setCpf] = React.useState("");
@@ -103,6 +121,8 @@ const HeaderActions = () => {
   const [pai, setPai] = React.useState("");
   const [mae, setMae] = React.useState("");
   const [senha, setSenha] = React.useState("");
+  const [confirmSenha, setConfirmSenha] = React.useState("");
+  const [editingProfileRgpm, setEditingProfileRgpm] = React.useState("");
   const [openChangePassword, setOpenChangePassword] = React.useState(false);
   const [oldPassword, setOldPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
@@ -289,6 +309,32 @@ const HeaderActions = () => {
     } catch {}
   };
 
+  const resetProfileForm = React.useCallback(() => {
+    setNivelAcesso("Operacional");
+    setCr("");
+    setUnidade("");
+    setRgpm("");
+    setEmail("");
+    setGraduacao("");
+    setNome("");
+    setCpf("");
+    setTelefone("");
+    setNaturalidade("");
+    setPai("");
+    setMae("");
+    setSenha("");
+    setConfirmSenha("");
+    setEditingProfileRgpm("");
+  }, []);
+
+  React.useEffect(() => {
+    if (!unidade) return;
+    const unidadeValida = unitOptions.some((opt) => opt.cr === cr && opt.unidade === unidade);
+    if (!unidadeValida) {
+      setUnidade("");
+    }
+  }, [cr, unidade, unitOptions]);
+
   React.useEffect(() => {
     if (!openCreate && !openCreateUnit) return;
     (async () => {
@@ -362,7 +408,7 @@ const HeaderActions = () => {
       const [militares, officers, logins] = await Promise.all([
         supabase.from("militares" as any).select("rgpm,email,nome_completo,prazo_utilizacao_ate"),
         supabase.from("police_officers").select("rgpm,nome_completo,graduacao"),
-        supabase.from("usuarios_login" as any).select("rgpm,unidade,nivel_acesso,email"),
+        supabase.from("usuarios_login" as any).select("rgpm,unidade,nivel_acesso,email,cr"),
       ]);
 
       const mapMilitares = new Map<string, { nome?: string; email?: string; prazoUtilizacaoAte?: string }>();
@@ -390,7 +436,7 @@ const HeaderActions = () => {
         });
       }
 
-      const mapLogin = new Map<string, { unidade?: string; nivel?: string; email?: string }>();
+      const mapLogin = new Map<string, { unidade?: string; nivel?: string; email?: string; cr?: string }>();
       if (logins.data) {
         logins.data.forEach((r: any) => {
           const key = String(r.rgpm || "").trim();
@@ -399,6 +445,7 @@ const HeaderActions = () => {
             unidade: String(r.unidade || "").trim(),
             nivel: String(r.nivel_acesso || "").trim(),
             email: String(r.email || "").trim(),
+            cr: String(r.cr || "").trim(),
           });
         });
       }
@@ -416,6 +463,7 @@ const HeaderActions = () => {
           rgpm: rg,
           nome: militar?.nome || officer?.nome || "Sem nome cadastrado",
           email: militar?.email || login?.email || "",
+          cr: login?.cr || "",
           graduacao: officer?.graduacao || "",
           unidade: login?.unidade || "",
           nivel: login?.nivel || "Sem nível definido",
@@ -462,13 +510,53 @@ const HeaderActions = () => {
     }
   };
 
-  const handleEditProfile = (p: ManagedProfile) => {
-    setRgpm(p.rgpm);
-    setNome(p.nome);
-    setGraduacao(p.graduacao || "");
-    setUnidade(p.unidade || "");
-    setNivelAcesso(p.nivel || "Operador");
-    setProfilesTab("create");
+  const handleEditProfile = async (p: ManagedProfile) => {
+    try {
+      const [militaryResult, officerResult, loginResult] = await Promise.all([
+        supabase
+          .from("militares" as any)
+          .select("email,nome_completo")
+          .eq("rgpm", p.rgpm)
+          .maybeSingle(),
+        supabase
+          .from("police_officers")
+          .select("graduacao,cpf,telefone,naturalidade,nome_pai,nome_mae")
+          .eq("rgpm", p.rgpm)
+          .maybeSingle(),
+        supabase
+          .from("usuarios_login" as any)
+          .select("cr,unidade,nivel_acesso,email")
+          .eq("rgpm", p.rgpm)
+          .maybeSingle(),
+      ]);
+
+      if (militaryResult.error) throw militaryResult.error;
+      if (officerResult.error) throw officerResult.error;
+      if (loginResult.error) throw loginResult.error;
+
+      const military = militaryResult.data as any;
+      const officer = officerResult.data as any;
+      const login = loginResult.data as any;
+
+      setRgpm(p.rgpm);
+      setEmail(normalizeEmail(String(military?.email || login?.email || p.email || "")));
+      setNome(String(military?.nome_completo || p.nome || "").toUpperCase());
+      setGraduacao(String(officer?.graduacao || p.graduacao || ""));
+      setCr(String(login?.cr || p.cr || ""));
+      setUnidade(String(login?.unidade || p.unidade || ""));
+      setNivelAcesso(normalizeAccessLevel(String(login?.nivel_acesso || p.nivel || "Operacional")));
+      setCpf(formatCpf(String(officer?.cpf || "")));
+      setTelefone(formatTelefone(String(officer?.telefone || "")));
+      setNaturalidade(String(officer?.naturalidade || "").toUpperCase());
+      setPai(String(officer?.nome_pai || "").toUpperCase());
+      setMae(String(officer?.nome_mae || "").toUpperCase());
+      setSenha("");
+      setConfirmSenha("");
+      setEditingProfileRgpm(p.rgpm);
+      setProfilesTab("create");
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao carregar perfil", description: e?.message || String(e) });
+    }
   };
 
   const handleOpenUsageDeadline = (p: ManagedProfile) => {
@@ -549,6 +637,9 @@ const HeaderActions = () => {
 
   const openProfilesDialog = async (tab: "create" | "list") => {
     setProfilesTab(tab);
+    if (tab === "create") {
+      resetProfileForm();
+    }
     setOpenCreate(true);
     if (tab === "list") {
       await loadProfiles();
@@ -705,8 +796,9 @@ const HeaderActions = () => {
 
       const savedMilitaryPassword = String((militaryUser as any)?.senha || "").trim();
       const savedLoginPassword = String((loginUser as any)?.senha || "").trim();
-      const referencePassword = savedMilitaryPassword || savedLoginPassword;
-      const isValid = !!referencePassword && referencePassword === candidate;
+      const isValid =
+        await doesPasswordMatch(candidate, savedMilitaryPassword) ||
+        await doesPasswordMatch(candidate, savedLoginPassword);
 
       if (requestId === passwordCheckRequestRef.current) {
         setIsCurrentPasswordValid(isValid);
@@ -777,14 +869,15 @@ const HeaderActions = () => {
         return;
       }
 
+      const hashedNewPassword = await hashPassword(baseNew);
       const [{ error: loginUpdateError }, { error: militaryUpdateError }] = await Promise.all([
         supabase
           .from("usuarios_login" as any)
-          .update({ senha: baseNew })
+          .update({ senha: hashedNewPassword })
           .eq("rgpm", storedRgpm),
         supabase
           .from("militares" as any)
-          .update({ senha: baseNew })
+          .update({ senha: hashedNewPassword })
           .eq("rgpm", storedRgpm),
       ]);
 
@@ -804,63 +897,145 @@ const HeaderActions = () => {
     const baseRgpm = onlyDigits(rgpm).slice(0, 6);
     const baseCpf = onlyDigits(cpf).slice(0, 11);
     const baseTelefone = onlyDigits(telefone).slice(0, 11);
-    if (!baseNome || !baseRgpm || !graduacao.trim()) {
-      toast({ title: "Dados obrigatórios", description: "Informe Nome, RGPM e Graduação." });
+    const baseEmail = normalizeEmail(email);
+    const baseCr = cr.trim();
+    const baseUnidade = unidade.trim();
+    const baseGraduacao = graduacao.trim();
+    const baseSenha = senha.trim();
+    const baseConfirmSenha = confirmSenha.trim();
+    const normalizedLevel = normalizeAccessLevel(nivelAcesso);
+    const isEditing = !!editingProfileRgpm;
+
+    if (!baseNome || baseRgpm.length !== 6 || !baseGraduacao || !baseEmail || !baseCr || !baseUnidade) {
+      toast({ title: "Dados obrigatórios", description: "Informe Nome, E-mail, RGPM com 6 dígitos, Graduação, CR e Unidade." });
       return;
     }
-    try {
-      const { error: e1 } = await supabase
-        .from("police_officers")
-        .upsert({
-          rgpm: baseRgpm,
-          nome_completo: baseNome,
-          graduacao: graduacao.trim(),
-          cpf: baseCpf,
-          telefone: baseTelefone,
-          naturalidade: naturalidade.trim().toUpperCase(),
-          nome_pai: pai.trim().toUpperCase(),
-          nome_mae: mae.trim().toUpperCase(),
-        }, { onConflict: "rgpm" });
-      if (e1) throw e1;
-      const { error: e2 } = await supabase
-        .from("usuarios_login" as any)
-        .upsert({
-          rgpm: baseRgpm,
-          senha: senha.trim(),
-          cr: cr.trim(),
-          unidade: unidade.trim(),
-          nivel_acesso: nivelAcesso.trim(),
-        }, { onConflict: "rgpm" });
-      if (e2) throw e2;
-      toast({ title: "Perfil criado", description: "Dados inseridos com sucesso." });
-      setOpenCreate(false);
-      setNivelAcesso("Operador");
-      setCr(""); setUnidade(""); setRgpm(""); setGraduacao(""); setNome(""); setCpf(""); setTelefone(""); setNaturalidade(""); setPai(""); setMae(""); setSenha("");
-    } catch (e: any) {
-      const msg = String(e?.message || e || "");
-      if (msg.toLowerCase().includes("check constraint") && msg.includes("usuarios_login_nivel_acesso_check")) {
-        try {
-          const { error: e2b } = await supabase
-            .from("usuarios_login" as any)
-            .upsert({
-              rgpm: onlyDigits(rgpm).slice(0,6),
-              senha: senha.trim(),
-              cr: cr.trim(),
-              unidade: unidade.trim(),
-              nivel_acesso: "Operacional",
-            }, { onConflict: "rgpm" });
-          if (e2b) throw e2b;
-          toast({ title: "Perfil criado", description: "Banco não aceita o novo nível. Gravado como Operacional." });
-          setOpenCreate(false);
-          setNivelAcesso("Operador");
-          setCr(""); setUnidade(""); setRgpm(""); setGraduacao(""); setNome(""); setCpf(""); setTelefone(""); setNaturalidade(""); setPai(""); setMae(""); setSenha("");
-          return;
-        } catch (e3: any) {
-          toast({ variant: "destructive", title: "Erro ao criar perfil", description: e3?.message || String(e3) });
-          return;
-        }
+    if (!isValidEmail(baseEmail)) {
+      toast({ title: "E-mail inválido", description: "Informe um e-mail válido para acesso ao sistema." });
+      return;
+    }
+    if (!unitOptions.some((opt) => opt.cr === baseCr && opt.unidade === baseUnidade)) {
+      toast({ title: "Unidade inválida", description: "Selecione uma unidade pertencente ao CR informado." });
+      return;
+    }
+    if (baseCpf && baseCpf.length !== 11) {
+      toast({ title: "CPF inválido", description: "Informe um CPF com 11 dígitos ou deixe o campo em branco." });
+      return;
+    }
+    if (baseTelefone && baseTelefone.length < 10) {
+      toast({ title: "Telefone inválido", description: "Informe um telefone com DDD válido ou deixe o campo em branco." });
+      return;
+    }
+    if (!isEditing && !baseSenha) {
+      toast({ title: "Senha obrigatória", description: "Informe a senha de acesso do perfil." });
+      return;
+    }
+    if (baseSenha || baseConfirmSenha) {
+      if (baseSenha.length < 6) {
+        toast({ title: "Senha muito curta", description: "A senha deve ter ao menos 6 caracteres." });
+        return;
       }
-      toast({ variant: "destructive", title: "Erro ao criar perfil", description: msg });
+      if (baseSenha !== baseConfirmSenha) {
+        toast({ title: "Confirmação inválida", description: "A confirmação da senha não confere." });
+        return;
+      }
+    }
+    try {
+      const [
+        militaryByRgpm,
+        militaryByEmail,
+        loginByRgpm,
+        loginByEmail,
+      ] = await Promise.all([
+        supabase.from("militares" as any).select("rgpm").eq("rgpm", baseRgpm).limit(1),
+        supabase.from("militares" as any).select("rgpm").eq("email", baseEmail).limit(1),
+        supabase.from("usuarios_login" as any).select("rgpm,senha").eq("rgpm", baseRgpm).limit(1),
+        supabase.from("usuarios_login" as any).select("rgpm").eq("email", baseEmail).limit(1),
+      ]);
+
+      if (militaryByRgpm.error) throw militaryByRgpm.error;
+      if (militaryByEmail.error) throw militaryByEmail.error;
+      if (loginByRgpm.error) throw loginByRgpm.error;
+      if (loginByEmail.error) throw loginByEmail.error;
+
+      const existingMilitaryRgpm = String((militaryByRgpm.data as any[] | null)?.[0]?.rgpm || "").trim();
+      const existingMilitaryEmailRgpm = String((militaryByEmail.data as any[] | null)?.[0]?.rgpm || "").trim();
+      const existingLoginRgpm = String((loginByRgpm.data as any[] | null)?.[0]?.rgpm || "").trim();
+      const existingLoginEmailRgpm = String((loginByEmail.data as any[] | null)?.[0]?.rgpm || "").trim();
+
+      if (!isEditing && (existingMilitaryRgpm || existingLoginRgpm)) {
+        toast({ title: "Perfil já existe", description: "Já existe um perfil cadastrado para esse RGPM." });
+        return;
+      }
+      if (existingMilitaryEmailRgpm && existingMilitaryEmailRgpm !== baseRgpm) {
+        toast({ title: "E-mail já cadastrado", description: "Esse e-mail já está vinculado a outro perfil." });
+        return;
+      }
+      if (existingLoginEmailRgpm && existingLoginEmailRgpm !== baseRgpm) {
+        toast({ title: "E-mail já cadastrado", description: "Esse e-mail já está vinculado a outro perfil." });
+        return;
+      }
+
+      let passwordToStore = "";
+      if (baseSenha) {
+        passwordToStore = await hashPassword(baseSenha);
+      } else {
+        passwordToStore = String((loginByRgpm.data as any[] | null)?.[0]?.senha || "").trim();
+      }
+
+      if (!passwordToStore) {
+        toast({ title: "Senha obrigatória", description: "Informe uma nova senha para este perfil." });
+        return;
+      }
+
+      const [{ error: policeOfficerError }, { error: militaryError }, { error: loginError }] = await Promise.all([
+        supabase
+          .from("police_officers")
+          .upsert({
+            rgpm: baseRgpm,
+            nome_completo: baseNome,
+            graduacao: baseGraduacao,
+            cpf: baseCpf || null,
+            telefone: baseTelefone || null,
+            naturalidade: naturalidade.trim().toUpperCase() || null,
+            nome_pai: pai.trim().toUpperCase() || null,
+            nome_mae: mae.trim().toUpperCase() || null,
+          }, { onConflict: "rgpm" }),
+        supabase
+          .from("militares" as any)
+          .upsert({
+            rgpm: baseRgpm,
+            nome_completo: baseNome,
+            email: baseEmail,
+            senha: passwordToStore,
+          }, { onConflict: "rgpm" }),
+        supabase
+          .from("usuarios_login" as any)
+          .upsert({
+            rgpm: baseRgpm,
+            email: baseEmail,
+            senha: passwordToStore,
+            cr: baseCr,
+            unidade: baseUnidade,
+            nivel_acesso: normalizedLevel,
+          }, { onConflict: "rgpm" }),
+      ]);
+
+      if (policeOfficerError) throw policeOfficerError;
+      if (militaryError) throw militaryError;
+      if (loginError) throw loginError;
+
+      if (storedRgpm === baseRgpm) {
+        sessionStorage.setItem("nivel_acesso", normalizedLevel);
+        sessionStorage.setItem("email", baseEmail);
+        sessionStorage.setItem("nome_completo", baseNome);
+      }
+
+      toast({ title: isEditing ? "Perfil atualizado" : "Perfil criado", description: "Dados salvos com sucesso." });
+      setOpenCreate(false);
+      resetProfileForm();
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao salvar perfil", description: e?.message || String(e) });
     }
   };
 
@@ -943,7 +1118,13 @@ const HeaderActions = () => {
               >
                 <LogOut className="h-5 w-5" />
               </Button>
-              <Dialog open={openCreate} onOpenChange={setOpenCreate}>
+              <Dialog open={openCreate} onOpenChange={(open) => {
+                setOpenCreate(open);
+                if (!open) {
+                  resetProfileForm();
+                  setProfilesTab("create");
+                }
+              }}>
                 <DialogContent className="w-[96vw] max-w-[1280px] h-[88vh] flex flex-col overflow-hidden">
                   <DialogHeader>
                     <DialogTitle>Perfis do sistema</DialogTitle>
@@ -960,14 +1141,24 @@ const HeaderActions = () => {
                     </TabsList>
                     <TabsContent value="create" className="min-h-0 flex-1 overflow-hidden">
                       <div className="grid gap-4 max-h-[60vh] overflow-y-auto">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <Label>Nível de acesso</Label>
                             <select value={nivelAcesso} onChange={e => setNivelAcesso(e.target.value)} className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none">
                               <option value="Administrador">Administrador</option>
                               <option value="Padrão">Padrão</option>
-                              <option value="Operador">Operador</option>
+                              <option value="Operacional">Operacional</option>
                             </select>
+                          </div>
+                          <div>
+                            <Label>E-mail</Label>
+                            <Input
+                              type="email"
+                              value={email}
+                              onChange={e => setEmail(normalizeEmail(e.target.value))}
+                              placeholder="usuario@pm.mt.gov.br"
+                              autoComplete="email"
+                            />
                           </div>
                           <div>
                             <Label>CR</Label>
@@ -984,9 +1175,9 @@ const HeaderActions = () => {
                           </div>
                           <div>
                             <Label>Unidade</Label>
-                            <Select value={unidade || undefined} onValueChange={(val) => setUnidade(val)}>
+                            <Select value={unidade || undefined} onValueChange={(val) => setUnidade(val)} disabled={!cr}>
                               <SelectTrigger>
-                                <SelectValue placeholder={crLoading ? "Carregando..." : "Selecione a Unidade"} />
+                                <SelectValue placeholder={cr ? (crLoading ? "Carregando..." : "Selecione a Unidade") : "Selecione primeiro o CR"} />
                               </SelectTrigger>
                               <SelectContent>
                                 {(unitOptions.filter(u => !cr || u.cr === cr)).map((opt) => (
@@ -999,7 +1190,14 @@ const HeaderActions = () => {
                           </div>
                           <div>
                             <Label>RGPM</Label>
-                            <Input value={rgpm} onChange={e => setRgpm(e.target.value)} onBlur={e => { const d = onlyDigits(e.target.value); if (d.length === 6) fetchOfficerByRgpm(d); }} />
+                            <Input
+                              value={rgpm}
+                              onChange={e => setRgpm(onlyDigits(e.target.value).slice(0, 6))}
+                              onBlur={e => { const d = onlyDigits(e.target.value); if (d.length === 6) fetchOfficerByRgpm(d); }}
+                              inputMode="numeric"
+                              maxLength={6}
+                              disabled={!!editingProfileRgpm}
+                            />
                           </div>
                           <div>
                             <Label>Graduação</Label>
@@ -1014,7 +1212,7 @@ const HeaderActions = () => {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="col-span-2">
+                          <div className="md:col-span-2">
                             <Label>Nome</Label>
                             <Input className="uppercase" value={nome} onChange={e => setNome(e.target.value.toUpperCase())} />
                           </div>
@@ -1040,7 +1238,23 @@ const HeaderActions = () => {
                           </div>
                           <div>
                             <Label>Senha de acesso</Label>
-                            <Input type="password" value={senha} onChange={e => setSenha(e.target.value)} />
+                            <Input
+                              type="password"
+                              value={senha}
+                              onChange={e => setSenha(e.target.value)}
+                              placeholder={editingProfileRgpm ? "Deixe em branco para manter a atual" : "Mínimo de 6 caracteres"}
+                              autoComplete="new-password"
+                            />
+                          </div>
+                          <div>
+                            <Label>Confirmar senha</Label>
+                            <Input
+                              type="password"
+                              value={confirmSenha}
+                              onChange={e => setConfirmSenha(e.target.value)}
+                              placeholder={editingProfileRgpm ? "Repita a nova senha, se alterar" : "Repita a senha"}
+                              autoComplete="new-password"
+                            />
                           </div>
                         </div>
                       </div>
@@ -1127,7 +1341,7 @@ const HeaderActions = () => {
                   </Tabs>
                   {profilesTab === "create" && (
                     <DialogFooter>
-                      <Button onClick={handleSubmitCreate}>Salvar</Button>
+                      <Button onClick={handleSubmitCreate}>{editingProfileRgpm ? "Atualizar" : "Salvar"}</Button>
                     </DialogFooter>
                   )}
                 </DialogContent>

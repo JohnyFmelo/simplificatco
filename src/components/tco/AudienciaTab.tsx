@@ -42,8 +42,10 @@ const AudienciaTab: React.FC<AudienciaTabProps> = ({
           <label htmlFor="audienciaTcoNumber">N° do TCO <span className="text-red-500">*</span></label>
           <Input
             id="audienciaTcoNumber"
-            type="text"
+            type="number"
             inputMode="numeric"
+            min="0"
+            step="1"
             placeholder="Número do TCO"
             value={tcoNumber}
             onChange={(e) => {

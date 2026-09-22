@@ -368,7 +368,7 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
         <input type="text" value={localRegistro} onChange={(e) => setLocalRegistro(e.target.value)} placeholder="Digite o local do registro" />
       </div>
 
-      <div className="two-columns">
+      <div className="three-columns">
         <div className="form-group">
           <label>Natureza <span className="required">*</span></label>
           <select onChange={(e) => handleNaturezaSelectChange(e.target.value)}>
@@ -380,7 +380,7 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({
         </div>
         <div className="form-group">
           <button className="add-button" onClick={() => setIsAddNaturezaOpen(true)}>
-            <i className="fas fa-plus"></i> Adicionar natureza personalizada
+            <i className="fas fa-plus"></i> Natureza
           </button>
         </div>
       </div>

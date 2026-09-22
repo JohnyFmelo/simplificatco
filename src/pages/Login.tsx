@@ -13,6 +13,20 @@ const isMissingUsageDefinedAtColumnError = (error: any) => {
   return message.includes('prazo_utilizacao_definido_em') && message.includes('does not exist');
 };
 
+const normalizeEmail = (value: string) => value.trim().toLowerCase();
+const hashPassword = async (value: string) => {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+};
+const doesPasswordMatch = async (candidate: string, storedPassword?: string | null) => {
+  const normalizedCandidate = candidate.trim();
+  const normalizedStored = String(storedPassword || '').trim();
+  if (!normalizedCandidate || !normalizedStored) return false;
+  if (normalizedCandidate === normalizedStored) return true;
+  return (await hashPassword(normalizedCandidate)) === normalizedStored;
+};
+
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -23,7 +37,7 @@ const Login: React.FC = () => {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const emailInput = email.toLowerCase().trim();
+    const emailInput = normalizeEmail(email);
     const passInput = senha.trim();
 
     if (!emailInput || !passInput) {
@@ -33,61 +47,62 @@ const Login: React.FC = () => {
 
     setLoading(true);
     try {
-      // First try to find the user by email to give better error messages
-      // and verify if RLS is blocking access
-      const { data: userCheck, error: userError } = await supabase
+      let { data: militaryData, error: militaryError } = await supabase
         .from('militares' as any)
-        .select('email')
-        .eq('email', emailInput.trim())
+        .select('rgpm, email, senha, nome_completo, prazo_utilizacao_ate, prazo_utilizacao_definido_em')
+        .eq('email', emailInput)
         .limit(1);
 
-      if (userError) throw userError;
+      if (militaryError && isMissingUsageDefinedAtColumnError(militaryError)) {
+        const fallback = await supabase
+          .from('militares' as any)
+          .select('rgpm, email, senha, nome_completo, prazo_utilizacao_ate')
+          .eq('email', emailInput)
+          .limit(1);
+        militaryData = fallback.data;
+        militaryError = fallback.error;
+      }
 
-      if (!userCheck || userCheck.length === 0) {
-        // If we can't find the email, it's either invalid email OR RLS blocking
-        console.warn("User not found or RLS blocking access");
-        toast.error('Email não encontrado ou erro de permissão. Contate o administrador.');
+      if (militaryError) throw militaryError;
+
+      const { data: loginByEmail, error: loginByEmailError } = await supabase
+        .from('usuarios_login' as any)
+        .select('rgpm, email, senha, nivel_acesso')
+        .eq('email', emailInput)
+        .limit(1);
+
+      if (loginByEmailError) throw loginByEmailError;
+
+      const militaryRow = (militaryData as any[] | null)?.[0];
+      const loginRowFromEmail = (loginByEmail as any[] | null)?.[0];
+      const referenceRgpm = String(militaryRow?.rgpm || loginRowFromEmail?.rgpm || '').trim();
+
+      if (!referenceRgpm) {
+        toast.error('Email não encontrado. Contate o administrador.');
         setLoading(false);
         return;
       }
 
-      // If email exists, check password
-      let { data, error } = await supabase
-        .from('militares' as any)
-        .select('rgpm, email, senha, nome_completo, prazo_utilizacao_ate, prazo_utilizacao_definido_em')
-        .eq('email', emailInput.trim())
-        .eq('senha', passInput.trim())
-        .limit(1);
+      const militaryPassword = String(militaryRow?.senha || '').trim();
+      const loginPassword = String(loginRowFromEmail?.senha || '').trim();
+      const passwordMatches =
+        await doesPasswordMatch(passInput, militaryPassword) ||
+        await doesPasswordMatch(passInput, loginPassword);
 
-      if (error && isMissingUsageDefinedAtColumnError(error)) {
-        const fallback = await supabase
-          .from('militares' as any)
-          .select('rgpm, email, senha, nome_completo, prazo_utilizacao_ate')
-          .eq('email', emailInput.trim())
-          .eq('senha', passInput.trim())
-          .limit(1);
-        data = fallback.data;
-        error = fallback.error;
-      }
-
-      if (error) throw error;
-
-      const rows = data as any[];
-      const row = rows && rows[0];
-      if (!row) {
+      if (!passwordMatches) {
         toast.error('Senha incorreta.');
         setLoading(false);
         return;
       }
 
-      // Buscar nivel_acesso real da tabela usuarios_login
       let nivelClient = 'Padrão';
       try {
-        const { data: loginData } = await supabase
+        const { data: loginData, error: loginDataError } = await supabase
           .from('usuarios_login' as any)
           .select('nivel_acesso')
-          .eq('rgpm', row.rgpm)
+          .eq('rgpm', referenceRgpm)
           .limit(1);
+        if (loginDataError) throw loginDataError;
         const loginRow = loginData && (loginData as any[])[0];
         if (loginRow?.nivel_acesso === 'Bloqueado') {
           toast.error('Seu acesso está bloqueado. Contate o administrador.');
@@ -97,22 +112,22 @@ const Login: React.FC = () => {
         if (loginRow?.nivel_acesso) {
           nivelClient = loginRow.nivel_acesso;
         }
-        if (row?.prazo_utilizacao_ate) {
-          sessionStorage.setItem('prazo_utilizacao_ate', row.prazo_utilizacao_ate);
+        if (militaryRow?.prazo_utilizacao_ate) {
+          sessionStorage.setItem('prazo_utilizacao_ate', militaryRow.prazo_utilizacao_ate);
         } else {
           sessionStorage.removeItem('prazo_utilizacao_ate');
         }
-        if (row?.prazo_utilizacao_definido_em) {
-          sessionStorage.setItem('prazo_utilizacao_definido_em', row.prazo_utilizacao_definido_em);
+        if (militaryRow?.prazo_utilizacao_definido_em) {
+          sessionStorage.setItem('prazo_utilizacao_definido_em', militaryRow.prazo_utilizacao_definido_em);
         } else {
           sessionStorage.removeItem('prazo_utilizacao_definido_em');
         }
       } catch {}
 
-      sessionStorage.setItem('rgpm', row.rgpm);
+      sessionStorage.setItem('rgpm', referenceRgpm);
       sessionStorage.setItem('nivel_acesso', nivelClient);
-      sessionStorage.setItem('email', row.email);
-      sessionStorage.setItem('nome_completo', row.nome_completo || '');
+      sessionStorage.setItem('email', String(militaryRow?.email || loginRowFromEmail?.email || emailInput));
+      sessionStorage.setItem('nome_completo', String(militaryRow?.nome_completo || ''));
       
       toast.success('Login realizado com sucesso!');
       navigate('/home');
