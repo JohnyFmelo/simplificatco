@@ -13,6 +13,7 @@ import TermoCompromissoTab from "./TermoCompromissoTab";
 import PessoasEnvolvidasTab from "./PessoasEnvolvidasTab";
 import ArquivosTab from "./ArquivosTab";
 import AudienciaTab from "./AudienciaTab";
+import Pauta2CRTab from "./Pauta2CRTab";
 import { uploadPhoto, listPhotos, deletePhoto, getUserIdOrAnon } from "@/lib/supabasePhotos";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -154,13 +155,17 @@ const TCOForm: React.FC = () => {
         if (rg) {
           const { data, error } = await supabase
             .from("police_officers")
-            .select("nome_completo, graduacao")
+            .select("nome_completo, graduacao, nome_guerra")
             .eq("rgpm", rg)
             .single();
           if (!error && data) {
             const nome = String(data.nome_completo || "").trim();
             const primeiro = nome ? nome.split(" ")[0] : "";
             const grad = String(data.graduacao || "").trim();
+            const nomeGuerraRaw = (data as any).nome_guerra;
+            const nomeGuerra = String(nomeGuerraRaw || "").trim() || primeiro;
+            setPolicialGraduacao(grad);
+            setPolicialNomeGuerra(nomeGuerra);
             setUserSubtitle(`SimplificaTCO: ${grad} ${primeiro}`.trim());
             return;
           }
@@ -452,6 +457,10 @@ const TCOForm: React.FC = () => {
   const [audienciaData, setAudienciaData] = useState("");
   const [audienciaHora, setAudienciaHora] = useState("");
   const [photoCaptions, setPhotoCaptions] = useState<Record<string, string>>({});
+  const [numeroTcoGerado, setNumeroTcoGerado] = useState<boolean>(false);
+  const [isGerandoTco, setIsGerandoTco] = useState<boolean>(false);
+  const [policialGraduacao, setPolicialGraduacao] = useState<string>("");
+  const [policialNomeGuerra, setPolicialNomeGuerra] = useState<string>("");
 
   // ===== MODAL: GERAR TCO DE TESTE (ADMIN EXCLUSIVO) =====
   const [showTestModal, setShowTestModal] = useState(false);
@@ -466,6 +475,136 @@ const TCOForm: React.FC = () => {
   const isAdmin = (accessLevel && accessLevel.toLowerCase().startsWith("admin")) || false;
 
   const { toast } = useToast();
+
+  const naturezaValida = (natureza === "Outros" ? customNatureza.trim() !== "" : natureza.trim() !== "");
+  const naturezaDisplay = (natureza === "Outros" ? customNatureza.trim() : natureza.trim()) || "";
+  const crNormalizado = (cr || "").trim().toLowerCase();
+  const is2Cr = crNormalizado.startsWith("2") && (crNormalizado.includes("comando regional") || crNormalizado.includes("cr") || crNormalizado.startsWith("2º") || crNormalizado.startsWith("2o") || crNormalizado.startsWith("2 º"));
+  const readonlyCampos = is2Cr && numeroTcoGerado;
+  const canGerarTco = is2Cr && !!naturezaValida && !!unidade.trim() && !!cr.trim() && !isTestTCO;
+  const motivoBloqueioGeracao = (() => {
+    if (!is2Cr) return "Alocação automática de Nº TCO está disponível apenas para o 2º Comando Regional e suas unidades.";
+    if (isTestTCO) return "Modo de teste ativo (TCO de teste não aloca vaga oficial).";
+    if (!naturezaValida) return "Selecione a Natureza da Ocorrência antes.";
+    if (!unidade.trim()) return "Selecione a Unidade antes.";
+    if (!cr.trim()) return "Selecione o Comando Regional (CR) antes.";
+    return "";
+  })();
+
+  const handleGerarNumeroTco = async () => {
+    if (!is2Cr || numeroTcoGerado || isGerandoTco || !canGerarTco) return;
+    try {
+      setIsGerandoTco(true);
+      const rg = (localStorage.getItem("rgpm") || sessionStorage.getItem("rgpm") || "").trim();
+      if (rg && (!policialGraduacao || !policialNomeGuerra)) {
+        try {
+          const { data } = await supabase
+            .from("police_officers")
+            .select("nome_completo, graduacao, nome_guerra")
+            .eq("rgpm", rg)
+            .single();
+          if (data) {
+            const nome = String(data.nome_completo || "").trim();
+            const primeiro = nome ? nome.split(" ")[0] : "";
+            const grad = String(data.graduacao || "").trim();
+            const nomeGuerraRaw = (data as any).nome_guerra;
+            const nomeGuerra = String(nomeGuerraRaw || "").trim() || primeiro;
+            setPolicialGraduacao(grad);
+            setPolicialNomeGuerra(nomeGuerra);
+          }
+        } catch {}
+      }
+
+      const params: any = {
+        p_natureza: naturezaDisplay,
+        p_unidade: unidade.trim(),
+        p_graduacao: policialGraduacao.trim(),
+        p_nome_guerra: policialNomeGuerra.trim(),
+      };
+      const { data, error } = await supabase
+        .rpc("alocar_proxima_vaga_2cr", params);
+
+      if (error) {
+        throw new Error(error.message || "Erro desconhecido ao alocar vaga.");
+      }
+
+      const row = Array.isArray(data) ? (data as any[])[0] : (data as any);
+      const outNumero = row?.out_numero_tco;
+      const outData = row?.out_data_audiencia;
+      const outHora = row?.out_hora_audiencia;
+
+      if (outNumero === undefined || outNumero === null) {
+        throw new Error("A RPC não retornou out_numero_tco.");
+      }
+
+      const numeroStr = String(outNumero).trim();
+      let dataStr = String(outData || "").trim();
+      let horaStr = String(outHora || "").trim();
+
+      if (dataStr && /^\d{4}-\d{2}-\d{2}/.test(dataStr)) {
+        try {
+          const d = new Date(dataStr);
+          if (!isNaN(d.getTime())) {
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            dataStr = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+          }
+        } catch {}
+      }
+
+      setTcoNumber(numeroStr);
+      if (dataStr) setAudienciaData(dataStr);
+      if (horaStr) setAudienciaHora(horaStr);
+      setNumeroTcoGerado(true);
+
+      if (!dataInicioRegistro) {
+        const now = new Date();
+        const pad2 = (n: number) => n.toString().padStart(2, '0');
+        setDataInicioRegistro(`${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()}`);
+        setHoraInicioRegistro(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
+      }
+
+      toast({
+        title: "Sucesso!",
+        description: "Nº TCO e Audiência alocados com sucesso!",
+      });
+    } catch (err: any) {
+      console.error("Erro em handleGerarNumeroTco:", err);
+      const mensagem = err?.message || "Não foi possível alocar a próxima vaga. Tente novamente.";
+      const semVagas = /n(ã|a)o\s*h(á|a)\s*(n(ú|u)meros|vagas|hor(á|a)rios)/i.test(mensagem)
+        || /livres\s*cadastradas\s*na\s*pauta\s*do\s*2/i.test(mensagem);
+      if (semVagas && isAdmin) {
+        toast({
+          variant: "destructive",
+          title: "Erro ao alocar Nº TCO",
+          description: `${mensagem} 👉 Clique em "Abrir Pauta" abaixo para cadastrar novos horários.`,
+          action: (
+            <Button
+              type="button"
+              variant="default"
+              className="mt-2 w-full bg-blue-800 hover:bg-blue-900"
+              onClick={() => setActiveTab("pauta2cr")}
+            >
+              <i className="fas fa-calendar-day mr-2"></i> Abrir Pauta 2º CR
+            </Button>
+          ),
+        } as any);
+      } else if (semVagas) {
+        toast({
+          variant: "destructive",
+          title: "Erro ao alocar Nº TCO",
+          description: `${mensagem} Solicite ao Administrador do 2º CR que cadastre novas datas/horários na Planilha de Pautas.`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Erro ao alocar Nº TCO",
+          description: mensagem,
+        });
+      }
+    } finally {
+      setIsGerandoTco(false);
+    }
+  };
 
   const pad2 = (n: number) => n.toString().padStart(2, '0');
   const formatDateBR = (d: Date) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
@@ -726,11 +865,13 @@ ${testFielDepositario ? "- TERMO DE NOMEAÇÃO DE Fiel DEPOSITÁRIO;" : ""}`);
       case 'guarnicao': return validateGuarnicao();
       case 'historico': return validateHistorico();
       case 'audiencia': return validateAudiencia();
+      case 'pauta2cr': return true;
       default: return true;
     }
   };
 
   const canNavigateToTab = (targetTab: string) => {
+      if (targetTab === "pauta2cr") return isAdmin;
       const targetIdx = tabOrder.indexOf(targetTab);
       if (targetIdx === -1) return false;
       if (targetIdx === 0) return true;
@@ -741,6 +882,7 @@ ${testFielDepositario ? "- TERMO DE NOMEAÇÃO DE Fiel DEPOSITÁRIO;" : ""}`);
   };
 
   const goToNextTab = () => {
+    if (activeTab === "pauta2cr") { setActiveTab("audiencia"); return; }
     if (!checkTabValidity(activeTab)) {
        toast({ variant: "destructive", title: "Campos obrigatórios", description: "Preencha todos os campos obrigatórios (*) desta aba antes de prosseguir." });
        return;
@@ -748,7 +890,7 @@ ${testFielDepositario ? "- TERMO DE NOMEAÇÃO DE Fiel DEPOSITÁRIO;" : ""}`);
     const idx = tabOrder.indexOf(activeTab as (typeof tabOrder)[number]);
     if (idx >= 0 && idx < tabOrder.length - 1) setActiveTab(tabOrder[idx + 1]);
   };
-  const isLastTab = activeTab === tabOrder[tabOrder.length - 1];
+  const isLastTab = activeTab === "pauta2cr" || activeTab === tabOrder[tabOrder.length - 1];
   const [isDownloadingDocx, setIsDownloadingDocx] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
@@ -1144,6 +1286,11 @@ ${testFielDepositario ? "- TERMO DE NOMEAÇÃO DE Fiel DEPOSITÁRIO;" : ""}`);
             <TabsTrigger className={activeTab === "historico" ? "tab active" : "tab"} value="historico" disabled={!canNavigateToTab("historico")}><i className="fas fa-history"></i> Histórico</TabsTrigger>
             <TabsTrigger className={activeTab === "arquivos" ? "tab active" : "tab"} value="arquivos" disabled={!canNavigateToTab("arquivos")}><i className="fas fa-camera"></i> Fotos</TabsTrigger>
             <TabsTrigger className={activeTab === "audiencia" ? "tab active" : "tab"} value="audiencia" disabled={!canNavigateToTab("audiencia")}><i className="fas fa-gavel"></i> Audiência</TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger className={activeTab === "pauta2cr" ? "tab active" : "tab"} value="pauta2cr" disabled={!canNavigateToTab("pauta2cr")}>
+                <i className="fas fa-calendar-day"></i> Pauta 2º CR
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <div className="form-content">
@@ -1217,14 +1364,63 @@ ${testFielDepositario ? "- TERMO DE NOMEAÇÃO DE Fiel DEPOSITÁRIO;" : ""}`);
               setDataInicioRegistro(`${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()}`);
               setHoraInicioRegistro(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
             }
-          }} />
+          }} readonlyCampos={readonlyCampos} />
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="pauta2cr">
+            <Pauta2CRTab isAdmin={isAdmin} />
+          </TabsContent>
+        )}
 
           </div>
           <div className="footer">
-            {activeTab === "audiencia" ? (
+            {activeTab === "pauta2cr" ? (
+              <div className="flex w-full justify-end">
+                <button className="btn-primary" onClick={() => setActiveTab("audiencia")}>
+                  <i className="fas fa-arrow-left mr-2"></i> Voltar para Audiência
+                </button>
+              </div>
+            ) : activeTab === "audiencia" ? (
               <div className="flex w-full justify-end">
                 <div className="flex flex-col gap-2">
+                  {is2Cr && (
+                    <>
+                      <button
+                        type="button"
+                        className={`btn-primary w-full justify-center ${isGerandoTco ? 'loading' : ''} ${numeroTcoGerado ? 'opacity-80' : ''}`}
+                        onClick={handleGerarNumeroTco}
+                        disabled={numeroTcoGerado || isGerandoTco || !canGerarTco}
+                        aria-disabled={numeroTcoGerado || isGerandoTco || !canGerarTco}
+                        title={
+                          numeroTcoGerado
+                            ? "Número TCO já alocado oficialmente"
+                            : !canGerarTco
+                            ? motivoBloqueioGeracao || "Preencha os campos obrigatórios antes"
+                            : "Clique uma única vez para alocar oficialmente o próximo número de TCO"
+                        }
+                        style={{
+                          background: numeroTcoGerado
+                            ? undefined
+                            : 'linear-gradient(to right, #059669, #0d9488)',
+                        }}
+                      >
+                        {numeroTcoGerado ? (
+                          <>✅ Nº TCO Alocado Oficialmente</>
+                        ) : isGerandoTco ? (
+                          <><i className="fas fa-spinner fa-spin mr-2"></i> Alocando próxima vaga...</>
+                        ) : (
+                          <>🎯 Gerar Nº TCO</>
+                        )}
+                      </button>
+                      {!canGerarTco && !numeroTcoGerado && (
+                        <p className="text-xs text-amber-700 -mt-1 mb-0 text-right pr-1">
+                          <i className="fas fa-info-circle mr-1"></i>
+                          {motivoBloqueioGeracao}
+                        </p>
+                      )}
+                    </>
+                  )}
                   <button
                     className={`btn-primary w-full justify-center ${isDownloadingDocx ? 'loading' : ''}`}
                     onClick={handleDownloadWord}

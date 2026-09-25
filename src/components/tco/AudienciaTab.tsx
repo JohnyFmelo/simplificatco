@@ -13,6 +13,7 @@ interface AudienciaTabProps {
   audienciaHora: string;
   setAudienciaHora: (val: string) => void;
   setStartTimestamp?: () => void;
+  readonlyCampos: boolean;
 }
 
 const AudienciaTab: React.FC<AudienciaTabProps> = ({
@@ -23,6 +24,7 @@ const AudienciaTab: React.FC<AudienciaTabProps> = ({
   audienciaHora,
   setAudienciaHora,
   setStartTimestamp,
+  readonlyCampos,
 }) => {
   const [open, setOpen] = useState(false);
   const selectedDate = useMemo(() => {
@@ -46,9 +48,13 @@ const AudienciaTab: React.FC<AudienciaTabProps> = ({
             inputMode="numeric"
             min="0"
             step="1"
-            placeholder="Número do TCO"
+            placeholder={readonlyCampos ? "" : "Número do TCO"}
             value={tcoNumber}
+            readOnly={readonlyCampos}
+            disabled={readonlyCampos}
+            className={readonlyCampos ? "bg-gray-100 text-gray-800 font-semibold cursor-not-allowed" : ""}
             onChange={(e) => {
+              if (readonlyCampos) return;
               const value = e.target.value.replace(/\D/g, '');
               setTcoNumber(value);
               if (value.length > 0 && setStartTimestamp) {
@@ -64,9 +70,13 @@ const AudienciaTab: React.FC<AudienciaTabProps> = ({
               id="audienciaData"
               type="text"
               inputMode="numeric"
-              placeholder="dd/mm/aaaa"
+              placeholder={readonlyCampos ? "" : "dd/mm/aaaa"}
               value={audienciaData}
+              readOnly={readonlyCampos}
+              disabled={readonlyCampos}
+              className={readonlyCampos ? "bg-gray-100 text-gray-800 font-semibold cursor-not-allowed" : ""}
               onChange={(e) => {
+                if (readonlyCampos) return;
                 const v = e.target.value.replace(/\D/g, '').slice(0,8);
                 const dd = v.slice(0,2);
                 const mm = v.slice(2,4);
@@ -75,15 +85,25 @@ const AudienciaTab: React.FC<AudienciaTabProps> = ({
                 setAudienciaData(formatted);
               }}
             />
-            <Popover open={open} onOpenChange={setOpen}>
+            <Popover open={readonlyCampos ? false : open} onOpenChange={(next) => !readonlyCampos && setOpen(next)}>
               <PopoverTrigger asChild>
-                <button type="button" className="icon-button" aria-label="Abrir calendário"><i className="fas fa-calendar-alt"></i></button>
+                <button
+                  type="button"
+                  className={`icon-button ${readonlyCampos ? "cursor-not-allowed opacity-50 pointer-events-none" : ""}`}
+                  aria-label="Abrir calendário"
+                  disabled={readonlyCampos}
+                  tabIndex={readonlyCampos ? -1 : 0}
+                >
+                  <i className={`fas fa-calendar-alt ${readonlyCampos ? "text-gray-400" : ""}`}></i>
+                </button>
               </PopoverTrigger>
               <PopoverContent align="start">
                 <Calendar
                   mode="single"
                   selected={selectedDate}
+                  disabled={readonlyCampos}
                   onSelect={(d) => {
+                    if (readonlyCampos) return;
                     if (d) {
                       setAudienciaData(format(d, 'dd/MM/yyyy', { locale: ptBR }));
                       setOpen(false);
@@ -100,9 +120,13 @@ const AudienciaTab: React.FC<AudienciaTabProps> = ({
             id="audienciaHora"
             type="text"
             inputMode="numeric"
-            placeholder="hh:mm"
+            placeholder={readonlyCampos ? "" : "hh:mm"}
             value={audienciaHora}
+            readOnly={readonlyCampos}
+            disabled={readonlyCampos}
+            className={readonlyCampos ? "bg-gray-100 text-gray-800 font-semibold cursor-not-allowed" : ""}
             onChange={(e) => {
+              if (readonlyCampos) return;
               const v = e.target.value.replace(/\D/g, '').slice(0,4);
               const hh = v.slice(0,2);
               const mm = v.slice(2,4);
@@ -110,6 +134,7 @@ const AudienciaTab: React.FC<AudienciaTabProps> = ({
               setAudienciaHora(formatted);
             }}
             onBlur={(e) => {
+              if (readonlyCampos) return;
               const m = e.target.value.match(/^(\d{2}):(\d{2})$/);
               if (!m) return;
               let h = parseInt(m[1], 10);
